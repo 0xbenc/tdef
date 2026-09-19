@@ -19,7 +19,6 @@ const (
 	KeyDown
 	KeyLeft
 	KeyRight
-	KeyTab
 	KeyBackspace
 	KeyCtrlC
 	KeyCtrlL
@@ -108,8 +107,6 @@ func (r *reader) step(data []byte) []byte {
 			r.emit(Event{Key: KeyCtrlC})
 		case b == 0x0c:
 			r.emit(Event{Key: KeyCtrlL})
-		case b == '\t':
-			r.emit(Event{Key: KeyTab})
 		case b < 0x20:
 		default:
 			if b < 0x80 {

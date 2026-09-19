@@ -23,8 +23,6 @@ type Pos struct {
 	X, Y float64
 }
 
-func (p Pos) ToVec() Vec { return Vec{int(p.X + 0.5 - 0.5), int(p.Y + 0.5 - 0.5)} }
-
 func (p Pos) Center() Vec { return Vec{int(math.Floor(p.X + 0.5)), int(math.Floor(p.Y + 0.5))} }
 
 func (p Pos) Dist(q Pos) float64 {

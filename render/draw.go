@@ -24,10 +24,7 @@ type UI struct {
 
 const (
 	HUDRows = 2
-	MapH    = 13
 	FrameW  = 62
-	MenuTop = HUDRows + MapH
-	FrameH  = MenuTop + 4
 )
 
 type Colors struct {

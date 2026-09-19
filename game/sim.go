@@ -184,36 +184,3 @@ func (a *Autoplay) upgrade() {
 		}
 	}
 }
-
-func Bench(levels []string, games int, seedBase int64) []SimResult {
-	out := []SimResult{}
-	for i := 0; i < games; i++ {
-		level := levels[i%len(levels)]
-		m, err := LoadLevel(level)
-		if err != nil {
-			continue
-		}
-		out = append(out, RunAutoplay(m, level))
-	}
-	return out
-}
-
-func Summarize(rs []SimResult) (wins int, waves, lives, gold, kills int, time float64) {
-	for _, r := range rs {
-		if r.Won {
-			wins++
-		}
-		waves += r.Wave
-		lives += r.Lives
-		gold += r.Gold
-		kills += r.Kills
-		time += r.Time
-	}
-	n := float64(len(rs))
-	if n == 0 {
-		return
-	}
-	waves, lives, gold, kills = int(float64(waves)/n), int(float64(lives)/n), int(float64(gold)/n), int(float64(kills)/n)
-	time /= n
-	return
-}

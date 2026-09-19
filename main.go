@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -276,5 +275,3 @@ func die(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "tdef: "+format+"\n", args...)
 	os.Exit(1)
 }
-
-var _ = rand.Int64N

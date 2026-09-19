@@ -232,5 +232,3 @@ func TestUnknownSequenceConsumed(t *testing.T) {
 		}
 	}
 }
-
-var _ = os.Stdin

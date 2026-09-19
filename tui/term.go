@@ -13,7 +13,6 @@ type Terminal struct {
 	old   syscall.Termios
 	winch chan struct{}
 	size  [2]int
-	origW int
 }
 
 func ioctl(fd int, req uintptr, arg unsafe.Pointer) error {
@@ -42,7 +41,6 @@ func Open() (*Terminal, error) {
 		return nil, err
 	}
 	t.size = t.querySize()
-	t.origW = t.size[0]
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGWINCH)
 	go func() {
