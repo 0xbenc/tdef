@@ -28,7 +28,9 @@ type App struct {
 	acc    float64
 	msgTTL float64
 	overT  time.Time
-	prev   map[int]render.Cell
+	// prev holds the last blitted frame, indexed y*W+x. Nil (or a size
+	// mismatch) forces a full redraw.
+	prev []render.Cell
 }
 
 func Run(m *game.Map, name string, diff game.Difficulty) error {
@@ -44,7 +46,6 @@ func Run(m *game.Map, name string, diff game.Difficulty) error {
 		diff:   diff,
 		level:  name,
 		events: make(chan Event, 256),
-		prev:   map[int]render.Cell{},
 	}
 	a.ui.Cursor = game.Vec{X: m.W / 2, Y: m.H / 2}
 	a.ui.Placing = game.TowerGunner
@@ -97,7 +98,7 @@ func (a *App) loop() error {
 		}
 		select {
 		case <-a.term.Winch():
-			a.prev = map[int]render.Cell{}
+			a.prev = nil
 		default:
 		}
 		now := time.Now()
@@ -257,7 +258,7 @@ func (a *App) handle(e Event) {
 			a.ui.Cursor.Y = m.H - 1
 		}
 	case KeyCtrlL:
-		a.prev = map[int]render.Cell{}
+		a.prev = nil
 	}
 	if e.Rune >= 'a' && e.Rune <= 'z' {
 		switch e.Rune {
@@ -459,7 +460,7 @@ func (a *App) restart() {
 		BestScore: hiscore.Load()[a.level],
 	}
 	a.acc = 0
-	a.prev = map[int]render.Cell{}
+	a.prev = nil
 }
 
 func (a *App) draw() {
@@ -471,7 +472,7 @@ func (a *App) draw() {
 func (a *App) renderGuarded(makeFrame func() *render.Frame) {
 	tw, th := a.term.Size()
 	if tw > 0 && th > 0 && (tw < a.layout.W || th < a.layout.H) {
-		a.prev = map[int]render.Cell{}
+		a.prev = nil
 		a.blit(render.RenderTooSmall(tw, th, a.layout.W, a.layout.H))
 		return
 	}
@@ -495,8 +496,9 @@ func (a *App) blit(f *render.Frame) {
 		}
 	}
 	p := pen{x: -1, y: -1, fg: -1, bg: -1, bold: false}
-	prev := a.prev
-	if len(prev) == 0 {
+	full := len(a.prev) != f.W*f.H
+	if full {
+		a.prev = make([]render.Cell, f.W*f.H)
 		buf = append(buf, "\x1b[2J\x1b[H"...)
 	}
 	tw, th := a.term.Size()
@@ -510,7 +512,7 @@ func (a *App) blit(f *render.Frame) {
 	for y := 0; y < fh; y++ {
 		for x := 0; x < fw; x++ {
 			c := f.C[y*f.W+x]
-			if old, ok := prev[y*f.W+x]; ok && old == c {
+			if !full && a.prev[y*f.W+x] == c {
 				continue
 			}
 			if p.x != x || p.y != y {
@@ -554,10 +556,7 @@ func (a *App) blit(f *render.Frame) {
 		p.x = 0
 	}
 	flush()
-	a.prev = make(map[int]render.Cell, f.W*f.H)
-	for i, c := range f.C {
-		a.prev[i] = c
-	}
+	copy(a.prev, f.C)
 }
 
 func appendf(b []byte, format string, args ...any) []byte {
