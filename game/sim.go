@@ -18,7 +18,7 @@ func RunAutoplay(m *Map, level string, seed int64) SimResult {
 }
 
 func RunAutoplayDiff(m *Map, level string, seed int64, diff Difficulty) SimResult {
-	s := NewStateDiff(m, seed, true, diff)
+	s := NewStateDiff(m, seed, diff)
 	ai := NewAutoplay(s)
 	dt := 1.0 / 20.0
 	maxTowers := 0

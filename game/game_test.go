@@ -77,7 +77,7 @@ func TestGenerateMap(t *testing.T) {
 
 func TestBuildAndSell(t *testing.T) {
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	cost := TowerSpecs[TowerGunner].Cost[0]
 	goldBefore := s.Gold
 	if !s.CanBuild(Vec{4, 1}, TowerGunner) {
@@ -107,7 +107,7 @@ func TestBuildAndSell(t *testing.T) {
 
 func TestUpgrade(t *testing.T) {
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	tw := s.Build(Vec{4, 1}, TowerGunner)
 	c := TowerSpecs[TowerGunner].Cost[1]
 	gold := s.Gold
@@ -121,7 +121,7 @@ func TestUpgrade(t *testing.T) {
 
 func TestEnemyLeak(t *testing.T) {
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	s.StartWave()
 	livesBefore := s.Lives
 	s.Enemies = append(s.Enemies, &Enemy{
@@ -137,7 +137,7 @@ func TestEnemyLeak(t *testing.T) {
 
 func TestEnemyDeathAndGold(t *testing.T) {
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	s.Gold = 0
 	goldBefore := s.Gold
 	e := &Enemy{ID: 999, Kind: EnemyGrunt, HP: 10, MaxHP: 10, Speed: 1, SlowFactor: 1, Lives: 1,
@@ -157,7 +157,7 @@ func TestEnemyDeathAndGold(t *testing.T) {
 
 func TestTargetModes(t *testing.T) {
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	tw := &Tower{ID: 1, Kind: TowerGunner, Level: 3, Cell: Vec{X: 5, Y: 2}}
 	s.Towers = append(s.Towers, tw)
 	eA := &Enemy{ID: 1, Kind: EnemyGrunt, HP: 500, MaxHP: 500, Speed: 1, SlowFactor: 1, Lives: 1, Pos: Pos{5.5, 3.5}, Prog: 10}
@@ -182,7 +182,7 @@ func TestTargetModes(t *testing.T) {
 
 func TestArmorReducesDamage(t *testing.T) {
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	e := &Enemy{ID: 1, Kind: EnemyShield, HP: 100, MaxHP: 100, Speed: 1, SlowFactor: 1, Lives: 1, Armor: 0.4}
 	s.Enemies = append(s.Enemies, e)
 	s.applyDamage(e, 50, TowerGunner)
@@ -196,7 +196,7 @@ func TestNewTowersBuild(t *testing.T) {
 	m := loadTestMap(t)
 	cells := findGrassCells(t, m, 2)
 	for i, k := range []TowerKind{TowerMortar, TowerFlak} {
-		s := NewState(m, 1, true)
+		s := NewState(m, 1)
 		s.Gold = 1000
 		if s.Build(cells[i], k) == nil {
 			t.Fatalf("%s should build", TowerSpecs[k].Name)
@@ -223,7 +223,7 @@ func findGrassCells(t *testing.T, m *Map, n int) []Vec {
 
 func TestFrostSlows(t *testing.T) {
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	s.Gold = 1000
 	e := &Enemy{ID: 42, Kind: EnemyGrunt, HP: 1000, MaxHP: 1000, Speed: 2, SlowFactor: 1, Lives: 1}
 	s.Enemies = append(s.Enemies, e)
@@ -238,7 +238,7 @@ func TestFrostSlows(t *testing.T) {
 
 func TestWaveCompletion(t *testing.T) {
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	s.StartWave()
 	if !s.WaveActive {
 		t.Fatal("wave should be active")
@@ -257,7 +257,7 @@ func TestWaveCompletion(t *testing.T) {
 
 func TestFinalWaveLeakIsDefeat(t *testing.T) {
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	s.Wave = MaxWaves - 1
 	s.StartWave()
 	if s.Wave != MaxWaves {
@@ -352,7 +352,7 @@ func TestBossLeakLifeCost(t *testing.T) {
 		t.Errorf("boss leak cost = %d, want 6", EnemySpecs[EnemyBoss].Lives)
 	}
 	m := loadTestMap(t)
-	s := NewState(m, 1, true)
+	s := NewState(m, 1)
 	s.Lives = 20
 	s.Enemies = []*Enemy{{
 		ID: 1, Kind: EnemyBoss, HP: 10, MaxHP: 10,

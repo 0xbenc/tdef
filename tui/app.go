@@ -40,7 +40,7 @@ func Run(m *game.Map, name string, seed int64, diff game.Difficulty) error {
 	defer term.Close()
 	a := &App{
 		term:   term,
-		g:      game.NewStateDiff(m, seed, false, diff),
+		g:      game.NewStateDiff(m, seed, diff),
 		pal:    render.Palette(),
 		seed:   seed,
 		diff:   diff,
@@ -447,7 +447,7 @@ func (a *App) quit() {
 
 func (a *App) restart() {
 	m := a.g.Map
-	a.g = game.NewStateDiff(m, a.seed, false, a.diff)
+	a.g = game.NewStateDiff(m, a.seed, a.diff)
 	a.scored = false
 	// Rebuild the UI, but keep player preferences: a zeroed UI would drop
 	// the boot-computed Scale (ComputeLayout clamps it back to 1x), so the

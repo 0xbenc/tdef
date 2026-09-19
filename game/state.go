@@ -27,7 +27,6 @@ type State struct {
 	NextWaveAt float64
 	WaveActive bool
 	WaveStart  float64
-	AutoWave   bool
 
 	Score      int
 	TotalKills int
@@ -44,18 +43,19 @@ type State struct {
 	Selected  int
 }
 
-func NewState(m *Map, seed int64, autoWave bool) *State {
-	return NewStateDiff(m, seed, autoWave, Normal)
+// Waves always auto-start after NextWaveAt (Step handles it); there is no
+// manual-only mode, so no flag for it is kept.
+func NewState(m *Map, seed int64) *State {
+	return NewStateDiff(m, seed, Normal)
 }
 
-func NewStateDiff(m *Map, seed int64, autoWave bool, diff Difficulty) *State {
+func NewStateDiff(m *Map, seed int64, diff Difficulty) *State {
 	return &State{
 		Map:        m,
 		Rng:        rand.New(rand.NewPCG(uint64(seed), uint64(seed<<32))),
 		Gold:       diff.Gold(),
 		Lives:      diff.Lives(),
 		Diff:       diff,
-		AutoWave:   autoWave,
 		NextWaveAt: 3.0,
 		Placing:    TowerGunner,
 		Cursor:     Vec{X: m.W / 2, Y: m.H / 2},
