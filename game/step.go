@@ -168,7 +168,12 @@ func (s *State) beamShot(t *Tower, target *Enemy) {
 		s.applyDamage(target, dmg, t.Kind)
 		hit := map[int]bool{target.ID: true}
 		cur := target
-		for i := 0; i < hops && cur != nil && !cur.Dead; i++ {
+		// The chain propagates from the last hit enemy's position even if
+		// that hit killed it — lightning jumps off the corpse. Skipping the
+		// hop when the target dies would neuter the tower against exactly
+		// the squishy swarms it is built for. Dead enemies are still
+		// skipped as jump destinations below.
+		for i := 0; i < hops; i++ {
 			dmg *= ChainFalloff
 			var next *Enemy
 			nextD := ChainRange

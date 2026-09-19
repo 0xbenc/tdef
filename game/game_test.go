@@ -180,6 +180,59 @@ func TestTargetModes(t *testing.T) {
 	}
 }
 
+// The chain must propagate from the target's position even when the opening
+// hit kills it — otherwise the tower does zero chain damage against squishy
+// enemies, the exact case it is built for.
+func TestTeslaChainFiresWhenTargetDies(t *testing.T) {
+	m := loadTestMap(t)
+	s := NewState(m)
+	cells := findGrassCells(t, m, 1)
+	tw := &Tower{ID: 1, Kind: TowerTesla, Level: 1, Cell: cells[0]}
+	s.Towers = append(s.Towers, tw)
+
+	setup := func(targetHP float64) (*Enemy, *Enemy, *Enemy) {
+		s.Enemies = nil
+		p := tw.Pos()
+		target := &Enemy{ID: 1, Kind: EnemyMinion, HP: targetHP, MaxHP: targetHP, Speed: 0, SlowFactor: 1, Lives: 1, Pos: Pos{p.X + 1, p.Y}}
+		e2 := &Enemy{ID: 2, Kind: EnemyGrunt, HP: 1000, MaxHP: 1000, Speed: 0, SlowFactor: 1, Lives: 1, Pos: Pos{p.X + 2, p.Y}}
+		e3 := &Enemy{ID: 3, Kind: EnemyGrunt, HP: 1000, MaxHP: 1000, Speed: 0, SlowFactor: 1, Lives: 1, Pos: Pos{p.X + 3, p.Y}}
+		s.Enemies = append(s.Enemies, target, e2, e3)
+		return target, e2, e3
+	}
+	check := func(name string, targetHP float64) {
+		target, e2, e3 := setup(targetHP)
+		s.beamShot(tw, target)
+		if !target.Dead {
+			t.Fatalf("%s: target with HP %v should die to the opening hit", name, targetHP)
+		}
+		if e2.HP >= e2.MaxHP {
+			t.Errorf("%s: 1st chain hop missed (HP %v)", name, e2.HP)
+		}
+		if e3.HP >= e3.MaxHP {
+			t.Errorf("%s: 2nd chain hop missed (HP %v)", name, e3.HP)
+		}
+		// Beam should record tower -> target -> hop1 -> hop2.
+		if len(s.Beams) != 1 {
+			t.Errorf("%s: beams = %d, want 1", name, len(s.Beams))
+		} else if len(s.Beams[0].From) != 4 {
+			t.Errorf("%s: beam points = %d, want 4", name, len(s.Beams[0].From))
+		}
+	}
+	// Tesla L1: 30 dmg, 2 chain hops, 0.6 falloff.
+	check("target dies", 10)
+	// Control: a target that survives the opening hit also gets chained.
+	s.Enemies = nil
+	s.Beams = nil
+	target, e2, e3 := setup(1000)
+	s.beamShot(tw, target)
+	if target.Dead {
+		t.Fatal("control: target should survive")
+	}
+	if e2.HP >= e2.MaxHP || e3.HP >= e3.MaxHP {
+		t.Error("control: chain hops missed on surviving target")
+	}
+}
+
 func TestArmorReducesDamage(t *testing.T) {
 	m := loadTestMap(t)
 	s := NewState(m)
