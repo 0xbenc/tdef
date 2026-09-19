@@ -85,6 +85,15 @@ func (a *App) loop() error {
 	defer frame.Stop()
 	last := time.Now()
 	for {
+		// Consume resizes before rendering in BOTH the intro gate and the
+		// running path; RefreshSize runs on this goroutine, so the cached
+		// size never races with the winch notifier.
+		select {
+		case <-a.term.Winch():
+			a.term.RefreshSize()
+			a.prev = nil
+		default:
+		}
 		if !a.started {
 			select {
 			case e := <-a.events:
@@ -105,11 +114,6 @@ func (a *App) loop() error {
 		a.drainInput()
 		if a.quitting {
 			return nil
-		}
-		select {
-		case <-a.term.Winch():
-			a.prev = nil
-		default:
 		}
 		now := time.Now()
 		real := now.Sub(last).Seconds()

@@ -44,8 +44,10 @@ func Open() (*Terminal, error) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGWINCH)
 	go func() {
+		// Pure notifier: the size is re-queried by the main goroutine
+		// (RefreshSize) after it sees the token. Writing t.size here
+		// would race with Size() on the main loop.
 		for range sig {
-			t.size = t.querySize()
 			select {
 			case t.winch <- struct{}{}:
 			default:
@@ -58,6 +60,12 @@ func Open() (*Terminal, error) {
 func (t *Terminal) Close() {
 	setTermios(int(t.in.Fd()), &t.old)
 }
+
+// RefreshSize re-queries the terminal size. Call it from the main
+// goroutine after consuming a Winch token: by then the resize has
+// settled, and keeping all t.size writes on one goroutine means Size()
+// can read it without synchronization.
+func (t *Terminal) RefreshSize() { t.size = t.querySize() }
 
 func (t *Terminal) Size() (int, int) { return t.size[0], t.size[1] }
 
