@@ -13,6 +13,18 @@ import (
 const tickRate = 20.0
 const frameRate = 30.0
 
+// Screen is the top-level state of the TUI.
+type Screen int
+
+const (
+	ScreenTitle Screen = iota
+	ScreenMenu
+	ScreenHelp
+	ScreenHiscores
+	ScreenLevelSelect
+	ScreenGame
+)
+
 type App struct {
 	term     *Terminal
 	g        *game.State
@@ -22,47 +34,110 @@ type App struct {
 	diff     game.Difficulty
 	level    string
 	scored   bool
-	started  bool
 	quitting bool
+
+	// Pre-game screen state.
+	screen       Screen
+	frameNo      int // 30fps tick counter; animates the title
+	menuSel      int // main-menu selection
+	hsTop        int // high-score scroll offset
+	ls           render.LSState
+	scores       map[string]int
+	lsPreview    *game.Map
+	lsPreviewKey string
 
 	events chan Event
 	acc    float64
 	msgTTL float64
-	overT  time.Time
 	// prev holds the last blitted frame, indexed y*W+x. Nil (or a size
 	// mismatch) forces a full redraw.
 	prev []render.Cell
 }
 
+// Run starts a specific level directly, skipping the title/menu flow.
 func Run(m *game.Map, name string, diff game.Difficulty) error {
 	term, err := Open()
 	if err != nil {
 		return err
 	}
-	defer term.Close()
-	a := &App{
+	a := newApp(term, diff)
+	a.enterGame(m, name, diff)
+	return a.run()
+}
+
+// RunMenu starts on the title screen; diff preselects the difficulty on the
+// level-select screen.
+func RunMenu(diff game.Difficulty) error {
+	term, err := Open()
+	if err != nil {
+		return err
+	}
+	a := newApp(term, diff)
+	a.ls.Levels = game.LevelNames()
+	a.ls.Diff = diffIndex(diff)
+	return a.run()
+}
+
+func diffIndex(d game.Difficulty) int {
+	for i, v := range render.Difficulties {
+		if v == d {
+			return i
+		}
+	}
+	return 1
+}
+
+func newApp(term *Terminal, diff game.Difficulty) *App {
+	return &App{
 		term:   term,
-		g:      game.NewStateDiff(m, diff),
 		pal:    render.Palette(),
 		diff:   diff,
-		level:  name,
 		events: make(chan Event, 256),
+		scores: hiscore.Load(),
 	}
+}
+
+// termSize returns the current terminal size, or a default 80x24 for tests
+// that build an App without a real terminal.
+func (a *App) termSize() (int, int) {
+	if a.term == nil {
+		return 80, 24
+	}
+	return a.term.Size()
+}
+
+// enterGame starts a game on map m: it computes the render scale from the
+// current terminal size and builds fresh state and UI.
+func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 	scale := 1
-	if tw, th := a.term.Size(); tw > 0 && th > 0 {
+	if tw, th := a.termSize(); tw > 0 && th > 0 {
 		scale = render.ComputeScale(m.W, m.H, tw, th)
 	}
+	a.g = game.NewStateDiff(m, diff)
+	a.diff = diff
+	a.level = name
 	a.ui = freshUI(m, scale)
-	a.started = false
+	a.ui.Paused = false
 	a.layout = render.ComputeLayout(m.W, m.H, a.ui.Scale)
+	a.scored = false
+	a.acc = 0
+	a.msgTTL = 0
+	a.prev = nil
+	a.screen = ScreenGame
+}
+
+// run starts the input reader, switches the terminal into raw mode and runs
+// the frame loop until the app quits.
+func (a *App) run() error {
+	defer a.term.Close()
 	startReader(a.term.in, a.events)
-	term.AltScreen(true)
-	term.Cursor(false)
-	term.Mouse(true)
+	a.term.AltScreen(true)
+	a.term.Cursor(false)
+	a.term.Mouse(true)
 	defer func() {
-		term.Mouse(false)
-		term.AltScreen(false)
-		term.Cursor(true)
+		a.term.Mouse(false)
+		a.term.AltScreen(false)
+		a.term.Cursor(true)
 	}()
 	return a.loop()
 }
@@ -85,31 +160,13 @@ func (a *App) loop() error {
 	defer frame.Stop()
 	last := time.Now()
 	for {
-		// Consume resizes before rendering in BOTH the intro gate and the
-		// running path; RefreshSize runs on this goroutine, so the cached
-		// size never races with the winch notifier.
+		// Consume resizes before rendering; RefreshSize runs on this
+		// goroutine, so the cached size never races with the winch notifier.
 		select {
 		case <-a.term.Winch():
 			a.term.RefreshSize()
 			a.prev = nil
 		default:
-		}
-		if !a.started {
-			select {
-			case e := <-a.events:
-				if e.Key == KeyCtrlC || e.Rune == 'q' {
-					a.quit()
-					return nil
-				}
-				a.started = true
-				a.ui.Paused = false
-			default:
-			}
-			a.renderGuarded(func() *render.Frame {
-				return render.RenderIntro(a.g.Map, a.level, a.diff, a.pal, a.ui.Scale)
-			})
-			<-frame.C
-			continue
 		}
 		a.drainInput()
 		if a.quitting {
@@ -118,57 +175,89 @@ func (a *App) loop() error {
 		now := time.Now()
 		real := now.Sub(last).Seconds()
 		last = now
-		if a.msgTTL > 0 {
-			a.msgTTL -= real
-			if a.msgTTL <= 0 {
-				a.ui.Message = ""
-			}
+		switch a.screen {
+		case ScreenGame:
+			a.stepGame(real)
+		case ScreenTitle:
+			a.frameNo++
 		}
-		if a.g.Status == game.StatusRunning && !a.ui.Paused {
-			prevLives := a.g.Lives
-			prevWaveActive := a.g.WaveActive
-			prevWave := a.g.Wave
-			a.acc += real * float64(a.ui.Speed)
-			const dt = 1.0 / tickRate
-			steps := 0
-			for a.acc >= dt && steps < 10 {
-				a.g.Step(dt)
-				a.acc -= dt
-				steps++
-			}
-			if steps == 10 {
-				a.acc = 0
-			}
-			if a.g.Lives < prevLives {
-				n := prevLives - a.g.Lives
-				plural := "life"
-				if n > 1 {
-					plural = "lives"
-				}
-				a.term.Write([]byte("\a"))
-				a.msg("leak! -" + strconv.Itoa(n) + " " + plural)
-			}
-			if prevWaveActive && !a.g.WaveActive && a.g.Wave < game.MaxWaves {
-				next := a.g.Wave + 1
-				if tg := game.WaveTelegraph(next); tg != "" {
-					// Hold the telegraph for the whole break so it can be read.
-					a.ui.Message = tg
-					a.msgTTL = game.AutoWaveDelayFor(a.g.Wave)
-				} else {
-					a.msg("wave " + strconv.Itoa(prevWave) + " cleared +" + strconv.Itoa(game.WaveBonus(prevWave)) + "g")
-				}
-			}
-		} else {
+		a.drawScreen()
+		<-frame.C
+	}
+}
+
+// stepGame advances the simulation by real seconds, expires transient
+// messages and records the final score exactly once.
+func (a *App) stepGame(real float64) {
+	if a.msgTTL > 0 {
+		a.msgTTL -= real
+		if a.msgTTL <= 0 {
+			a.ui.Message = ""
+		}
+	}
+	if a.g.Status == game.StatusRunning && !a.ui.Paused {
+		prevLives := a.g.Lives
+		prevWaveActive := a.g.WaveActive
+		prevWave := a.g.Wave
+		a.acc += real * float64(a.ui.Speed)
+		const dt = 1.0 / tickRate
+		steps := 0
+		for a.acc >= dt && steps < 10 {
+			a.g.Step(dt)
+			a.acc -= dt
+			steps++
+		}
+		if steps == 10 {
 			a.acc = 0
 		}
-		if a.g.Status != game.StatusRunning && !a.scored {
-			a.scored = true
-			best, isNew := hiscore.Update(a.level, a.g.Score)
-			a.ui.BestScore = best
-			a.ui.NewBest = isNew
+		if a.g.Lives < prevLives {
+			n := prevLives - a.g.Lives
+			plural := "life"
+			if n > 1 {
+				plural = "lives"
+			}
+			a.term.Write([]byte("\a"))
+			a.msg("leak! -" + strconv.Itoa(n) + " " + plural)
 		}
-		a.draw()
-		<-frame.C
+		if prevWaveActive && !a.g.WaveActive && a.g.Wave < game.MaxWaves {
+			next := a.g.Wave + 1
+			if tg := game.WaveTelegraph(next); tg != "" {
+				// Hold the telegraph for the whole break so it can be read.
+				a.ui.Message = tg
+				a.msgTTL = game.AutoWaveDelayFor(a.g.Wave)
+			} else {
+				a.msg("wave " + strconv.Itoa(prevWave) + " cleared +" + strconv.Itoa(game.WaveBonus(prevWave)) + "g")
+			}
+		}
+	} else {
+		a.acc = 0
+	}
+	if a.g.Status != game.StatusRunning && !a.scored {
+		a.scored = true
+		best, isNew := hiscore.Update(a.level, a.g.Score)
+		a.ui.BestScore = best
+		a.ui.NewBest = isNew
+	}
+}
+
+// drawScreen renders the current screen. The playfield frame is
+// Layout-sized and guarded; the menu screens are terminal-sized. A switch
+// changes the frame size, so the blit always full-redraws.
+func (a *App) drawScreen() {
+	w, h := a.termSize()
+	switch a.screen {
+	case ScreenTitle:
+		a.blit(render.RenderTitle(w, h, a.frameNo, a.scores, a.pal))
+	case ScreenMenu:
+		a.blit(render.RenderMenu(w, h, a.menuSel, a.pal))
+	case ScreenHelp:
+		a.blit(render.RenderHelp(w, h, a.pal))
+	case ScreenHiscores:
+		a.blit(render.RenderHighScores(w, h, a.hsTop, a.scores, a.pal))
+	case ScreenLevelSelect:
+		a.blit(render.RenderLevelSelect(a.lsView(), w, h, a.pal))
+	default:
+		a.renderGuarded(func() *render.Frame { return render.Render(a.g, &a.ui, a.pal) })
 	}
 }
 
@@ -189,6 +278,348 @@ func (a *App) drainInput() {
 }
 
 func (a *App) handle(e Event) {
+	switch a.screen {
+	case ScreenTitle:
+		a.handleTitle(e)
+	case ScreenMenu:
+		a.handleMenu(e)
+	case ScreenHelp:
+		a.handleHelp(e)
+	case ScreenHiscores:
+		a.handleHiscores(e)
+	case ScreenLevelSelect:
+		a.handleLevelSelect(e)
+	default:
+		a.handleGame(e)
+	}
+}
+
+// handleTitle: any key (or click) moves to the menu; q quits.
+func (a *App) handleTitle(e Event) {
+	if e.Key == KeyCtrlC || (!e.Mouse && (e.Rune == 'q' || e.Rune == 'Q')) {
+		a.quit()
+		return
+	}
+	if e.Mouse {
+		if !e.Press {
+			return
+		}
+	} else if e.Rune == 0 && e.Key == KeyNone {
+		return
+	}
+	a.toScreen(ScreenMenu)
+}
+
+func (a *App) handleMenu(e Event) {
+	if e.Mouse {
+		a.handleMenuMouse(e)
+		return
+	}
+	if e.Key == KeyCtrlC {
+		a.quit()
+		return
+	}
+	switch e.Rune {
+	case 'q', 'Q':
+		a.quit()
+	case 'w', 'W':
+		a.moveMenu(-1)
+	case 's', 'S':
+		a.moveMenu(1)
+	case '1', '2', '3', '4':
+		a.activateMenu(int(e.Rune - '1'))
+	}
+	switch e.Key {
+	case KeyUp:
+		a.moveMenu(-1)
+	case KeyDown:
+		a.moveMenu(1)
+	case KeyEnter:
+		a.activateMenu(a.menuSel)
+	case KeyEscape:
+		a.toScreen(ScreenTitle)
+	}
+}
+
+func (a *App) handleMenuMouse(e Event) {
+	if !e.Press {
+		return
+	}
+	w, h := a.termSize()
+	switch e.Btn {
+	case 64:
+		a.moveMenu(-1)
+		return
+	case 65:
+		a.moveMenu(1)
+		return
+	}
+	for i, r := range render.MenuRects(w, h) {
+		if r.Contains(e.X, e.Y) {
+			a.activateMenu(i)
+			return
+		}
+	}
+}
+
+// handleHelp: any key (or click) goes back to the menu; q quits.
+func (a *App) handleHelp(e Event) {
+	if e.Key == KeyCtrlC || (!e.Mouse && (e.Rune == 'q' || e.Rune == 'Q')) {
+		a.quit()
+		return
+	}
+	if e.Mouse {
+		if !e.Press {
+			return
+		}
+	} else if e.Rune == 0 && e.Key == KeyNone {
+		return
+	}
+	a.toScreen(ScreenMenu)
+}
+
+func (a *App) handleHiscores(e Event) {
+	if e.Mouse {
+		if !e.Press {
+			return
+		}
+		switch e.Btn {
+		case 64:
+			a.scrollScores(-1)
+		case 65:
+			a.scrollScores(1)
+		}
+		return
+	}
+	if e.Key == KeyCtrlC {
+		a.quit()
+		return
+	}
+	if e.Rune == 'q' || e.Rune == 'Q' {
+		a.quit()
+		return
+	}
+	switch e.Rune {
+	case 'k', 'w', 'W':
+		a.scrollScores(-1)
+	case 'j', 's', 'S':
+		a.scrollScores(1)
+	}
+	switch e.Key {
+	case KeyUp:
+		a.scrollScores(-1)
+	case KeyDown:
+		a.scrollScores(1)
+	case KeyEnter, KeyEscape:
+		a.toScreen(ScreenMenu)
+	}
+}
+
+func (a *App) scrollScores(delta int) {
+	if len(a.scores) == 0 {
+		return
+	}
+	a.hsTop += delta
+	if a.hsTop < 0 {
+		a.hsTop = 0
+	}
+	if max := len(a.scores) - 1; a.hsTop > max {
+		a.hsTop = max
+	}
+}
+
+func (a *App) handleLevelSelect(e Event) {
+	if e.Mouse {
+		a.handleLSMouse(e)
+		return
+	}
+	if e.Key == KeyCtrlC {
+		a.quit()
+		return
+	}
+	if e.Rune == 'q' || e.Rune == 'Q' {
+		a.quit()
+		return
+	}
+	// On the maze row, digits edit the seed, 'r' clears it, backspace
+	// deletes.
+	if a.ls.Cursor == len(a.ls.Levels) {
+		switch {
+		case e.Rune >= '0' && e.Rune <= '9':
+			if len(a.ls.Seed) < 18 {
+				a.ls.Seed += string(e.Rune)
+			}
+			return
+		case e.Rune == 'r' || e.Rune == 'R':
+			a.ls.Seed = ""
+			return
+		case e.Key == KeyBackspace:
+			if a.ls.Seed != "" {
+				a.ls.Seed = a.ls.Seed[:len(a.ls.Seed)-1]
+			}
+			return
+		}
+	}
+	switch e.Key {
+	case KeyUp:
+		a.moveLevel(-1)
+	case KeyDown:
+		a.moveLevel(1)
+	case KeyLeft:
+		a.cycleDiff(-1)
+	case KeyRight:
+		a.cycleDiff(1)
+	case KeyEnter:
+		a.startGame()
+	case KeyEscape:
+		a.toScreen(ScreenMenu)
+	}
+}
+
+func (a *App) handleLSMouse(e Event) {
+	if !e.Press {
+		return
+	}
+	w, h := a.termSize()
+	switch e.Btn {
+	case 64:
+		a.moveLevel(-1)
+		return
+	case 65:
+		a.moveLevel(1)
+		return
+	}
+	rows, diffs, seedRect := render.LSRects(a.lsView(), w, h)
+	if seedRect.Contains(e.X, e.Y) {
+		a.ls.Cursor = len(a.ls.Levels)
+		return
+	}
+	for i, d := range diffs {
+		if d.Contains(e.X, e.Y) {
+			a.ls.Diff = i
+			return
+		}
+	}
+	for i, r := range rows {
+		if r.Contains(e.X, e.Y) {
+			a.ls.Cursor = i
+			return
+		}
+	}
+}
+
+func (a *App) moveMenu(dir int) {
+	n := len(render.MenuItems)
+	a.menuSel = (a.menuSel + dir + n) % n
+}
+
+func (a *App) activateMenu(i int) {
+	switch i {
+	case 0:
+		a.toScreen(ScreenLevelSelect)
+	case 1:
+		a.toScreen(ScreenHelp)
+	case 2:
+		a.toScreen(ScreenHiscores)
+	default:
+		a.quit()
+	}
+}
+
+func (a *App) moveLevel(dir int) {
+	n := len(a.ls.Levels) + 1
+	a.ls.Cursor = (a.ls.Cursor + dir + n) % n
+}
+
+func (a *App) cycleDiff(dir int) {
+	n := len(render.Difficulties)
+	a.ls.Diff = (a.ls.Diff + dir + n) % n
+}
+
+// startGame launches the level under the cursor: a built-in level, or a
+// procedural maze (empty seed = random).
+func (a *App) startGame() {
+	diff := render.Difficulties[a.ls.Diff]
+	if a.ls.Cursor == len(a.ls.Levels) {
+		seed, ok := a.parseSeed()
+		if !ok {
+			a.ls.Err = "seed too large"
+			return
+		}
+		m, err := game.MazeFromSeed(seed)
+		if err != nil {
+			a.ls.Err = err.Error()
+			return
+		}
+		a.enterGame(m, fmt.Sprintf("maze%d", seed), diff)
+		return
+	}
+	name := a.ls.Levels[a.ls.Cursor]
+	m, err := game.LoadLevel(name)
+	if err != nil {
+		a.ls.Err = err.Error()
+		return
+	}
+	a.enterGame(m, name, diff)
+}
+
+// parseSeed converts the typed seed to an int64. An empty string (or a seed
+// of zero) means "random".
+func (a *App) parseSeed() (int64, bool) {
+	if a.ls.Seed == "" {
+		return time.Now().UnixNano(), true
+	}
+	n, err := strconv.ParseInt(a.ls.Seed, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	if n == 0 {
+		return time.Now().UnixNano(), true
+	}
+	return n, true
+}
+
+// lsView returns the level-select state with a live map preview attached.
+// The preview is cached by "cursor:seed" so the map is not regenerated every
+// frame; an empty or zero seed previews a fixed seed, which keeps the frame
+// stable.
+func (a *App) lsView() render.LSState {
+	key := fmt.Sprintf("%d:%s", a.ls.Cursor, a.ls.Seed)
+	if a.lsPreviewKey != key {
+		a.lsPreviewKey = key
+		a.lsPreview = nil
+		if a.ls.Cursor == len(a.ls.Levels) {
+			seed := a.ls.Seed
+			if seed == "" || seed == "0" {
+				seed = "1234"
+			}
+			if n, err := strconv.ParseInt(seed, 10, 64); err == nil {
+				a.lsPreview, _ = game.MazeFromSeed(n)
+			}
+		} else {
+			a.lsPreview, _ = game.LoadLevel(a.ls.Levels[a.ls.Cursor])
+		}
+	}
+	v := a.ls
+	v.Preview = a.lsPreview
+	return v
+}
+
+// toScreen switches screens. prev is reset so the blit full-redraws, and
+// per-screen state is refreshed (hiscores reloaded, stale errors cleared).
+func (a *App) toScreen(s Screen) {
+	a.screen = s
+	a.prev = nil
+	switch s {
+	case ScreenHiscores:
+		a.scores = hiscore.Load()
+		a.hsTop = 0
+	case ScreenLevelSelect:
+		a.ls.Err = ""
+	}
+}
+
+func (a *App) handleGame(e Event) {
 	if e.Mouse {
 		// Ignore all mouse input once the game is over: a click on the
 		// grass behind the DEFEAT/VICTORY overlay would otherwise build a
@@ -239,8 +670,6 @@ func (a *App) handle(e Event) {
 				a.ui.Selected = -1
 			}
 		}
-	case '\r':
-		a.activate()
 	}
 	switch e.Key {
 	case KeyEnter:
@@ -454,10 +883,12 @@ func (a *App) startWave() {
 
 func (a *App) quit() {
 	a.quitting = true
-	a.term.Mouse(false)
-	a.term.AltScreen(false)
-	a.term.Cursor(true)
-	a.term.Close()
+	if a.term != nil { // nil only in tests
+		a.term.Mouse(false)
+		a.term.AltScreen(false)
+		a.term.Cursor(true)
+		a.term.Close()
+	}
 }
 
 func (a *App) restart() {
@@ -478,10 +909,6 @@ func (a *App) restart() {
 	}
 	a.acc = 0
 	a.prev = nil
-}
-
-func (a *App) draw() {
-	a.renderGuarded(func() *render.Frame { return render.Render(a.g, &a.ui, a.pal) })
 }
 
 // renderGuarded blits the given frame, unless the terminal has shrunk below

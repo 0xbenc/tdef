@@ -68,7 +68,7 @@ func TestMouseIgnoredAfterGameOver(t *testing.T) {
 	}
 	ox, oy, sc := 0, 0, 0
 	newApp := func() *App {
-		a := &App{g: game.NewState(m), layout: render.ComputeLayout(m.W, m.H, 1), ui: freshUI(m, 1)}
+		a := &App{g: game.NewState(m), screen: ScreenGame, layout: render.ComputeLayout(m.W, m.H, 1), ui: freshUI(m, 1)}
 		ox, oy, sc = a.mapBounds()
 		a.ui.Placing = game.TowerGunner
 		a.ui.PlacingOn = true
