@@ -359,42 +359,51 @@ func drawRing(f *Frame, l Layout, fx *game.Fx) {
 	}
 }
 
+// drawHUD renders the two top rows. Both must stay within FrameW (62) at
+// scale 1 — the break line used to exceed it from wave 17 on (long theme +
+// preview + countdown). TestHUDLinesFitFrame pins the worst cases.
 func drawHUD(f *Frame, g *game.State, ui *UI, pal Colors) {
 	pause := ""
 	if ui.Paused {
 		pause = " ⏸ "
-	}
-	msg := ""
-	if ui.Message != "" {
-		msg = "  " + ui.Message
 	}
 	combo := ""
 	if g.Combo >= 5 {
 		combo = fmt.Sprintf("  ⚡%d", g.Combo)
 	}
 	inBreak := g.Status == game.StatusRunning && !g.WaveActive && g.Wave < game.MaxWaves
+	// A telegraph during the break takes the whole top line (so it isn't
+	// truncated); the wave indicator moves to the stat line.
+	telegraph := inBreak && ui.Message != ""
 	line0 := " tdef "
 	line1 := ""
 	switch {
 	case g.Status == game.StatusRunning && g.WaveActive:
 		line0 += fmt.Sprintf("Wave %d/%d%s", g.Wave, game.MaxWaves, combo)
-	case inBreak:
+	case inBreak && !telegraph:
 		nw := g.Wave + 1
 		in := int(g.NextWaveAt-g.Time) + 1
 		if in < 0 {
 			in = 0
 		}
 		bonus := game.EarlyBonus(g.Wave)
-		line0 += fmt.Sprintf("next wave %d (%s): %s  in %ds  [n +%dg]", nw, game.WaveTheme(nw), game.WavePreview(nw), in, bonus)
+		line0 += fmt.Sprintf("next wave %d (%s) in %ds [n +%dg]", nw, game.WaveTheme(nw), in, bonus)
+		if ui.Message == "" {
+			// Composition preview on the stat row; a transient message
+			// (e.g. "wave 18 cleared +93g") takes its place instead.
+			line1 = fmt.Sprintf(" →%d: %s", nw, game.WavePreview(nw))
+		}
 	}
-	// A telegraph during the break takes the whole top line (so it isn't
-	// truncated); the wave indicator moves to the stat line.
-	if inBreak && ui.Message != "" {
-		line0 = "  " + ui.Message + pause
+	if telegraph {
+		line0 = "  " + ui.Message
 		nw := g.Wave + 1
 		line1 = fmt.Sprintf(" →%d %s: %s", nw, game.WaveTheme(nw), game.WavePreview(nw))
-	} else {
-		line0 += pause + msg
+	}
+	line0 += pause
+	if ui.Message != "" && !inBreak {
+		line0 += "  " + ui.Message
+	} else if ui.Message != "" && inBreak && !telegraph {
+		line1 = "  " + ui.Message
 	}
 	line1 += fmt.Sprintf("   ⛁ %d  ♥ %d  ★ %d  x%d", g.Gold, g.Lives, g.Score, ui.Speed)
 	putString(f, 0, 0, line0, pal.Bright, 0, true)
@@ -433,14 +442,17 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 		}
 	}
 	y := menuTop + 2
+	// Every line here must fit FrameW (62) at scale 1 — TestMenuLinesFitFrame.
 	if ui.Help {
-		putString(f, 0, y, " move: arrows/wasd  place: enter/click  select: click a tower  upgrade: u  sell: x", pal.Dim, 0, false)
+		putString(f, 0, y, " move: arrows/wasd  place: enter/click  select: click tower", pal.Dim, 0, false)
 		y++
-		putString(f, 0, y, " start wave: n (early = bonus)  pause: p  speed: f/wheel  cancel: esc  quit: q", pal.Dim, 0, false)
+		putString(f, 0, y, " u up · x sell · t target · n wave (early=bonus) · p pause · f speed", pal.Dim, 0, false)
 	} else {
-		putString(f, 0, y, " enter place · u up · x sell · t target · n wave · p pause · f speed · esc · q", pal.Dim, 0, false)
+		putString(f, 0, y, " enter place · u up · x sell · t target · n wave · p pause · q", pal.Dim, 0, false)
 	}
-	if ui.Selected >= 0 {
+	// With help on, both hint rows are taken, so the selected-tower info
+	// line can't render (it would land off-frame at the bottom).
+	if !ui.Help && ui.Selected >= 0 {
 		if t := g.Tower(ui.Selected); t != nil {
 			y++
 			info := towerInfo(t, g.UpgradeCost(t), int(float64(t.Invested)*game.SellRefund))

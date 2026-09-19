@@ -242,6 +242,83 @@ func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
 	}
 }
 
+// rowWidth is the last non-space column of row y plus one (0 if blank).
+func rowWidth(f *Frame, y int) int {
+	w := 0
+	for x := 0; x < f.W; x++ {
+		if r := f.C[y*f.W+x].R; r != 0 && r != ' ' {
+			w = x + 1
+		}
+	}
+	return w
+}
+
+// The menu hint/help rows sit at the bottom of a frame that is exactly
+// FrameW wide at scale 1; anything longer is silently clipped.
+func TestMenuLinesFitFrame(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := ComputeLayout(m.W, m.H, 1)
+	g := &game.State{Map: m, Gold: 1000}
+	check := func(ui *UI, rows ...int) {
+		f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
+		drawMenu(f, g, ui, Palette())
+		for _, y := range rows {
+			if w := rowWidth(f, y); w > FrameW {
+				t.Errorf("menu row %d is %d cols, want <= %d", y, w, FrameW)
+			}
+		}
+	}
+	hintRow := l.H - 4 + 2
+	// compact hint
+	check(&UI{Placing: game.TowerGunner, Scale: 1}, hintRow)
+	// two help lines
+	check(&UI{Placing: game.TowerGunner, Help: true, Scale: 1}, hintRow, hintRow+1)
+}
+
+// Every HUD line combination must fit the 62-col frame at scale 1. The old
+// break line (theme + preview + countdown + bonus) exceeded it from wave 17
+// on, hiding the early-start bonus hint.
+func TestHUDLinesFitFrame(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := ComputeLayout(m.W, m.H, 1)
+	check := func(g *game.State, ui *UI) {
+		f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
+		drawHUD(f, g, ui, Palette())
+		for y := 0; y < 2; y++ {
+			if w := rowWidth(f, y); w > FrameW {
+				t.Errorf("wave %d msg=%q paused=%v: HUD row %d is %d cols, want <= %d",
+					g.Wave, ui.Message, ui.Paused, y, w, FrameW)
+			}
+		}
+	}
+	msgs := []string{"", "wave 18 cleared +93g", "Faster ones are coming."}
+	for wave := 1; wave < game.MaxWaves; wave++ {
+		for _, paused := range []bool{false, true} {
+			for _, msg := range msgs {
+				// inter-wave break (telegraph or transient message)
+				g := &game.State{
+					Map: m, Status: game.StatusRunning, Wave: wave,
+					NextWaveAt: 9.5, Time: 5.0, WaveActive: false,
+					Gold: 9999, Lives: 15, Score: 999999,
+				}
+				check(g, &UI{Speed: 4, Paused: paused, Message: msg, Scale: 1})
+			}
+		}
+	}
+	// active wave, worst-case combo + leak message
+	g := &game.State{
+		Map: m, Status: game.StatusRunning, Wave: 20, WaveActive: true,
+		Combo: 123, Gold: 9999, Lives: 15, Score: 999999,
+	}
+	check(g, &UI{Speed: 4, Paused: true, Message: "leak! -6 lives", Scale: 1})
+}
+
 func TestANSIPositionsRowsWithCUP(t *testing.T) {
 	f := &Frame{W: 4, H: 3, C: make([]Cell, 12)}
 	f.Put(0, 0, 'a', 220, 0)
