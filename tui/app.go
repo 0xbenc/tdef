@@ -449,10 +449,15 @@ func (a *App) restart() {
 	m := a.g.Map
 	a.g = game.NewStateDiff(m, a.seed, false, a.diff)
 	a.scored = false
+	// Rebuild the UI, but keep player preferences: a zeroed UI would drop
+	// the boot-computed Scale (ComputeLayout clamps it back to 1x), so the
+	// playfield would shrink after every game-over restart.
 	a.ui = render.UI{
 		Cursor:    game.Vec{X: m.W / 2, Y: m.H / 2},
 		Placing:   game.TowerGunner,
 		Speed:     a.ui.Speed,
+		Help:      a.ui.Help,
+		Scale:     a.ui.Scale,
 		BestScore: hiscore.Load()[a.level],
 	}
 	a.acc = 0
