@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"os"
@@ -177,7 +176,7 @@ func (r *reader) step(data []byte) []byte {
 		data = data[1:]
 		if b == 'M' || b == 'm' {
 			r.state = 0
-			r.mouse()
+			r.mouse(b == 'M')
 			return r.step(data)
 		}
 		r.buf = append(r.buf, b)
@@ -227,7 +226,9 @@ func (r *reader) interpret() (Key, bool) {
 	return KeyNone, true
 }
 
-func (r *reader) mouse() {
+// press is true for 'M' (button down) and false for 'm' (button up); the
+// terminator byte is consumed by step() before this runs.
+func (r *reader) mouse(press bool) {
 	s := string(r.buf)
 	parts := splitN(s, ';')
 	if len(parts) < 3 {
@@ -236,14 +237,20 @@ func (r *reader) mouse() {
 	btn, _ := strconv.Atoi(parts[0])
 	x, _ := strconv.Atoi(parts[1])
 	y, _ := strconv.Atoi(parts[2])
-	if x == 0 || y == 0 {
-		return
-	}
-	press := !bytes.HasSuffix([]byte(s), []byte("m"))
-	if btn < 64 {
+	switch {
+	case btn == 64 || btn == 65: // wheel (press events only)
+		if press {
+			r.emit(Event{Mouse: true, Btn: btn, Press: true, X: -1, Y: -1})
+		}
+	case btn >= 0 && btn <= 2: // real buttons
+		// Button-event tracking (?1002) also reports drag motions with
+		// codes 32-35; those are not clicks and must be ignored, or a
+		// click-drag would place a tower (or toggle a menu slot) per
+		// motion step.
+		if x == 0 || y == 0 {
+			return
+		}
 		r.emit(Event{Mouse: true, Btn: btn, Press: press, X: x - 1, Y: y - 1})
-	} else if press {
-		r.emit(Event{Mouse: true, Btn: btn, Press: true, X: -1, Y: -1})
 	}
 }
 

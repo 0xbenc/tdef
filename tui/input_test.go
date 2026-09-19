@@ -140,7 +140,61 @@ func TestMouseSGR(t *testing.T) {
 func TestMouseWheel(t *testing.T) {
 	evs := feed(t, []byte("\x1b[<64;1;1M"), 1)
 	if len(evs) != 1 || evs[0].Btn != 64 || !evs[0].Press {
-		t.Fatalf("bad wheel event: %+v", evs)
+		t.Fatalf("bad wheel event: %+v", evs[0])
+	}
+}
+
+// Drag motions (button-event tracking, codes 32-35) must not be reported
+// as clicks: a left-drag across the map would otherwise place a tower at
+// every motion step.
+func TestMouseDragIgnored(t *testing.T) {
+	ch := make(chan Event, 64)
+	r := &reader{ch: ch}
+	r.feed([]byte("\x1b[<32;10;10M\x1b[<32;12;11M\x1b[<32;14;12M\x1b[<32;14;12m"))
+	select {
+	case e := <-ch:
+		t.Fatalf("unexpected event for drag motion: %+v", e)
+	default:
+	}
+}
+
+// Button release ('m' terminator) must be reported with Press=false —
+// previously it was misreported as a press, so releasing over the map
+// triggered placement a second time.
+func TestMouseRelease(t *testing.T) {
+	evs := feed(t, []byte("\x1b[<0;15;5m"), 1)
+	if len(evs) != 1 {
+		t.Fatalf("got %d events, want 1", len(evs))
+	}
+	if evs[0].Btn != 0 || evs[0].Press {
+		t.Fatalf("got %+v, want left release", evs[0])
+	}
+}
+
+// A real click-and-drag still emits exactly one press (the initial click),
+// nothing for the motions, and a release for the final button code.
+func TestMouseClickDragEmitsOnePress(t *testing.T) {
+	ch := make(chan Event, 64)
+	r := &reader{ch: ch}
+	r.feed([]byte("\x1b[<0;10;10M\x1b[<32;12;11M\x1b[<32;14;12M\x1b[<0;14;12m"))
+	evs := []Event{}
+	for i := 0; i < 2; i++ {
+		select {
+		case e := <-ch:
+			evs = append(evs, e)
+		default:
+			goto done
+		}
+	}
+done:
+	if len(evs) != 2 {
+		t.Fatalf("got %d events, want 2 (press + release): %+v", len(evs), evs)
+	}
+	if evs[0].Btn != 0 || !evs[0].Press || evs[0].X != 9 || evs[0].Y != 9 {
+		t.Fatalf("press = %+v, want left press at 9,9", evs[0])
+	}
+	if evs[1].Btn != 0 || evs[1].Press {
+		t.Fatalf("release = %+v, want left release", evs[1])
 	}
 }
 
