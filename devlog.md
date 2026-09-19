@@ -117,6 +117,61 @@
  - Wheel-up jumped straight to 4x; wheel now cycles 1->2->4->1 like 'f'
    (shared cycleSpeed, wrap both ways, tested). Leak message pluralizes
    ('-6 lives'). Hand-rolled itoa (returned "" for negatives) -> strconv.
- - Verification: gofmt+vet+test -race+build green (51 tests, hiscore now
-   covered); PTY smoke exit 0; capture dump checked byte-level; README
-   mouse/pause lines updated to the new behavior.
+  - Verification: gofmt+vet+test -race+build green (51 tests, hiscore now
+    covered); PTY smoke exit 0; capture dump checked byte-level; README
+    mouse/pause lines updated to the new behavior.
+  - 2026-09-19 (third pass — review items 1-5, branch review-fixes)
+  - Intro screen: the four help lines + prompt did not fit the 62-col
+    frame at 1x; the prompt overwrote help line 3. Refit to H-5..H-1
+    (TestRenderIntroFitsFrame, later removed with the intro itself).
+  - Tesla chain: the chain bolt kept its original target even when it
+    died mid-chain, so the chain never propagated. Now re-acquires from
+    the killed target (game/step.go); TestTeslaChainFiresWhenTargetDies.
+    Bench unchanged — the autoplay AI never buys a Tesla (gold floor
+    stays under its 200 cost).
+  - UI.Selected zero value: a fresh render.UI zeroed to tower ID 0, the
+    first tower built — it read as "selected" and hid the cursor.
+    render.NoSelection = -1 now pinned in every UI constructor
+    (Run/restart/capture); tests.
+  - Data race: the winch goroutine wrote Terminal.size while the main
+    loop read it (-race fires under a resize storm). The notifier is
+    now pure; the main loop calls RefreshSize() after consuming the
+    token. Old build fails the PTY resize-storm probe, new build clean.
+  - Level pips drew before the tower glyphs, so two adjacent upgraded
+    towers erased each other's pips. Pips now draw after the glyphs,
+    skipping occupied cells.
+  - 1x clipping: the selected-tower info line (up to ~71 cols at Lv3)
+    and the wave/break lines exceeded the 62-col frame. Compressed and
+    restructured; TestMenuLinesFitFrame/TestHUDLinesFitFrame.
+  - Mouse after game over: a click on grass behind the overlay built a
+    tower (handle routed mouse before the status check). Guarded.
+  - Still open from pass 3: UTF-8 reader (incomplete sequence emits the
+    lead byte raw), LoadMap validation (missing S/E -> zero vec /
+    panic), unbounded capture -scale, Path/TotalLen spawn-cell
+    semantics, and the LOW sweep (hiscore type guards, SGR reset,
+    wheel modifiers, dead code, silent flag fallbacks).
+  - 2026-09-19 (title screen + start menu, branch title-screen)
+  - New pre-game flow: animated title screen (beveled TDEF slab logo,
+    a miniature battle demo, tower/enemy roster, best score, blinking
+    prompt) -> main menu (Start / Help / High Scores / Quit) -> level
+    select (built-in maps, a procedural maze row with an editable
+    seed, difficulty, and a live map preview on tall terminals).
+  - Design via three read-only subagents (architecture / visual /
+    impl+test), consolidated into a Screen state machine on App.
+    Renderers are pure functions (render/screens.go) of
+    (w, h, state, 30fps frame counter, palette), so the animation is
+    deterministic and unit-testable; Rects helpers share the layout
+    functions with the renderers, so mouse hit-testing cannot drift.
+  - tui: the App now runs six screens (title/menu/help/hiscores/level
+    select/game). The loop advances the sim only on ScreenGame
+    (stepGame) and ticks the title animation counter on ScreenTitle.
+    Bare `tdef` enters the title flow (RunMenu); explicit -level/-maze
+    still start directly (Run); -diff preselects the difficulty. The
+    old press-any-key intro and its dead overT field are gone.
+  - game: MazeFromSeed centralizes the procedural maze size
+    (MazeW/MazeH) so main, bench and the level select agree.
+  - Verified: gofmt+vet+test -race+build green; PTY smoke of the full
+    flow (title -> menu -> level select -> typed maze seed 1234 ->
+    maze1234 game; hiscores with a real table) all exit 0; bench
+    identical to baseline (canyon/garden/hub/winding 100%, maze 62%,
+    ALL 66%).

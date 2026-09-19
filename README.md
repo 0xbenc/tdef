@@ -14,12 +14,19 @@ tuning) or driven by the interactive TUI.
 ```sh
 go build -o tdef .
 
-./tdef play                      # play (default: winding, normal)
-./tdef play -level canyon        # pick a map: hub | winding | garden | canyon
+./tdef                           # title screen -> main menu -> level select
+./tdef play -level canyon        # jump straight in: hub | winding | garden | canyon
 ./tdef play -maze 123            # procedural maze (seeded, reproducible)
 ./tdef play -diff easy           # easy | normal | hard
 ./tdef play -diff hard -maze 7
 ```
+
+Bare `./tdef` (or `play` with no level) starts at the animated title
+screen: **main menu** (Start / Help / High Scores / Quit) → **level
+select** with the built-in maps, a procedural maze row (type a seed,
+empty = random), and a difficulty pick. Tall terminals get a live map
+preview. Explicit `-level`/`-maze` flags skip the menus and start the
+game directly; `-diff` preselects the difficulty.
 
 Requires a real TTY (raw mode, alternate screen, mouse).
 
@@ -38,10 +45,13 @@ Requires a real TTY (raw mode, alternate screen, mouse).
 | `f` | cycle speed 1x / 2x / 4x |
 | `h` | toggle help |
 | `r` | restart (on game over) |
-| `q` / `esc` | quit |
+| `esc` | cancel placement; back out of menus (not in-game) |
+| `q` | quit (any screen) |
 
-Mouse works too: click a tower in the menu, then click the map; scroll
-wheel cycles speed (1x/2x/4x, like `f`).
+In the menus: `enter` activates, `1`-`4` pick a menu item, and the mouse
+works too (click items, wheel scrolls). Mouse in-game: click a tower in
+the menu, then click the map; scroll wheel cycles speed (1x/2x/4x, like
+`f`).
 
 ## Towers
 
