@@ -1,0 +1,124 @@
+package hiscore
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+	"testing"
+)
+
+// isolateHome points the hiscore file at a throwaway directory.
+func isolateHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	return home
+}
+
+func TestUpdateAndLoad(t *testing.T) {
+	isolateHome(t)
+	if _, isNew := Update("hub", 100); !isNew {
+		t.Fatal("first score should be a new best")
+	}
+	if best, isNew := Update("hub", 50); isNew || best != 100 {
+		t.Fatalf("best=%d isNew=%v, want 100 false", best, isNew)
+	}
+	if best, isNew := Update("hub", 200); !isNew || best != 200 {
+		t.Fatalf("best=%d isNew=%v, want 200 true", best, isNew)
+	}
+	if got := Load()["hub"]; got != 200 {
+		t.Fatalf("Load[hub] = %d, want 200", got)
+	}
+}
+
+func TestSaveIsAtomicAndReadable(t *testing.T) {
+	home := isolateHome(t)
+	if err := Save(Table{"winding": 42, "hub": 7}); err != nil {
+		t.Fatal(err)
+	}
+	p, err := Path()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := Load(); got["winding"] != 42 || got["hub"] != 7 {
+		t.Fatalf("Load after Save = %v", got)
+	}
+	// no temp files left behind
+	entries, err := os.ReadDir(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.Name() != ".tdef-hiscores.json" {
+			t.Fatalf("unexpected file %q in %s", e.Name(), home)
+		}
+	}
+	if fi, err := os.Stat(p); err != nil || fi.Mode().Perm() != 0o644 {
+		t.Fatalf("mode = %v, want 0644 (err %v)", fi.Mode().Perm(), err)
+	}
+}
+
+func TestCorruptFileYieldsEmptyTableAndSelfHeals(t *testing.T) {
+	isolateHome(t)
+	p, err := Path()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if t0 := Load(); len(t0) != 0 {
+		t.Fatalf("Load on corrupt file = %v, want empty", t0)
+	}
+	Update("hub", 10)
+	data, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]int
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Update did not repair the file: %v", err)
+	}
+	if m["hub"] != 10 {
+		t.Fatalf("repaired file hub = %d, want 10", m["hub"])
+	}
+}
+
+func TestPruneMazeKeepsTopScores(t *testing.T) {
+	tbl := Table{"hub": 10, "canyon": 20}
+	for i := 0; i < MaxMazeEntries+8; i++ {
+		tbl[fmt.Sprintf("maze%d", i)] = i + 1
+	}
+	pruneMaze(tbl)
+	if got := len(tbl) - 2; got != MaxMazeEntries {
+		t.Fatalf("maze entries = %d, want %d", got, MaxMazeEntries)
+	}
+	if _, ok := tbl["hub"]; !ok {
+		t.Fatal("hand-crafted level entry pruned")
+	}
+	// highest-scoring mazes survive, lowest-scoring ones are dropped
+	if _, ok := tbl[fmt.Sprintf("maze%d", MaxMazeEntries+7)]; !ok {
+		t.Fatal("highest-scoring maze pruned")
+	}
+	if _, ok := tbl["maze0"]; ok {
+		t.Fatal("lowest-scoring maze not pruned")
+	}
+}
+
+func TestUpdatePrunesBeyondCap(t *testing.T) {
+	isolateHome(t)
+	for i := 0; i < MaxMazeEntries+5; i++ {
+		Update(fmt.Sprintf("maze%d", i), (i+1)*10)
+	}
+	tbl := Load()
+	mazeCount := 0
+	for k := range tbl {
+		if strings.HasPrefix(k, "maze") {
+			mazeCount++
+		}
+	}
+	if mazeCount != MaxMazeEntries {
+		t.Fatalf("maze entries = %d, want %d", mazeCount, MaxMazeEntries)
+	}
+}
