@@ -215,6 +215,7 @@ func capture(args []string) {
 	every := fs.Int("every", 10, "")
 	limit := fs.Int64("limit", 0, "")
 	text := fs.Bool("text", false, "")
+	scale := fs.Int("scale", 1, "playfield scale 1-4")
 	m, name, seed, _ := parseLevelArgs(fs, args, true)
 	seed = pickSeed(seed)
 	if err := os.MkdirAll(*out, 0o755); err != nil {
@@ -223,7 +224,7 @@ func capture(args []string) {
 	s := game.NewStateDiff(m, seed, true, diffFrom(fs))
 	ai := game.NewAutoplay(s)
 	pal := render.Palette()
-	ui := render.UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Speed: 1}
+	ui := render.UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Speed: 1, Scale: *scale}
 	dt := 1.0 / 20.0
 	tick := int64(0)
 	for s.Status == game.StatusRunning {

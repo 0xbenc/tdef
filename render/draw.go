@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"math"
 
 	"tdef/game"
 )
@@ -15,6 +16,7 @@ type UI struct {
 	Paused    bool
 	Help      bool
 	Message   string
+	Scale     int // playfield scale (1-4), computed once at boot
 
 	BestScore int
 	NewBest   bool
@@ -40,57 +42,145 @@ func Palette() Colors {
 	return Colors{
 		Wall: 235, Path: 240, Grass: 234,
 		Gold: 220, Dim: 245, Bright: 255,
-		Tower: [game.TowerCount]int{46, 203, 51, 171, 220},
-		Enemy: [game.EnemyCount]int{213, 114, 180, 204},
-		Beam:  [game.TowerCount]int{255, 203, 51, 171, 226},
+		Tower: [game.TowerCount]int{46, 203, 51, 171, 220, 130, 226},
+		Enemy: [game.EnemyCount]int{213, 214, 180, 204, 171, 199, 147, 75},
+		Beam:  [game.TowerCount]int{255, 203, 51, 171, 226, 130, 226},
 	}
 }
 
-type bounds struct{ ox, oy int }
+// Layout maps map-space coordinates to frame-space at a given integer scale.
+type Layout struct {
+	Ox, Oy int
+	Scale  int
+	W, H   int
+}
 
-func (b bounds) x(mx int) int { return b.ox + mx }
-func (b bounds) y(my int) int { return b.oy + my }
+// ComputeScale picks the largest integer scale (1-4) whose frame fits the
+// terminal. Called once at boot; no live resize support.
+func ComputeScale(mW, mH, tw, th int) int {
+	if tw <= 0 || th <= 0 {
+		return 1
+	}
+	s := (tw - 2) / mW
+	if v := (th - HUDRows - 4) / mH; v < s {
+		s = v
+	}
+	if s < 1 {
+		s = 1
+	}
+	if s > 4 {
+		s = 4
+	}
+	return s
+}
+
+func ComputeLayout(mW, mH, scale int) Layout {
+	if scale < 1 {
+		scale = 1
+	}
+	mapW, mapH := mW*scale, mH*scale
+	fw := FrameW
+	if mapW+2 > fw {
+		fw = mapW + 2
+	}
+	fh := HUDRows + mapH + 4
+	return Layout{Ox: (fw - mapW) / 2, Oy: HUDRows, Scale: scale, W: fw, H: fh}
+}
+
+// MinFrame returns the smallest frame (scale 1) needed for a map of the given
+// size. A terminal smaller than this cannot show the playfield.
+func MinFrame(mW, mH int) (w, h int) {
+	w = FrameW
+	if mW+2 > w {
+		w = mW + 2
+	}
+	h = HUDRows + mH + 4
+	return
+}
+
+// RenderTooSmall builds a frame that fills tw×th with a centered "enlarge
+// your terminal" notice, used when the window is smaller than MinFrame.
+func RenderTooSmall(tw, th, needW, needH int) *Frame {
+	if tw <= 0 || th <= 0 {
+		tw, th = 80, 24
+	}
+	f := &Frame{W: tw, H: th, C: make([]Cell, tw*th)}
+	m1 := " tdef: terminal too small"
+	m2 := fmt.Sprintf(" needs at least %dx%d — enlarge the window", needW, needH)
+	m3 := " (the game keeps running; it refits on the next start)"
+	for i := range f.C {
+		f.C[i] = Cell{R: ' '}
+	}
+	putString(f, (tw-len(m1))/2, th/2-1, m1, 220, 0, true)
+	putString(f, (tw-len(m2))/2, th/2+1, m2, 245, 0, false)
+	putString(f, (tw-len(m3))/2, th/2+3, m3, 240, 0, false)
+	return f
+}
+
+func (l Layout) X(mx int) int { return l.Ox + mx*l.Scale }
+func (l Layout) Y(my int) int { return l.Oy + my*l.Scale }
+
+// FX/FY map float (map) positions to frame space, with sub-block precision.
+func (l Layout) FX(px float64) int { return l.Ox + int(px*float64(l.Scale)) }
+func (l Layout) FY(py float64) int { return l.Oy + int(py*float64(l.Scale)) }
+
+func (l Layout) MenuTop() int { return l.H - 4 }
+
+func (l Layout) center(mx, my int) (int, int) {
+	return l.X(mx) + l.Scale/2, l.Y(my) + l.Scale/2
+}
+
+// block fills a map cell with a Scale×Scale frame block.
+func (l Layout) block(f *Frame, mx, my int, c Cell) {
+	for dy := 0; dy < l.Scale; dy++ {
+		for dx := 0; dx < l.Scale; dx++ {
+			f.Set(l.X(mx)+dx, l.Y(my)+dy, c)
+		}
+	}
+}
 
 func Render(g *game.State, ui *UI, pal Colors) *Frame {
-	f := &Frame{W: FrameW, H: FrameH, C: make([]Cell, FrameW*FrameH)}
-	b := bounds{ox: (FrameW - g.Map.W) / 2, oy: HUDRows}
+	l := ComputeLayout(g.Map.W, g.Map.H, ui.Scale)
+	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
 	for y := 0; y < g.Map.H; y++ {
 		for x := 0; x < g.Map.W; x++ {
 			v := game.Vec{X: x, Y: y}
 			switch g.Map.At(v) {
 			case game.CellWall:
-				f.Put(b.x(x), b.y(y), ' ', 0, pal.Wall)
+				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Wall})
 			case game.CellPath:
-				f.Put(b.x(x), b.y(y), '·', pal.Path, 0)
+				l.block(f, x, y, Cell{R: '·', FG: pal.Path, BG: 0})
 			case game.CellGrass:
-				f.Put(b.x(x), b.y(y), ' ', pal.Grass, 0)
+				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Grass})
 			}
 		}
 	}
-	f.C[b.y(g.Map.Spawn.Y)*f.W+b.x(g.Map.Spawn.X)] = Cell{R: '▶', FG: 46, Bold: true}
-	f.C[b.y(g.Map.Exit.Y)*f.W+b.x(g.Map.Exit.X)] = Cell{R: 'E', FG: 196, Bold: true}
-	drawRange(f, g, ui, pal, b)
+	sx, sy := l.center(g.Map.Spawn.X, g.Map.Spawn.Y)
+	f.Set(sx, sy, Cell{R: '▶', FG: 46, Bold: true})
+	ex, ey := l.center(g.Map.Exit.X, g.Map.Exit.Y)
+	f.Set(ex, ey, Cell{R: 'E', FG: 196, Bold: true})
+	drawRange(f, g, ui, pal, l)
 	for _, t := range g.Towers {
-		x, y := b.x(t.Cell.X), b.y(t.Cell.Y)
+		x, y := l.center(t.Cell.X, t.Cell.Y)
 		c := pal.Tower[t.Kind]
 		f.Put(x, y, t.Spec().Short, c, 0)
 		if ui.Selected == t.ID {
-			f.C[y*f.W+x] = Cell{R: t.Spec().Short, FG: pal.Bright, BG: c, Bold: true}
+			f.Set(x, y, Cell{R: t.Spec().Short, FG: pal.Bright, BG: c, Bold: true})
 		}
 		for i := 1; i < t.Level; i++ {
 			f.Put(x-i, y, '▪', c, 0)
 		}
 	}
 	for _, p := range g.Projectiles {
-		f.Put(b.x(int(p.Pos.X)), b.y(int(p.Pos.Y)), '+', pal.Beam[p.Kind], 0)
+		f.Put(l.FX(p.Pos.X), l.FY(p.Pos.Y), '+', pal.Beam[p.Kind], 0)
 	}
 	for _, bm := range g.Beams {
 		for i := 1; i < len(bm.From); i++ {
-			drawLine(f, bm.From[i-1], bm.From[i], b, pal.Beam[bm.Kind])
+			drawLine(f, l.FX(bm.From[i-1].X), l.FY(bm.From[i-1].Y), l.FX(bm.From[i].X), l.FY(bm.From[i].Y), pal.Beam[bm.Kind])
 		}
 	}
 	for _, e := range g.Enemies {
-		x, y := b.x(int(e.Pos.X)), b.y(int(e.Pos.Y))
+		x, y := l.FX(e.Pos.X), l.FY(e.Pos.Y)
 		if x < 0 || y < 0 || x >= f.W || y >= f.H {
 			continue
 		}
@@ -101,27 +191,39 @@ func Render(g *game.State, ui *UI, pal Colors) *Frame {
 		} else if hp < 0.67 {
 			fg = 214
 		}
-		f.C[y*f.W+x] = Cell{R: game.EnemySpecs[e.Kind].Short, FG: fg, Bold: e.Kind == game.EnemyBoss}
+		bold := e.Kind == game.EnemyBoss
+		if e.HitTTL > g.Time {
+			fg = 231 // hit flash: brief white
+			bold = true
+		}
+		f.Set(x, y, Cell{R: game.EnemySpecs[e.Kind].Short, FG: fg, Bold: bold})
+		if hp < 1 {
+			drawHPBar(f, x, y-1, hp)
+		}
 	}
 	for _, fx := range g.Fx {
-		x, y := b.x(int(fx.Pos.X)), b.y(int(fx.Pos.Y))
+		if fx.Ring > 0 {
+			drawRing(f, l, fx)
+			continue
+		}
+		x, y := l.FX(fx.Pos.X), l.FY(fx.Pos.Y)
 		if x >= 0 && y >= 0 && x < f.W && y < f.H {
 			f.Put(x, y, fx.R, fx.Color, 0)
 		}
 	}
 	if g.LeakFlash > 0 {
-		ex, ey := b.x(g.Map.Exit.X), b.y(g.Map.Exit.Y)
-		f.C[ey*f.W+ex] = Cell{R: 'E', FG: 231, BG: 196, Bold: true}
+		ex, ey := l.center(g.Map.Exit.X, g.Map.Exit.Y)
+		f.Set(ex, ey, Cell{R: 'E', FG: 231, BG: 196, Bold: true})
 	}
 	if ui.PlacingOn {
-		x, y := b.x(ui.Cursor.X), b.y(ui.Cursor.Y)
 		c := 196
 		if g.CanBuild(ui.Cursor, ui.Placing) {
 			c = 46
 		}
-		f.C[y*f.W+x] = Cell{R: game.TowerSpecs[ui.Placing].Short, FG: c, Bold: true}
+		cx, cy := l.center(ui.Cursor.X, ui.Cursor.Y)
+		f.Set(cx, cy, Cell{R: game.TowerSpecs[ui.Placing].Short, FG: c, Bold: true})
 	} else if ui.Selected < 0 {
-		x, y := b.x(ui.Cursor.X), b.y(ui.Cursor.Y)
+		x, y := l.X(ui.Cursor.X), l.Y(ui.Cursor.Y)
 		if x >= 0 && y >= 0 && x < f.W && y < f.H {
 			cc := f.C[y*f.W+x]
 			if cc.R == 0 || cc.R == ' ' {
@@ -130,7 +232,7 @@ func Render(g *game.State, ui *UI, pal Colors) *Frame {
 			} else {
 				cc.Bold = true
 			}
-			f.C[y*f.W+x] = cc
+			f.Set(x, y, cc)
 		}
 	}
 	drawHUD(f, g, ui, pal)
@@ -141,7 +243,7 @@ func Render(g *game.State, ui *UI, pal Colors) *Frame {
 	return f
 }
 
-func drawRange(f *Frame, g *game.State, ui *UI, pal Colors, b bounds) {
+func drawRange(f *Frame, g *game.State, ui *UI, pal Colors, l Layout) {
 	var center *game.Pos
 	var rng float64
 	if ui.PlacingOn {
@@ -166,18 +268,20 @@ func drawRange(f *Frame, g *game.State, ui *UI, pal Colors, b bounds) {
 			p := game.Pos{X: float64(x) + 0.5, Y: float64(y) + 0.5}
 			d := p.Dist(*center)
 			if d <= rng && d > rng-0.6 {
-				f.Put(b.x(x), b.y(y), '·', pal.Dim, 0)
+				cx, cy := l.center(x, y)
+				f.Put(cx, cy, '·', pal.Dim, 0)
 			}
 		}
 	}
 }
 
-func drawLine(f *Frame, a, bp game.Pos, b bounds, color int) {
-	steps := int(a.Dist(bp)*8) + 1
+func drawLine(f *Frame, ax, ay, bx, by, color int) {
+	dx, dy := float64(bx-ax), float64(by-ay)
+	steps := int(math.Sqrt(dx*dx+dy*dy)*2) + 1
 	for i := 0; i <= steps; i++ {
 		t := float64(i) / float64(steps)
-		x := b.x(int(a.X + (bp.X-a.X)*t))
-		y := b.y(int(a.Y + (bp.Y-a.Y)*t))
+		x := ax + int(dx*t)
+		y := ay + int(dy*t)
 		if x < 0 || y < 0 || x >= f.W || y >= f.H {
 			continue
 		}
@@ -185,6 +289,54 @@ func drawLine(f *Frame, a, bp game.Pos, b bounds, color int) {
 			continue
 		}
 		f.Put(x, y, '·', color, 0)
+	}
+}
+
+// drawHPBar renders a 3-segment health bar centered above (x,y).
+func drawHPBar(f *Frame, x, y int, hp float64) {
+	if y < 0 {
+		return
+	}
+	filled := int(math.Round(hp * 3))
+	if filled < 0 {
+		filled = 0
+	}
+	if filled > 3 {
+		filled = 3
+	}
+	col := 46
+	if hp < 0.34 {
+		col = 196
+	} else if hp < 0.67 {
+		col = 214
+	}
+	for i := -1; i <= 1; i++ {
+		if i+1 < filled {
+			f.Put(x+i, y, '■', col, 0)
+		} else {
+			f.Put(x+i, y, '■', 238, 0)
+		}
+	}
+}
+
+// drawRing renders a shrinking impact ring for a splash Fx.
+func drawRing(f *Frame, l Layout, fx *game.Fx) {
+	frac := fx.TTL / fx.Max
+	r := fx.Ring * frac
+	if r < 0.4 {
+		return
+	}
+	cx, cy := fx.Pos.X, fx.Pos.Y
+	minx, maxx := int(cx-r)-1, int(cx+r)+1
+	miny, maxy := int(cy-r)-1, int(cy+r)+1
+	for my := miny; my <= maxy; my++ {
+		for mx := minx; mx <= maxx; mx++ {
+			p := game.Pos{X: float64(mx) + 0.5, Y: float64(my) + 0.5}
+			if math.Abs(p.Dist(game.Pos{X: cx, Y: cy})-r) < 0.5 {
+				sx, sy := l.X(mx)+l.Scale/2, l.Y(my)+l.Scale/2
+				f.Put(sx, sy, '·', fx.Color, 0)
+			}
+		}
 	}
 }
 
@@ -229,11 +381,12 @@ type MenuSlot struct {
 }
 
 var MenuSlots = []MenuSlot{
-	{game.TowerGunner, 1, 0}, {game.TowerCannon, 17, 0}, {game.TowerFrost, 35, 0},
-	{game.TowerSniper, 1, 1}, {game.TowerTesla, 19, 1},
+	{game.TowerGunner, 1, 0}, {game.TowerCannon, 14, 0}, {game.TowerFrost, 28, 0}, {game.TowerSniper, 40, 0},
+	{game.TowerTesla, 1, 1}, {game.TowerMortar, 14, 1}, {game.TowerFlak, 28, 1},
 }
 
 func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
+	menuTop := f.H - 4
 	for _, slot := range MenuSlots {
 		k := slot.Kind
 		spec := game.TowerSpecs[k]
@@ -242,7 +395,7 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 		if !afford {
 			c = pal.Dim
 		}
-		y := MenuTop + slot.Y
+		y := menuTop + slot.Y
 		label := fmt.Sprintf("%d %s %d", k+1, spec.Name, spec.Cost[0])
 		if ui.PlacingOn && ui.Placing == k {
 			for i := 0; i < len(label); i++ {
@@ -252,7 +405,7 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 			putString(f, slot.X, y, label, c, 0, false)
 		}
 	}
-	y := MenuTop + 2
+	y := menuTop + 2
 	if ui.Help {
 		putString(f, 0, y, " move: arrows/wasd  place: enter/click  select: click a tower  upgrade: u  sell: x", pal.Dim, 0, false)
 		y++
@@ -274,38 +427,40 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 	}
 }
 
-func RenderIntro(m *game.Map, name string, diff game.Difficulty, pal Colors) *Frame {
-	f := &Frame{W: FrameW, H: FrameH, C: make([]Cell, FrameW*FrameH)}
-	b := bounds{ox: (FrameW - m.W) / 2, oy: HUDRows}
+func RenderIntro(m *game.Map, name string, diff game.Difficulty, pal Colors, scale int) *Frame {
+	l := ComputeLayout(m.W, m.H, scale)
+	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
 	for y := 0; y < m.H; y++ {
 		for x := 0; x < m.W; x++ {
 			switch m.At(game.Vec{X: x, Y: y}) {
 			case game.CellWall:
-				f.Put(b.x(x), b.y(y), ' ', 0, pal.Wall)
+				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Wall})
 			case game.CellPath:
-				f.Put(b.x(x), b.y(y), '·', pal.Path, 0)
+				l.block(f, x, y, Cell{R: '·', FG: pal.Path, BG: 0})
 			case game.CellGrass:
-				f.Put(b.x(x), b.y(y), ' ', pal.Grass, 0)
+				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Grass})
 			}
 		}
 	}
-	f.C[b.y(m.Spawn.Y)*f.W+b.x(m.Spawn.X)] = Cell{R: '▶', FG: 46, Bold: true}
-	f.C[b.y(m.Exit.Y)*f.W+b.x(m.Exit.X)] = Cell{R: 'E', FG: 196, Bold: true}
+	sx, sy := l.center(m.Spawn.X, m.Spawn.Y)
+	f.Set(sx, sy, Cell{R: '▶', FG: 46, Bold: true})
+	ex, ey := l.center(m.Exit.X, m.Exit.Y)
+	f.Set(ex, ey, Cell{R: 'E', FG: 196, Bold: true})
 	putString(f, 0, 0, " tdef — terminal tower defense", pal.Bright, 0, true)
 	putString(f, 0, 1, fmt.Sprintf(" map: %s   difficulty: %s", name, diffName(diff)), pal.Dim, 0, false)
 	lines := []string{
 		" Enemies walk the path. Build towers on grass to stop them.",
-		" 1-5 pick tower · enter/click place · u upgrade · x sell",
+		" 1-7 pick tower · enter/click place · u upgrade · x sell",
 		" n start wave early (bonus gold) · p pause · f speed · q quit",
 		"",
 		" Don't let them reach E. Survive all 20 waves.",
 	}
-	y := MenuTop
-	for _, l := range lines {
-		putString(f, 2, y, l, pal.Bright, 0, false)
+	y := l.MenuTop()
+	for _, line := range lines {
+		putString(f, 2, y, line, pal.Bright, 0, false)
 		y++
 	}
-	putString(f, (FrameW-26)/2, FrameH-2, " press any key to start", 220, 0, true)
+	putString(f, (l.W-26)/2, l.H-2, " press any key to start", 220, 0, true)
 	return f
 }
 
@@ -321,20 +476,62 @@ func diffName(d game.Difficulty) string {
 
 func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 	won := g.Status == game.StatusVictory
-	title, c := " VICTORY ", 46
+	title, tc := " VICTORY ", 46
 	if !won {
-		title, c = " DEFEAT ", 196
+		title, tc = " DEFEAT ", 196
 	}
-	cx := (f.W - len(title)) / 2
-	putString(f, cx, f.H/2-2, title, pal.Bright, c, true)
-	line := fmt.Sprintf(" wave %d/%d   kills %d   score %d", g.Wave, game.MaxWaves, g.TotalKills, g.Score)
-	putString(f, (f.W-len(line))/2, f.H/2, line, pal.Dim, 0, false)
-	bestLine := fmt.Sprintf(" best %d", ui.BestScore)
+	const bg = 236
+	bw, bh := 40, 10
+	bx, by := (f.W-bw)/2, (f.H-bh)/2
+	for y := by; y < by+bh; y++ {
+		for x := bx; x < bx+bw; x++ {
+			f.Set(x, y, Cell{R: ' ', BG: bg})
+		}
+	}
+	for x := bx; x < bx+bw; x++ {
+		f.Set(x, by, Cell{R: '─', FG: pal.Bright, BG: bg})
+		f.Set(x, by+bh-1, Cell{R: '─', FG: pal.Bright, BG: bg})
+	}
+	for y := by; y < by+bh; y++ {
+		f.Set(bx, y, Cell{R: '│', FG: pal.Bright, BG: bg})
+		f.Set(bx+bw-1, y, Cell{R: '│', FG: pal.Bright, BG: bg})
+	}
+	f.Set(bx, by, Cell{R: '╔', FG: pal.Bright, BG: bg})
+	f.Set(bx+bw-1, by, Cell{R: '╗', FG: pal.Bright, BG: bg})
+	f.Set(bx, by+bh-1, Cell{R: '╚', FG: pal.Bright, BG: bg})
+	f.Set(bx+bw-1, by+bh-1, Cell{R: '╝', FG: pal.Bright, BG: bg})
+
+	cy := by + 1
+	putString(f, (f.W-len(title))/2, cy, title, tc, bg, true)
+	cy++
+	type kv struct{ k, v string }
+	stats := []kv{
+		{"wave", fmt.Sprintf("%d/%d", g.Wave, game.MaxWaves)},
+		{"kills", fmt.Sprintf("%d", g.TotalKills)},
+		{"leaks", fmt.Sprintf("%d", g.TotalLeaks)},
+		{"towers", fmt.Sprintf("%d", len(g.Towers))},
+		{"score", fmt.Sprintf("%d", g.Score)},
+		{"combo", "x" + fmt.Sprintf("%d", g.MaxCombo)},
+	}
+	for i := 0; i < len(stats); i += 2 {
+		line := fmt.Sprintf("%-7s %-9s %-7s %s", stats[i].k, stats[i].v, stats[i+1].k, stats[i+1].v)
+		putString(f, (f.W-len(line))/2, cy, line, pal.Dim, bg, false)
+		cy++
+	}
+	putString(f, (f.W-len("time "+formatTime(g.Time)))/2, cy, "time "+formatTime(g.Time), pal.Dim, bg, false)
+	cy++
+	bestLine := fmt.Sprintf("best %d", ui.BestScore)
 	if ui.NewBest {
-		bestLine = fmt.Sprintf(" ★ NEW BEST %d ★", ui.BestScore)
+		bestLine = fmt.Sprintf("★ NEW BEST %d ★", ui.BestScore)
 	}
-	putString(f, (f.W-len(bestLine))/2, f.H/2+2, bestLine, 220, 0, ui.NewBest)
-	putString(f, (f.W-24)/2, f.H/2+4, " r restart    q quit", pal.Bright, 0, false)
+	putString(f, (f.W-len(bestLine))/2, cy, bestLine, 220, bg, ui.NewBest)
+	cy++
+	putString(f, (f.W-22)/2, cy, "r restart   q quit", pal.Bright, bg, false)
+}
+
+func formatTime(t float64) string {
+	s := int(t)
+	return fmt.Sprintf("%dm%02ds", s/60, s%60)
 }
 
 func putString(f *Frame, x, y int, s string, fg, bg int, bold bool) {

@@ -42,6 +42,8 @@ const (
 	TowerFrost
 	TowerSniper
 	TowerTesla
+	TowerMortar
+	TowerFlak
 	TowerCount
 )
 
@@ -97,6 +99,8 @@ const (
 	EnemyTank
 	EnemySplitter
 	EnemyBoss
+	EnemyWisp
+	EnemyShield
 	EnemyCount
 )
 

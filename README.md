@@ -15,7 +15,7 @@ tuning) or driven by the interactive TUI.
 go build -o tdef .
 
 ./tdef play                      # play (default: winding, normal)
-./tdef play -level canyon        # pick a map: winding | garden | canyon
+./tdef play -level canyon        # pick a map: hub | winding | garden | canyon
 ./tdef play -maze -seed 123      # procedural maze (seeded, reproducible)
 ./tdef play -diff easy           # easy | normal | hard
 ./tdef play -diff hard -maze -seed 7
@@ -27,7 +27,7 @@ Requires a real TTY (raw mode, alternate screen, mouse).
 
 | key | action |
 |-----|--------|
-| `1`-`5` | select tower (Gunner, Cannon, Frost, Sniper, Tesla) |
+| `1`-`7` | select tower (Gunner, Cannon, Frost, Sniper, Tesla, Mortar, Flak) |
 | arrows / `wasd` | move cursor |
 | `enter` / click | place tower on grass |
 | `u` | upgrade the selected tower (on a tower) |
@@ -52,6 +52,8 @@ wheel changes speed.
 | 3 | Frost | 75 | slows enemies in range |
 | 4 | Sniper | 150 | long range, high single damage |
 | 5 | Tesla | 200 | chains lightning to nearby enemies |
+| 6 | Mortar | 250 | very slow, huge splash, long range — crowd nuker |
+| 7 | Flak | 80 | very fast, short range — shreds fast enemies |
 
 Each tower has 3 levels; upgrading increases damage/range.
 
@@ -63,16 +65,26 @@ stragglers. The current mode shows in the tower info line.
 ## Enemies
 
 Minion, Runner (fast), Grunt (tough), Tank (very tough), Splitter
-(splits into two minions on death), and a Boss every 5 waves (two on the
-final wave). Enemy HP and speed scale with the wave number; the boss gets
-stronger each time it appears.
+(splits into two minions on death), Wisp (fast, appears in swarms from
+wave 4), Shield (armored — takes 40% reduced damage — from wave 10), and
+a Boss every 5 waves (two on the final wave). Enemy HP and speed scale
+with the wave number; the boss gets stronger each time it appears.
 
 ## Maps
 
-Three hand-crafted 45×13 maps form a difficulty ladder — `winding`
-(easiest), `garden`, `canyon` (tightest). Each has a different path
-layout and buildable pockets, so the right tower placement differs per
-map. `-maze` generates a random-but-solvable maze from a seed.
+Four hand-crafted 45×13 maps form a difficulty ladder — `hub` (easiest,
+open central pocket), `winding`, `garden`, `canyon` (tightest). Each has
+a different path layout and buildable pockets, so the right tower
+placement differs per map. `-maze` generates a random-but-solvable maze
+from a seed; the generator biases toward long, snake-like chokepoints.
+
+## Rendering
+
+The playfield auto-scales to your terminal at startup (1×–4×), so a big
+window shows a bigger board. If the window is shrunk below the board, an
+"enlarge your terminal" notice is shown instead of a clipped frame. When
+a game ends, a stats box summarizes the run (waves, kills, leaks, towers,
+score, best combo, time) and your best score for that map.
 
 ## Balance / headless tools
 

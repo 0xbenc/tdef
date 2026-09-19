@@ -4,6 +4,10 @@ import (
 	"math/rand/v2"
 )
 
+// corridorBias is the chance to keep carving straight, which produces longer
+// snake-like chokepoints instead of tight grid mazes.
+const corridorBias = 0.35
+
 // GenerateMap builds a perfect maze and uses its unique route from the left
 // edge to the right edge as the enemy path. All other open cells are buildable.
 func GenerateMap(seed int64, w, h int) (*Map, error) {
@@ -21,10 +25,21 @@ func GenerateMap(seed int64, w, h int) (*Map, error) {
 	start := Vec{1, 1}
 	open[start.Y*w+start.X] = true
 	stack := []Vec{start}
+	headings := []Vec{{0, 0}}
 	for len(stack) > 0 {
 		cur := stack[len(stack)-1]
+		heading := headings[len(headings)-1]
 		dirs := [4]Vec{{2, 0}, {-2, 0}, {0, 2}, {0, -2}}
 		rng.Shuffle(len(dirs), func(i, j int) { dirs[i], dirs[j] = dirs[j], dirs[i] })
+		// Corridor bias: keep going straight to carve longer chokepoints.
+		if heading != (Vec{}) && rng.Float64() < corridorBias {
+			for i := range dirs {
+				if dirs[i] == heading {
+					dirs[0], dirs[i] = dirs[i], dirs[0]
+					break
+				}
+			}
+		}
 		advanced := false
 		for _, d := range dirs {
 			n := Vec{cur.X + d.X, cur.Y + d.Y}
@@ -38,11 +53,13 @@ func GenerateMap(seed int64, w, h int) (*Map, error) {
 			open[mid.Y*w+mid.X] = true
 			open[n.Y*w+n.X] = true
 			stack = append(stack, n)
+			headings = append(headings, d)
 			advanced = true
 			break
 		}
 		if !advanced {
 			stack = stack[:len(stack)-1]
+			headings = headings[:len(headings)-1]
 		}
 	}
 	y0 := (h / 2) | 1

@@ -180,6 +180,47 @@ func TestTargetModes(t *testing.T) {
 	}
 }
 
+func TestArmorReducesDamage(t *testing.T) {
+	m := loadTestMap(t)
+	s := NewState(m, 1, true)
+	e := &Enemy{ID: 1, Kind: EnemyShield, HP: 100, MaxHP: 100, Speed: 1, SlowFactor: 1, Lives: 1, Armor: 0.4}
+	s.Enemies = append(s.Enemies, e)
+	s.applyDamage(e, 50, TowerGunner)
+	// 50 damage * (1-0.4) = 30
+	if e.HP != 70 {
+		t.Errorf("HP after armored hit = %v, want 70", e.HP)
+	}
+}
+
+func TestNewTowersBuild(t *testing.T) {
+	m := loadTestMap(t)
+	cells := findGrassCells(t, m, 2)
+	for i, k := range []TowerKind{TowerMortar, TowerFlak} {
+		s := NewState(m, 1, true)
+		s.Gold = 1000
+		if s.Build(cells[i], k) == nil {
+			t.Fatalf("%s should build", TowerSpecs[k].Name)
+		}
+	}
+}
+
+func findGrassCells(t *testing.T, m *Map, n int) []Vec {
+	t.Helper()
+	var out []Vec
+	for y := 0; y < m.H && len(out) < n; y++ {
+		for x := 0; x < m.W && len(out) < n; x++ {
+			v := Vec{X: x, Y: y}
+			if m.At(v) == CellGrass {
+				out = append(out, v)
+			}
+		}
+	}
+	if len(out) < n {
+		t.Fatalf("found %d grass cells, want %d", len(out), n)
+	}
+	return out
+}
+
 func TestFrostSlows(t *testing.T) {
 	m := loadTestMap(t)
 	s := NewState(m, 1, true)

@@ -61,6 +61,7 @@ func (s *State) spawnDue() {
 			SlowFactor: 1.0,
 			Bounty:     spec.Bounty,
 			Lives:      1,
+			Armor:      spec.Armor,
 		}
 		if spec.Lives > 0 {
 			enemy.Lives = spec.Lives
@@ -221,6 +222,10 @@ func (s *State) moveProjectiles(dt float64) {
 						s.applyDamage(e, p.Dmg, p.Kind)
 					}
 				}
+				s.Fx = append(s.Fx, &Fx{
+					Pos: p.LastPos, TTL: 0.25, Max: 0.25,
+					Color: 203, Ring: p.Splash,
+				})
 			} else if target != nil && !target.Dead && !target.Leaked {
 				s.applyDamage(target, p.Dmg, p.Kind)
 			}

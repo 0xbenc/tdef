@@ -117,6 +117,10 @@ func (a *Autoplay) build() {
 				eff = 1.8
 			case TowerFrost:
 				eff = 1.1
+			case TowerMortar:
+				eff = 1.6
+			case TowerFlak:
+				eff = 1.1
 			}
 			for y := 0; y < s.Map.H; y++ {
 				for x := 0; x < s.Map.W; x++ {

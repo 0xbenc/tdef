@@ -244,7 +244,12 @@ func (s *State) applyDamage(e *Enemy, d float64, k TowerKind) {
 			e.SlowFactor = sp.SlowPct
 		}
 	}
+	if e.Armor > 0 {
+		d *= 1 - e.Armor
+	}
 	if e.Damage(d) {
 		s.killEnemy(e)
+		return
 	}
+	e.HitTTL = s.Time + 0.09
 }

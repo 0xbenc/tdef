@@ -13,15 +13,17 @@ const tickRate = 20.0
 const frameRate = 30.0
 
 type App struct {
-	term    *Terminal
-	g       *game.State
-	ui      render.UI
-	pal     render.Colors
-	seed    int64
-	diff    game.Difficulty
-	level   string
-	scored  bool
-	started bool
+	term     *Terminal
+	g        *game.State
+	ui       render.UI
+	pal      render.Colors
+	layout   render.Layout
+	seed     int64
+	diff     game.Difficulty
+	level    string
+	scored   bool
+	started  bool
+	quitting bool
 
 	events chan Event
 	acc    float64
@@ -51,6 +53,12 @@ func Run(m *game.Map, name string, seed int64, diff game.Difficulty) error {
 	a.ui.Speed = 1
 	a.ui.Paused = true
 	a.started = false
+	if tw, th := a.term.Size(); tw > 0 && th > 0 {
+		a.ui.Scale = render.ComputeScale(m.W, m.H, tw, th)
+	} else {
+		a.ui.Scale = 1
+	}
+	a.layout = render.ComputeLayout(m.W, m.H, a.ui.Scale)
 	startReader(a.term.in, a.events)
 	term.AltScreen(true)
 	term.Cursor(false)
@@ -79,12 +87,16 @@ func (a *App) loop() error {
 				a.ui.Paused = false
 			default:
 			}
-			f := render.RenderIntro(a.g.Map, a.level, a.diff, a.pal)
-			a.blit(f)
+			a.renderGuarded(func() *render.Frame {
+				return render.RenderIntro(a.g.Map, a.level, a.diff, a.pal, a.ui.Scale)
+			})
 			<-frame.C
 			continue
 		}
 		a.drainInput()
+		if a.quitting {
+			return nil
+		}
 		select {
 		case <-a.term.Winch():
 			a.prev = map[int]render.Cell{}
@@ -193,7 +205,7 @@ func (a *App) handle(e Event) {
 		a.sellSelected()
 	case 't', 'T':
 		a.cycleTarget()
-	case '1', '2', '3', '4', '5':
+	case '1', '2', '3', '4', '5', '6', '7':
 		k := game.TowerKind(e.Rune - '1')
 		if k < game.TowerCount {
 			if a.ui.PlacingOn && a.ui.Placing == k {
@@ -274,8 +286,8 @@ func (a *App) moveCursor(dx, dy int) {
 	}
 }
 
-func (a *App) mapBounds() (ox, oy int) {
-	return (render.FrameW - a.g.Map.W) / 2, render.HUDRows
+func (a *App) mapBounds() (ox, oy, scale int) {
+	return a.layout.Ox, a.layout.Oy, a.layout.Scale
 }
 
 func (a *App) handleMouse(e Event) {
@@ -294,12 +306,12 @@ func (a *App) handleMouse(e Event) {
 		}
 		return
 	}
-	ox, oy := a.mapBounds()
-	if e.Y < oy || e.Y >= oy+a.g.Map.H || e.X < ox || e.X >= ox+a.g.Map.W {
+	ox, oy, sc := a.mapBounds()
+	if e.Y < oy || e.Y >= oy+a.g.Map.H*sc || e.X < ox || e.X >= ox+a.g.Map.W*sc {
 		a.handleMenuClick(e)
 		return
 	}
-	cell := game.Vec{X: e.X - ox, Y: e.Y - oy}
+	cell := game.Vec{X: (e.X - ox) / sc, Y: (e.Y - oy) / sc}
 	a.ui.Cursor = cell
 	if a.ui.PlacingOn {
 		a.place()
@@ -313,10 +325,11 @@ func (a *App) handleMouse(e Event) {
 }
 
 func (a *App) handleMenuClick(e Event) {
+	menuTop := a.layout.H - 4
 	for _, slot := range render.MenuSlots {
 		spec := game.TowerSpecs[slot.Kind]
 		labelLen := len(fmt.Sprintf("%d %s %d", slot.Kind+1, spec.Name, spec.Cost[0]))
-		if e.Y == render.MenuTop+slot.Y && e.X >= slot.X && e.X < slot.X+labelLen {
+		if e.Y == menuTop+slot.Y && e.X >= slot.X && e.X < slot.X+labelLen {
 			if a.ui.PlacingOn && a.ui.Placing == slot.Kind {
 				a.ui.PlacingOn = false
 			} else {
@@ -418,6 +431,7 @@ func (a *App) startWave() {
 }
 
 func (a *App) quit() {
+	a.quitting = true
 	a.term.Mouse(false)
 	a.term.AltScreen(false)
 	a.term.Cursor(true)
@@ -439,8 +453,19 @@ func (a *App) restart() {
 }
 
 func (a *App) draw() {
-	f := render.Render(a.g, &a.ui, a.pal)
-	a.blit(f)
+	a.renderGuarded(func() *render.Frame { return render.Render(a.g, &a.ui, a.pal) })
+}
+
+// renderGuarded blits the given frame, unless the terminal has shrunk below
+// the (boot-fixed) frame size, in which case it shows an "enlarge" notice.
+func (a *App) renderGuarded(makeFrame func() *render.Frame) {
+	tw, th := a.term.Size()
+	if tw > 0 && th > 0 && (tw < a.layout.W || th < a.layout.H) {
+		a.prev = map[int]render.Cell{}
+		a.blit(render.RenderTooSmall(tw, th, a.layout.W, a.layout.H))
+		return
+	}
+	a.blit(makeFrame())
 }
 
 type pen struct {

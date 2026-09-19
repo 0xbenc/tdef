@@ -26,10 +26,14 @@ func LevelNames() []string {
 var levelHP = map[string]float64{
 	"winding": 1.5,
 	"garden":  1.6,
-	"canyon":  1.4,
+	"canyon":  1.32,
+	"hub":     1.4,
 }
 
-const mazeHP = 1.0
+// mazeHP compensates for the corridor-biased generator, which yields longer
+// chokepoints but fewer effective build pockets, keeping the maze in the
+// "chaos" tier.
+const mazeHP = 0.85
 
 func LoadLevel(name string) (*Map, error) {
 	data, err := levelFS.ReadFile("levels/" + name + ".txt")

@@ -14,6 +14,8 @@ type Enemy struct {
 	Lives      int
 	Dead       bool
 	Leaked     bool
+	Armor      float64 // damage reduction from spec
+	HitTTL     float64 // >0 while the enemy flashes from a recent hit
 }
 
 func (e *Enemy) Slowed(time float64) bool { return e.SlowUntil > time }
@@ -75,4 +77,5 @@ type Fx struct {
 	Max   float64
 	R     rune
 	Color int
+	Ring  float64 // if >0, render as an expanding ring of this radius (map units)
 }

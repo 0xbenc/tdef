@@ -47,6 +47,17 @@ var TowerSpecs = [TowerCount]TowerSpec{
 		Range: [3]float64{3.2, 3.5, 3.9}, RoT: [3]float64{0.8, 0.9, 1.0},
 		Chain: [3]int{2, 3, 4},
 	},
+	{
+		Name: "Mortar", Short: 'M',
+		Cost: [3]int{250, 220, 320}, Dmg: [3]float64{70, 105, 160},
+		Range: [3]float64{5.0, 5.5, 6.0}, RoT: [3]float64{0.45, 0.5, 0.55},
+		Splash: 2.2,
+	},
+	{
+		Name: "Flak", Short: 'L',
+		Cost: [3]int{80, 70, 110}, Dmg: [3]float64{6, 9, 14},
+		Range: [3]float64{2.2, 2.5, 2.8}, RoT: [3]float64{3.0, 3.5, 4.0},
+	},
 }
 
 const ChainRange = 2.6
@@ -61,6 +72,7 @@ type EnemySpec struct {
 	Lives   int
 	SplitN  int
 	SplitHP float64
+	Armor   float64 // damage reduction (0-1) applied to every hit
 }
 
 var EnemySpecs = [EnemyCount]EnemySpec{
@@ -70,6 +82,8 @@ var EnemySpecs = [EnemyCount]EnemySpec{
 	{Name: "Tank", Short: 't', HP: 240, Speed: 1.05, Bounty: 20},
 	{Name: "Splitter", Short: 's', HP: 110, Speed: 1.4, Bounty: 12, SplitN: 2, SplitHP: 0.5},
 	{Name: "Boss", Short: 'B', HP: 1600, Speed: 0.8, Bounty: 140, Lives: 3},
+	{Name: "Wisp", Short: 'w', HP: 9, Speed: 2.3, Bounty: 3},
+	{Name: "Shield", Short: 'D', HP: 180, Speed: 1.15, Bounty: 24, Armor: 0.4},
 }
 
 const (
@@ -151,8 +165,14 @@ func BuildWave(wave int) []SpawnEntry {
 	if wave >= 3 {
 		add(EnemyTank, (wave+2)/4, 1.5)
 	}
+	if wave >= 4 {
+		add(EnemyWisp, wave/3+1, 0.3)
+	}
 	if wave >= 6 {
 		add(EnemySplitter, (wave-2)/2, 1.1)
+	}
+	if wave >= 10 {
+		add(EnemyShield, (wave-9)/4+1, 2.5)
 	}
 	if wave%5 == 0 {
 		n := 1
@@ -174,7 +194,7 @@ func WavePreview(wave int) string {
 		counts[e.Kind]++
 	}
 	parts := []string{}
-	order := []EnemyKind{EnemyGrunt, EnemyRunner, EnemyTank, EnemySplitter, EnemyBoss}
+	order := []EnemyKind{EnemyGrunt, EnemyRunner, EnemyWisp, EnemyTank, EnemySplitter, EnemyShield, EnemyBoss}
 	for _, k := range order {
 		if counts[k] > 0 {
 			parts = append(parts, fmt.Sprintf("%d%c", counts[k], EnemySpecs[k].Short))
