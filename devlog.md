@@ -90,3 +90,33 @@
    (via pipe), ESC-doesn't-swallow-next-key, drag-ignored, click-drag single
    press, release-reported-as-release; PTY smoke (intro quit + esc quit,
    both exit 0); bench/capture/headless smoke runs clean.
+ - 2026-09-19 (second pass — review items 11-16, branch review-fixes)
+ - hiscore: Save now writes temp-file + rename (atomic) — a crash mid-write
+   can no longer truncate the file; Load treats a corrupt file as empty and
+   the next Update self-heals. Maze runs are keyed by seed, so the table
+   grew unbounded; pruneMaze keeps the top 32 maze scores (deterministic
+   ties), hand-crafted levels always kept. First tests for the package.
+ - NEW BEST bug: Update returned the PRE-update best, so a record run
+   displayed 'NEW BEST <old score>'. Returns post-update best now.
+ - capture ANSI dumps used bare cursor-up (\x1b[M, column-preserving): on a
+   terminal wider than the frame, row 2+ started at column W+1 and smeared.
+   Now CUP per row (\x1b[row;1H), position-correct at any width; verified on
+   real dumps (0 cursor-ups, 1 CUP per row).
+ - blit diffed against a map[int]Cell rebuilt every frame (up to ~12k
+   entries at 4x, hashing + per-entry allocs at 30fps). Now a flat []Cell
+   reused across frames, snapshotted with one copy; nil/size-mismatch still
+   forces the 2J full redraw (startup/winch/ctrl-L/restart/too-small).
+ - Shrinking the terminal below the frame used to keep the sim running blind
+   behind the 'enlarge' notice (silent life drain). renderGuarded now pauses
+   a running game alongside the notice; 'p' resumes. Notice shortened to
+   27 cols so it survives the smallest windows that show it.
+ - Enemies in the top map row painted their HP bar over the HUD stat line;
+   bar now skipped when it would land above the map origin. Selected-tower
+   info line hit ~71 cols at 1x and clipped; compressed to max 58 and
+   guarded by TestTowerInfoFitsFrame (every tower/level/mode).
+ - Wheel-up jumped straight to 4x; wheel now cycles 1->2->4->1 like 'f'
+   (shared cycleSpeed, wrap both ways, tested). Leak message pluralizes
+   ('-6 lives'). Hand-rolled itoa (returned "" for negatives) -> strconv.
+ - Verification: gofmt+vet+test -race+build green (51 tests, hiscore now
+   covered); PTY smoke exit 0; capture dump checked byte-level; README
+   mouse/pause lines updated to the new behavior.

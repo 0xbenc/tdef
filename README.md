@@ -41,7 +41,7 @@ Requires a real TTY (raw mode, alternate screen, mouse).
 | `q` / `esc` | quit |
 
 Mouse works too: click a tower in the menu, then click the map; scroll
-wheel changes speed.
+wheel cycles speed (1x/2x/4x, like `f`).
 
 ## Towers
 
@@ -105,7 +105,8 @@ from a seed; the generator biases toward long, snake-like chokepoints.
 
 The playfield auto-scales to your terminal at startup (1×–4×), so a big
 window shows a bigger board. If the window is shrunk below the board, an
-"enlarge your terminal" notice is shown instead of a clipped frame. When
+"enlarge your terminal" notice is shown instead of a clipped frame (the
+game pauses while it is up; `p` resumes). When
 a game ends, a stats box summarizes the run (waves, kills, leaks, towers,
 score, best combo, time) and your best score for that map.
 
