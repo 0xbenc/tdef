@@ -353,23 +353,31 @@ func drawHUD(f *Frame, g *game.State, ui *UI, pal Colors) {
 	if g.Combo >= 5 {
 		combo = fmt.Sprintf("  ⚡%d", g.Combo)
 	}
+	inBreak := g.Status == game.StatusRunning && !g.WaveActive && g.Wave < game.MaxWaves
 	line0 := " tdef "
 	line1 := ""
 	switch {
 	case g.Status == game.StatusRunning && g.WaveActive:
 		line0 += fmt.Sprintf("Wave %d/%d%s", g.Wave, game.MaxWaves, combo)
-	case g.Status == game.StatusRunning && g.Wave < game.MaxWaves:
+	case inBreak:
 		nw := g.Wave + 1
 		in := int(g.NextWaveAt-g.Time) + 1
 		if in < 0 {
 			in = 0
 		}
-		bonus := game.EarlyBonusBase + g.Wave
-		line0 += fmt.Sprintf("next wave %d: %s   in %ds  [n +%dg]", nw, game.WavePreview(nw), in, bonus)
-		line1 += ""
+		bonus := game.EarlyBonus(g.Wave)
+		line0 += fmt.Sprintf("next wave %d (%s): %s  in %ds  [n +%dg]", nw, game.WaveTheme(nw), game.WavePreview(nw), in, bonus)
 	}
-	line0 += pause + msg
-	line1 += fmt.Sprintf(" ⛁ %d   ♥ %d   ★ %d   x%d", g.Gold, g.Lives, g.Score, ui.Speed)
+	// A telegraph during the break takes the whole top line (so it isn't
+	// truncated); the wave indicator moves to the stat line.
+	if inBreak && ui.Message != "" {
+		line0 = "  " + ui.Message + pause
+		nw := g.Wave + 1
+		line1 = fmt.Sprintf(" →%d %s: %s", nw, game.WaveTheme(nw), game.WavePreview(nw))
+	} else {
+		line0 += pause + msg
+	}
+	line1 += fmt.Sprintf("   ⛁ %d  ♥ %d  ★ %d  x%d", g.Gold, g.Lives, g.Score, ui.Speed)
 	putString(f, 0, 0, line0, pal.Bright, 0, true)
 	putString(f, 0, 1, line1, pal.Gold, 0, false)
 }

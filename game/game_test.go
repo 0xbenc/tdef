@@ -276,6 +276,107 @@ func TestFinalWaveLeakIsDefeat(t *testing.T) {
 	}
 }
 
+func waveHas(entries []SpawnEntry, k EnemyKind) bool {
+	for _, e := range entries {
+		if e.Kind == k {
+			return true
+		}
+	}
+	return false
+}
+
+func TestWaveTableStructure(t *testing.T) {
+	for w := 1; w <= MaxWaves; w++ {
+		entries := BuildWave(w)
+		if len(entries) == 0 {
+			t.Fatalf("wave %d has no entries", w)
+		}
+		var wantBosses int
+		switch w {
+		case 15, 18:
+			wantBosses = 1
+		case 20:
+			wantBosses = 2
+		}
+		bosses := 0
+		for _, e := range entries {
+			if e.Kind == EnemyBoss {
+				bosses++
+			}
+		}
+		if bosses != wantBosses {
+			t.Errorf("wave %d bosses = %d, want %d", w, bosses, wantBosses)
+		}
+	}
+	if !waveHas(BuildWave(3), EnemyRunner) {
+		t.Error("Runner should debut on wave 3")
+	}
+	if !waveHas(BuildWave(11), EnemyWisp) {
+		t.Error("Wisp should debut on wave 11")
+	}
+	if !waveHas(BuildWave(13), EnemyTank) {
+		t.Error("Tank should debut on wave 13")
+	}
+	if !waveHas(BuildWave(14), EnemyShield) {
+		t.Error("Shield should debut on wave 14")
+	}
+	if waveHas(BuildWave(5), EnemyBoss) || waveHas(BuildWave(10), EnemyBoss) {
+		t.Error("no boss before wave 15")
+	}
+}
+
+func TestAutoWaveDelayTaper(t *testing.T) {
+	first, last := AutoWaveDelayFor(1), AutoWaveDelayFor(19)
+	if first <= last {
+		t.Errorf("delay should taper: first=%v last=%v", first, last)
+	}
+	if first > 11 || first < 10 {
+		t.Errorf("first delay = %v, want ~11", first)
+	}
+	if last < 4 || last > 5 {
+		t.Errorf("last delay = %v, want ~4-5", last)
+	}
+}
+
+func TestEconomyFormulas(t *testing.T) {
+	if WaveBonus(1) != 35 || WaveBonus(20) != 130 {
+		t.Errorf("WaveBonus = %d..%d, want 35..130", WaveBonus(1), WaveBonus(20))
+	}
+	if EarlyBonus(0) != EarlyBonusBase || EarlyBonus(19) != EarlyBonusBase+9 {
+		t.Errorf("EarlyBonus = %d..%d, want %d..%d", EarlyBonus(0), EarlyBonus(19), EarlyBonusBase, EarlyBonusBase+9)
+	}
+}
+
+func TestBossLeakLifeCost(t *testing.T) {
+	if EnemySpecs[EnemyBoss].Lives != 6 {
+		t.Errorf("boss leak cost = %d, want 6", EnemySpecs[EnemyBoss].Lives)
+	}
+	m := loadTestMap(t)
+	s := NewState(m, 1, true)
+	s.Lives = 20
+	s.Enemies = []*Enemy{{
+		ID: 1, Kind: EnemyBoss, HP: 10, MaxHP: 10,
+		Prog: m.TotalLen - 0.05, Speed: 100, SlowFactor: 1,
+		Pos: m.PointAt(m.TotalLen - 0.05), Lives: 6,
+	}}
+	s.Step(1.0)
+	if s.Lives != 14 {
+		t.Errorf("lives after boss leak = %d, want 14", s.Lives)
+	}
+}
+
+func TestWaveThemeAndTelegraph(t *testing.T) {
+	if WaveTheme(1) != "warmup" {
+		t.Errorf("WaveTheme(1) = %q, want warmup", WaveTheme(1))
+	}
+	if WaveTelegraph(3) == "" || WaveTelegraph(15) == "" || WaveTelegraph(20) == "" {
+		t.Error("expected telegraphs on waves 3, 15, 20")
+	}
+	if WaveTelegraph(1) != "" {
+		t.Error("wave 1 should have no telegraph")
+	}
+}
+
 func TestDeterminism(t *testing.T) {
 	m, err := LoadLevel("winding")
 	if err != nil {

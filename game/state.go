@@ -163,7 +163,7 @@ func (s *State) StartWave() int {
 	}
 	bonus := 0
 	if s.Wave > 0 && s.Time < s.NextWaveAt {
-		bonus = EarlyBonusBase + s.Wave
+		bonus = EarlyBonus(s.Wave)
 		s.Gold += bonus
 		s.Score += bonus * 10
 	}

@@ -109,18 +109,23 @@ func (a *Autoplay) build() {
 				continue
 			}
 			dps := TowerSpecs[k].Dmg[0] * TowerSpecs[k].RoT[0]
+			// eff weights splash/chain towers higher so the AI builds a real
+			// mix (a "competent player" proxy), not just cheap single-target
+			// Gunners — otherwise it drowns in the dense BTD3-style waves.
 			eff := float64(1)
 			switch k {
 			case TowerCannon:
-				eff = 1.5
+				eff = 2.5
 			case TowerTesla:
-				eff = 1.8
+				eff = 2.0
 			case TowerFrost:
 				eff = 1.1
 			case TowerMortar:
-				eff = 1.6
+				eff = 2.8
 			case TowerFlak:
-				eff = 1.1
+				eff = 1.2
+			case TowerSniper:
+				eff = 1.3
 			}
 			for y := 0; y < s.Map.H; y++ {
 				for x := 0; x < s.Map.W; x++ {

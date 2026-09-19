@@ -24,16 +24,18 @@ func LevelNames() []string {
 }
 
 var levelHP = map[string]float64{
-	"winding": 1.5,
-	"garden":  1.6,
-	"canyon":  1.32,
-	"hub":     1.4,
+	// Tuned so the autoplay (weak-player) proxy wins each hand-crafted map at
+	// ~100% with a spread of leaks: hub easiest -> canyon hardest.
+	"hub":     1.08,
+	"winding": 1.32,
+	"garden":  1.28,
+	"canyon":  1.25,
 }
 
-// mazeHP compensates for the corridor-biased generator, which yields longer
-// chokepoints but fewer effective build pockets, keeping the maze in the
-// "chaos" tier.
-const mazeHP = 0.85
+// mazeHP keeps the procedural maze in the "chaos" tier (~60% AI win). The
+// corridor-biased generator yields longer chokepoints but fewer effective
+// build pockets, so it needs a lower HP than the hand-crafted maps.
+const mazeHP = 0.58
 
 func LoadLevel(name string) (*Map, error) {
 	data, err := levelFS.ReadFile("levels/" + name + ".txt")

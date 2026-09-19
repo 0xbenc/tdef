@@ -38,3 +38,24 @@
   guard (renderGuarded + RenderTooSmall when window shrinks below boot frame); tests for MinFrame/
   RenderTooSmall/formatTime/drawGameOver/armor/build.
 - wall clock: session 19:21:44 -> 22:21:28 PDT (~3h total incl. earlier build-out)
+- 2026-09-18 23:43:53
+- Pacing sprint (BTD3-informed). Researched BTD3 via subagent+web (50-round table,
+  intro-telegraph patterns, economy: $650 start, $99+round bonus, no interest, MOAB
+  solo R37 / mixed R44 / double R50). Mapped its beats onto our 20 waves.
+- New themed wave table (game/balance.go `waves`): one new enemy type per act with a
+  legible near-solo debut — Runner W3, Grunt W6, Wisp W11, Splitter W12, Tank W13,
+  Shield W14; Bosses W15 (debut) / W18 (stronger) / W20 (two, finale). Replaces the old
+  "boss every 5 waves" + linear ramp. Breather dips at intros, back-loaded climax W16-20.
+- Per-wave theme label + pre-wave telegraph (WaveTheme/WaveTelegraph) shown in HUD;
+  telegraph takes the top line during a break so it isn't truncated.
+- Pacing levers: inter-wave break tapers 11s->4.5s (AutoWaveDelayFor, was fixed 12s);
+  early-start bonus = 8+wave/2 (was 8+wave); wave-clear bonus = 35+5(w-1) (was 30+4w).
+- Boss leak now costs 6 lives (was 3) — dramatic but survivable (BTD3 "boss leak is a
+  game-ender" scaled to a 20-life pool).
+- Rebalance: HPScale softened (1+0.13w+0.005w^2, was quadratic-heavy); gauntlet waves
+  W17/W19 trimmed; autoplay AI given splash weighting (Cannon/Mortar/Tesla eff up) so it's
+  a "competent player" proxy, not just cheap Gunners. Per-map HPMul re-tuned:
+  hub 1.08 / winding 1.32 / garden 1.28 / canyon 1.25 / maze 0.58.
+- Ladder holds: hub/winding/garden/canyon 100% AI win (14-15 leaks), maze 58% chaos, ALL 86%.
+  Sim time ~20-28 min (down from 41); player has 2x/4x speed. Tests: wave table, taper,
+  economy, boss-leak cost, theme/telegraph. gofmt+vet+test+build green; PTY-verified.

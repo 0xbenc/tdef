@@ -278,7 +278,7 @@ func (s *State) cleanup() {
 		if s.Wave >= MaxWaves {
 			s.Status = StatusVictory
 		} else {
-			s.NextWaveAt = s.Time + AutoWaveDelay
+			s.NextWaveAt = s.Time + AutoWaveDelayFor(s.Wave)
 		}
 	}
 }

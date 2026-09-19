@@ -131,7 +131,14 @@ func (a *App) loop() error {
 				a.msg("leak! -" + itoa(prevLives-a.g.Lives) + " life")
 			}
 			if prevWaveActive && !a.g.WaveActive && a.g.Wave < game.MaxWaves {
-				a.msg("wave " + itoa(prevWave) + " cleared +" + itoa(game.WaveBonus(prevWave)) + "g")
+				next := a.g.Wave + 1
+				if tg := game.WaveTelegraph(next); tg != "" {
+					// Hold the telegraph for the whole break so it can be read.
+					a.ui.Message = tg
+					a.msgTTL = game.AutoWaveDelayFor(a.g.Wave)
+				} else {
+					a.msg("wave " + itoa(prevWave) + " cleared +" + itoa(game.WaveBonus(prevWave)) + "g")
+				}
 			}
 		} else {
 			a.acc = 0

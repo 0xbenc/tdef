@@ -62,13 +62,36 @@ Press `t` on a tower to cycle its targeting priority to **strongest**
 (highest HP) or **closest** — useful for focusing tanks or finishing off
 stragglers. The current mode shows in the tower info line.
 
-## Enemies
+## Enemies & waves
 
-Minion, Runner (fast), Grunt (tough), Tank (very tough), Splitter
-(splits into two minions on death), Wisp (fast, appears in swarms from
-wave 4), Shield (armored — takes 40% reduced damage — from wave 10), and
-a Boss every 5 waves (two on the final wave). Enemy HP and speed scale
+Eight enemy types, introduced one at a time across 20 hand-shaped waves
+(Bloons TD 3 style — a new type debuts in a legible near-solo wave, then
+gets mixed in):
+
+| type | role | debuts |
+|------|------|--------|
+| Minion | basic | wave 1 |
+| Runner | fast | wave 3 |
+| Grunt | tough | wave 6 |
+| Wisp | very fast, weak | wave 11 |
+| Splitter | splits into two Minions | wave 12 |
+| Tank | very tough, slow | wave 13 |
+| Shield | armored (−40% damage) | wave 14 |
+| Boss | high HP; leaking one costs 6 lives | wave 15, 18, 20 (two) |
+
+Each wave has a theme (`warmup`, `runner`, `gauntlet`, `boss`, `finale`, …)
+shown in the HUD, and a one-line **telegraph** warns you before a
+mechanically new wave (e.g. "Beware the Boss — leaking it costs 6 lives").
+Early waves are light with breather dips at each introduction; the last
+five waves (W16–W20) are a back-loaded climax. Enemy HP and speed scale
 with the wave number; the boss gets stronger each time it appears.
+
+### Pacing
+
+The inter-wave break tapers from 11s (after wave 1) down to ~4.5s (after
+wave 19), so tempo rises as the game escalates. Starting a wave early
+(`n`) pays a small bonus gold — a tempo choice, not a dominant income
+source. Clearing a wave pays a bonus that grows with the wave number.
 
 ## Maps
 
