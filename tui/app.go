@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"tdef/game"
@@ -126,8 +127,13 @@ func (a *App) loop() error {
 				a.acc = 0
 			}
 			if a.g.Lives < prevLives {
+				n := prevLives - a.g.Lives
+				plural := "life"
+				if n > 1 {
+					plural = "lives"
+				}
 				a.term.Write([]byte("\a"))
-				a.msg("leak! -" + itoa(prevLives-a.g.Lives) + " life")
+				a.msg("leak! -" + strconv.Itoa(n) + " " + plural)
 			}
 			if prevWaveActive && !a.g.WaveActive && a.g.Wave < game.MaxWaves {
 				next := a.g.Wave + 1
@@ -136,7 +142,7 @@ func (a *App) loop() error {
 					a.ui.Message = tg
 					a.msgTTL = game.AutoWaveDelayFor(a.g.Wave)
 				} else {
-					a.msg("wave " + itoa(prevWave) + " cleared +" + itoa(game.WaveBonus(prevWave)) + "g")
+					a.msg("wave " + strconv.Itoa(prevWave) + " cleared +" + strconv.Itoa(game.WaveBonus(prevWave)) + "g")
 				}
 			}
 		} else {
@@ -193,14 +199,7 @@ func (a *App) handle(e Event) {
 	case 'p', 'P':
 		a.ui.Paused = !a.ui.Paused
 	case 'f', 'F':
-		switch a.ui.Speed {
-		case 1:
-			a.ui.Speed = 2
-		case 2:
-			a.ui.Speed = 4
-		default:
-			a.ui.Speed = 1
-		}
+		a.cycleSpeed(1)
 	case 'h', 'H':
 		a.ui.Help = !a.ui.Help
 	case 'n', 'N':
@@ -300,16 +299,14 @@ func (a *App) handleMouse(e Event) {
 	if !e.Press {
 		return
 	}
+	// Wheel cycles through the speeds like 'f' (up = faster, wrapping),
+	// instead of jumping straight to 4x.
 	if e.Btn == 64 {
-		a.ui.Speed = 4
+		a.cycleSpeed(1)
 		return
 	}
 	if e.Btn == 65 {
-		if a.ui.Speed == 4 {
-			a.ui.Speed = 2
-		} else if a.ui.Speed == 2 {
-			a.ui.Speed = 1
-		}
+		a.cycleSpeed(-1)
 		return
 	}
 	ox, oy, sc := a.mapBounds()
@@ -348,16 +345,17 @@ func (a *App) handleMenuClick(e Event) {
 	}
 }
 
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
+// cycleSpeed moves to the next (dir > 0) or previous (dir < 0) speed in
+// the 1x/2x/4x set, wrapping around.
+func (a *App) cycleSpeed(dir int) {
+	speeds := [3]int{1, 2, 4}
+	for i, s := range speeds {
+		if a.ui.Speed == s {
+			a.ui.Speed = speeds[(i+dir+3)%3]
+			return
+		}
 	}
-	b := []byte{}
-	for n > 0 {
-		b = append([]byte{byte('0' + n%10)}, b...)
-		n /= 10
-	}
-	return string(b)
+	a.ui.Speed = 1
 }
 
 func (a *App) activate() {
@@ -396,9 +394,9 @@ func (a *App) upgradeSelected() {
 		return
 	}
 	if a.g.Upgrade(t) {
-		a.msg(t.Spec().Name + " -> Lv" + itoa(t.Level))
+		a.msg(t.Spec().Name + " -> Lv" + strconv.Itoa(t.Level))
 	} else {
-		a.msg("need " + itoa(a.g.UpgradeCost(t)) + " gold")
+		a.msg("need " + strconv.Itoa(a.g.UpgradeCost(t)) + " gold")
 	}
 }
 
@@ -412,7 +410,7 @@ func (a *App) sellSelected() {
 	}
 	refund := a.g.Sell(t)
 	a.ui.Selected = -1
-	a.msg("sold for " + itoa(refund))
+	a.msg("sold for " + strconv.Itoa(refund))
 }
 
 func (a *App) cycleTarget() {
@@ -433,7 +431,7 @@ func (a *App) startWave() {
 		return
 	}
 	a.g.StartWave()
-	a.msg("wave " + itoa(a.g.Wave) + " incoming")
+	a.msg("wave " + strconv.Itoa(a.g.Wave) + " incoming")
 }
 
 func (a *App) quit() {
