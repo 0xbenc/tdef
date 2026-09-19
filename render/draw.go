@@ -453,19 +453,23 @@ func RenderIntro(m *game.Map, name string, diff game.Difficulty, pal Colors, sca
 	f.Set(ex, ey, Cell{R: 'E', FG: 196, Bold: true})
 	putString(f, 0, 0, " tdef — terminal tower defense", pal.Bright, 0, true)
 	putString(f, 0, 1, fmt.Sprintf(" map: %s   difficulty: %s", name, diffName(diff)), pal.Dim, 0, false)
+	// Five stacked rows, all inside the frame: the four help lines occupy
+	// H-5..H-2 (one row above the menu zone at scale 1), the prompt gets the
+	// last row. Starting at MenuTop() instead pushed the final line off the
+	// frame and let the prompt overwrite line 3.
 	lines := []string{
 		" Enemies walk the path. Build towers on grass to stop them.",
 		" 1-7 pick tower · enter/click place · u upgrade · x sell",
-		" n start wave early (bonus gold) · p pause · f speed · q quit",
-		"",
+		" n start wave early for bonus · p pause · f speed · q quit",
 		" Don't let them reach E. Survive all 20 waves.",
 	}
-	y := l.MenuTop()
+	y := l.H - 5
 	for _, line := range lines {
 		putString(f, 2, y, line, pal.Bright, 0, false)
 		y++
 	}
-	putString(f, (l.W-26)/2, l.H-2, " press any key to start", 220, 0, true)
+	prompt := " press any key to start"
+	putString(f, (l.W-len(prompt))/2, l.H-1, prompt, 220, 0, true)
 	return f
 }
 

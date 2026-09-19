@@ -207,6 +207,45 @@ func TestANSIPositionsRowsWithCUP(t *testing.T) {
 	}
 }
 
+// The intro's help lines and prompt must each land on their own row inside
+// the frame: at scale 1 the last line used to be drawn one row past the
+// bottom and the prompt smashes into the third help line.
+func TestRenderIntroFitsFrame(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, scale := range []int{1, 2, 4} {
+		f := RenderIntro(m, "winding", game.Normal, Palette(), scale)
+		lines := strings.Split(f.Text(), "\n")
+		markers := []string{
+			"Enemies walk the path",
+			"1-7 pick tower",
+			"n start wave early",
+			"Don't let them reach E",
+			"press any key to start",
+		}
+		seen := map[int]bool{}
+		for _, want := range markers {
+			found := -1
+			for i, ln := range lines {
+				if strings.Contains(ln, want) {
+					found = i
+					break
+				}
+			}
+			if found < 0 {
+				t.Errorf("scale %d: intro missing %q:\n%s", scale, want, f.Text())
+				continue
+			}
+			if seen[found] {
+				t.Errorf("scale %d: two intro lines share row %d", scale, found)
+			}
+			seen[found] = true
+		}
+	}
+}
+
 func TestDrawHPBar(t *testing.T) {
 	f := &Frame{W: 20, H: 5, C: make([]Cell, 20*5)}
 	drawHPBar(f, 10, 2, 0.5)
