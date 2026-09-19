@@ -168,7 +168,7 @@ func Render(g *game.State, ui *UI, pal Colors) *Frame {
 			f.Set(x, y, Cell{R: t.Spec().Short, FG: pal.Bright, BG: c, Bold: true})
 		}
 		for i := 1; i < t.Level; i++ {
-			f.Put(x-i, y, '▪', c, 0)
+			f.Set(x-i, y, Cell{R: '▪', FG: pal.Bright, BG: c, Bold: true})
 		}
 	}
 	for _, p := range g.Projectiles {
@@ -226,7 +226,9 @@ func Render(g *game.State, ui *UI, pal Colors) *Frame {
 		x, y := l.X(ui.Cursor.X), l.Y(ui.Cursor.Y)
 		if x >= 0 && y >= 0 && x < f.W && y < f.H {
 			cc := f.C[y*f.W+x]
-			if cc.R == 0 || cc.R == ' ' {
+			// Ground glyphs (grass/wall space, path dot) get the cursor
+			// marker; entity glyphs (towers, enemies, spawn/exit) just bold.
+			if cc.R == 0 || cc.R == ' ' || cc.R == '·' {
 				cc.R = '◻'
 				cc.FG = pal.Dim
 			} else {

@@ -139,6 +139,29 @@ func TestDrawGameOver(t *testing.T) {
 	}
 }
 
+func TestUpgradePipsStyledLikeMenuSlot(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := game.NewState(m, 1, false)
+	g.Gold = 1000
+	v := game.Vec{X: 7, Y: 2}
+	tw := g.Build(v, game.TowerGunner)
+	g.Upgrade(tw)
+	g.Upgrade(tw)
+	pal := Palette()
+	l := ComputeLayout(m.W, m.H, 1)
+	f := Render(g, &UI{Placing: game.TowerGunner, Selected: -1, Scale: 1}, pal)
+	x, y := l.center(v.X, v.Y)
+	want := Cell{R: '▪', FG: pal.Bright, BG: pal.Tower[game.TowerGunner], Bold: true}
+	for i := 1; i < 3; i++ {
+		if got := f.C[y*f.W+x-i]; got != want {
+			t.Errorf("pip %d = %+v, want %+v", i, got, want)
+		}
+	}
+}
+
 func TestDrawHPBar(t *testing.T) {
 	f := &Frame{W: 20, H: 5, C: make([]Cell, 20*5)}
 	drawHPBar(f, 10, 2, 0.5)
