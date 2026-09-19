@@ -167,6 +167,30 @@ func TestUpgradePipsStyledLikeMenuSlot(t *testing.T) {
 	}
 }
 
+// The selected-tower info line renders on the 62-col menu row at 1x scale;
+// it must never be wider than the frame or it clips.
+func TestTowerInfoFitsFrame(t *testing.T) {
+	for k := game.TowerKind(0); k < game.TowerCount; k++ {
+		invested := 0
+		for level := 1; level <= 3; level++ {
+			invested += game.TowerSpecs[k].Cost[level-1]
+			refund := int(float64(invested) * game.SellRefund)
+			upCost := 0
+			if level < 3 {
+				upCost = game.TowerSpecs[k].Cost[level]
+			}
+			for mode := game.TargetMode(0); mode < game.TargetModeCount; mode++ {
+				tw := &game.Tower{Kind: k, Level: level, TargetMode: mode}
+				line := towerInfo(tw, upCost, refund)
+				if n := len([]rune(line)); n > FrameW {
+					t.Errorf("%s lv%d %s: %d runes, want <= %d: %q",
+						game.TowerSpecs[k].Name, level, mode.Name(), n, FrameW, line)
+				}
+			}
+		}
+	}
+}
+
 func TestANSIPositionsRowsWithCUP(t *testing.T) {
 	f := &Frame{W: 4, H: 3, C: make([]Cell, 12)}
 	f.Put(0, 0, 'a', 220, 0)

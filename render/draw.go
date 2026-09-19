@@ -196,7 +196,8 @@ func Render(g *game.State, ui *UI, pal Colors) *Frame {
 			bold = true
 		}
 		f.Set(x, y, Cell{R: game.EnemySpecs[e.Kind].Short, FG: fg, Bold: bold})
-		if hp < 1 {
+		// Skip the bar when it would land on the HUD rows above the map.
+		if hp < 1 && y-1 >= l.Oy {
 			drawHPBar(f, x, y-1, hp)
 		}
 	}
@@ -425,12 +426,7 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 	if ui.Selected >= 0 {
 		if t := g.Tower(ui.Selected); t != nil {
 			y++
-			var info string
-			if t.Level >= 3 {
-				info = fmt.Sprintf(" ▸ %s Lv%d (max)  target %s [t]  sell +%d", t.Spec().Name, t.Level, t.TargetMode.Name(), int(float64(t.Invested)*game.SellRefund))
-			} else {
-				info = fmt.Sprintf(" ▸ %s Lv%d  dmg %.0f  rng %.1f  target %s [t]  upgrade %d  sell +%d", t.Spec().Name, t.Level, t.Dmg(), t.Range(), t.TargetMode.Name(), g.UpgradeCost(t), int(float64(t.Invested)*game.SellRefund))
-			}
+			info := towerInfo(t, g.UpgradeCost(t), int(float64(t.Invested)*game.SellRefund))
 			putString(f, 0, y, info, pal.Tower[t.Kind], 0, false)
 		}
 	}
@@ -471,6 +467,15 @@ func RenderIntro(m *game.Map, name string, diff game.Difficulty, pal Colors, sca
 	}
 	putString(f, (l.W-26)/2, l.H-2, " press any key to start", 220, 0, true)
 	return f
+}
+
+// towerInfo is the menu line for the selected tower. It must fit within
+// FrameW (62) at 1x scale, so keep it short (TestTowerInfoFitsFrame).
+func towerInfo(t *game.Tower, upCost, refund int) string {
+	if t.Level >= 3 {
+		return fmt.Sprintf(" ▸ %s Lv%d (max)  %s [t]  sell +%d", t.Spec().Name, t.Level, t.TargetMode.Name(), refund)
+	}
+	return fmt.Sprintf(" ▸ %s Lv%d  %.0fd %.1fr  %s [t]  up %d  sell +%d", t.Spec().Name, t.Level, t.Dmg(), t.Range(), t.TargetMode.Name(), upCost, refund)
 }
 
 func diffName(d game.Difficulty) string {
