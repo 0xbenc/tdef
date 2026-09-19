@@ -2,9 +2,11 @@ package tui
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"strconv"
+	"time"
 	"unicode/utf8"
 )
 
@@ -40,17 +42,39 @@ type reader struct {
 	buf   []byte
 }
 
+// escWindow is how long to wait after a bare ESC for a following '[' or 'O'
+// before treating it as an Escape keypress. Real terminals emit the full CSI
+// sequence in one burst; a lone ESC means the user pressed Escape.
+const escWindow = 50 * time.Millisecond
+
 func startReader(in *os.File, ch chan Event) {
 	r := &reader{ch: ch}
 	go func() {
 		tmp := make([]byte, 512)
 		for {
+			// State 1 means we saw an ESC and are waiting to see whether a
+			// CSI/SS3 sequence follows. Arm a deadline so a bare Escape is
+			// not swallowed until the next unrelated keypress.
+			if r.state == 1 {
+				_ = in.SetReadDeadline(time.Now().Add(escWindow))
+			} else {
+				_ = in.SetReadDeadline(time.Time{})
+			}
 			n, err := in.Read(tmp)
 			if err == io.EOF {
 				return
 			}
 			if n > 0 {
 				r.feed(tmp[:n])
+				continue
+			}
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				r.state = 0
+				r.emit(Event{Key: KeyEscape})
+				continue
+			}
+			if err != nil {
+				return
 			}
 		}
 	}()

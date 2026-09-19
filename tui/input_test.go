@@ -63,10 +63,66 @@ func TestSplitEscape(t *testing.T) {
 	}
 }
 
-func TestBareEscape(t *testing.T) {
+func TestDoubleEscape(t *testing.T) {
 	evs := feed(t, []byte{0x1b, 0x1b}, 1)
 	if len(evs) != 1 || evs[0].Key != KeyEscape {
 		t.Fatalf("got %+v, want single KeyEscape", evs)
+	}
+}
+
+// A real terminal sends a single 0x1b byte for the Escape key. The reader
+// must emit KeyEscape after escWindow without any further input.
+func TestBareEscapeTimeout(t *testing.T) {
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pr.Close()
+	defer pw.Close()
+	ch := make(chan Event, 64)
+	startReader(pr, ch)
+	if _, err := pw.Write([]byte{0x1b}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case e := <-ch:
+		if e.Key != KeyEscape {
+			t.Fatalf("got %+v, want KeyEscape", e)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no KeyEscape emitted for bare ESC")
+	}
+}
+
+// A bare ESC must not eat the next keypress: after the timeout fires, 'x'
+// arrives as a normal rune event.
+func TestBareEscapeDoesNotSwallowNextKey(t *testing.T) {
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pr.Close()
+	defer pw.Close()
+	ch := make(chan Event, 64)
+	startReader(pr, ch)
+	if _, err := pw.Write([]byte{0x1b}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-ch: // the KeyEscape
+	case <-time.After(2 * time.Second):
+		t.Fatal("no KeyEscape emitted for bare ESC")
+	}
+	if _, err := pw.Write([]byte{'x'}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case e := <-ch:
+		if e.Rune != 'x' {
+			t.Fatalf("got %+v, want rune 'x'", e)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("'x' swallowed after bare ESC")
 	}
 }
 
