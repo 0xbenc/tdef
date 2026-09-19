@@ -113,7 +113,22 @@ func play(args []string) {
 	fs := flag.NewFlagSet("play", flag.ExitOnError)
 	parseDiff(fs)
 	m, name, _ := parseLevelArgs(fs, args)
-	if err := tui.Run(m, name, diffFrom(fs)); err != nil {
+	diff := diffFrom(fs)
+	explicit := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "level" || f.Name == "maze" {
+			explicit = true
+		}
+	})
+	if explicit {
+		if err := tui.Run(m, name, diff); err != nil {
+			die("%v", err)
+		}
+		return
+	}
+	// No level on the command line: start at the title screen and let
+	// the player pick a level, maze seed and difficulty.
+	if err := tui.RunMenu(diff); err != nil {
 		die("%v", err)
 	}
 }
