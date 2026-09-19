@@ -230,7 +230,7 @@ func capture(args []string) {
 	s := game.NewStateDiff(m, diffFrom(fs))
 	ai := game.NewAutoplay(s)
 	pal := render.Palette()
-	ui := render.UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Speed: 1, Scale: *scale}
+	ui := render.UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Selected: render.NoSelection, Speed: 1, Scale: *scale}
 	dt := 1.0 / 20.0
 	tick := int64(0)
 	for s.Status == game.StatusRunning {

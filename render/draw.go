@@ -7,6 +7,11 @@ import (
 	"tdef/game"
 )
 
+// NoSelection is "no tower selected". UI.Selected must be initialized to it
+// in every constructor: the Go zero value (0) is a real tower ID, so a
+// fresh UI would hide the cursor and highlight the first tower built.
+const NoSelection = -1
+
 type UI struct {
 	Cursor    game.Vec
 	Placing   game.TowerKind

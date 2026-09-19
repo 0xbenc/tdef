@@ -48,16 +48,12 @@ func Run(m *game.Map, name string, diff game.Difficulty) error {
 		level:  name,
 		events: make(chan Event, 256),
 	}
-	a.ui.Cursor = game.Vec{X: m.W / 2, Y: m.H / 2}
-	a.ui.Placing = game.TowerGunner
-	a.ui.Speed = 1
-	a.ui.Paused = true
-	a.started = false
+	scale := 1
 	if tw, th := a.term.Size(); tw > 0 && th > 0 {
-		a.ui.Scale = render.ComputeScale(m.W, m.H, tw, th)
-	} else {
-		a.ui.Scale = 1
+		scale = render.ComputeScale(m.W, m.H, tw, th)
 	}
+	a.ui = freshUI(m, scale)
+	a.started = false
 	a.layout = render.ComputeLayout(m.W, m.H, a.ui.Scale)
 	startReader(a.term.in, a.events)
 	term.AltScreen(true)
@@ -69,6 +65,19 @@ func Run(m *game.Map, name string, diff game.Difficulty) error {
 		term.Cursor(true)
 	}()
 	return a.loop()
+}
+
+// freshUI builds the UI for a new game. Selected must be pinned to
+// NoSelection (see render.NoSelection) — the zero value is tower ID 0.
+func freshUI(m *game.Map, scale int) render.UI {
+	return render.UI{
+		Cursor:   game.Vec{X: m.W / 2, Y: m.H / 2},
+		Placing:  game.TowerGunner,
+		Selected: render.NoSelection,
+		Speed:    1,
+		Paused:   true,
+		Scale:    scale,
+	}
 }
 
 func (a *App) loop() error {
@@ -452,6 +461,7 @@ func (a *App) restart() {
 	a.ui = render.UI{
 		Cursor:    game.Vec{X: m.W / 2, Y: m.H / 2},
 		Placing:   game.TowerGunner,
+		Selected:  render.NoSelection,
 		Speed:     a.ui.Speed,
 		Help:      a.ui.Help,
 		Scale:     a.ui.Scale,
