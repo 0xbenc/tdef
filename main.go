@@ -171,7 +171,11 @@ func bench(args []string) {
 		wins += w
 		count += len(rs)
 	}
-	fmt.Printf("%-10s %7.0f%%\n", "ALL", 100*float64(wins)/float64(count))
+	if count > 0 {
+		fmt.Printf("%-10s %7.0f%%\n", "ALL", 100*float64(wins)/float64(count))
+	} else {
+		fmt.Printf("%-10s %7s\n", "ALL", "n/a")
+	}
 	fmt.Printf("elapsed %v\n", time.Since(start).Round(time.Millisecond))
 }
 
@@ -181,7 +185,9 @@ func stats(rs []game.SimResult) (wins int, waves, leaks, towers, gold, t float64
 			wins++
 		}
 		waves += float64(r.Wave)
-		leaks += float64(20 - r.Lives)
+		// r.Leaks counts actual leaks. 20-r.Lives would overcount boss
+		// leaks (6 lives each) and be wrong on hard (15 starting lives).
+		leaks += float64(r.Leaks)
 		towers += float64(r.Towers)
 		gold += float64(r.Gold)
 		t += r.Time
@@ -218,6 +224,9 @@ func capture(args []string) {
 	scale := fs.Int("scale", 1, "playfield scale 1-4")
 	m, name, seed, _ := parseLevelArgs(fs, args, true)
 	seed = pickSeed(seed)
+	if *every < 1 {
+		die("capture: -every must be >= 1")
+	}
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		die("%v", err)
 	}
