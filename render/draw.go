@@ -104,7 +104,7 @@ func RenderTooSmall(tw, th, needW, needH int) *Frame {
 	f := &Frame{W: tw, H: th, C: make([]Cell, tw*th)}
 	m1 := " tdef: terminal too small"
 	m2 := fmt.Sprintf(" needs at least %dx%d — enlarge the window", needW, needH)
-	m3 := " (the game keeps running; it refits on the next start)"
+	m3 := " (game auto-paused; press p to resume once it fits)"
 	for i := range f.C {
 		f.C[i] = Cell{R: ' '}
 	}

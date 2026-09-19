@@ -468,11 +468,16 @@ func (a *App) draw() {
 }
 
 // renderGuarded blits the given frame, unless the terminal has shrunk below
-// the (boot-fixed) frame size, in which case it shows an "enlarge" notice.
+// the (boot-fixed) frame size, in which case it shows an "enlarge" notice
+// and pauses the game: running blind behind the notice would silently
+// lose lives. The player resumes with p once the window fits again.
 func (a *App) renderGuarded(makeFrame func() *render.Frame) {
 	tw, th := a.term.Size()
 	if tw > 0 && th > 0 && (tw < a.layout.W || th < a.layout.H) {
 		a.prev = nil
+		if a.g.Status == game.StatusRunning && !a.ui.Paused {
+			a.ui.Paused = true
+		}
 		a.blit(render.RenderTooSmall(tw, th, a.layout.W, a.layout.H))
 		return
 	}

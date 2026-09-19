@@ -98,6 +98,9 @@ func TestRenderTooSmall(t *testing.T) {
 	if !strings.Contains(text, "62x19") {
 		t.Errorf("missing size hint:\n%s", text)
 	}
+	if !strings.Contains(text, "auto-paused") {
+		t.Errorf("missing auto-pause note:\n%s", text)
+	}
 }
 
 func TestFormatTime(t *testing.T) {
