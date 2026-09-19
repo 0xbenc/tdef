@@ -8,6 +8,15 @@ import (
 // snake-like chokepoints instead of tight grid mazes.
 const corridorBias = 0.35
 
+// MazeW and MazeH are the fixed playfield size used for procedural mazes.
+const MazeW, MazeH = 45, 13
+
+// MazeFromSeed builds the standard-size procedural maze for seed. It is the
+// single place that knows mazes are MazeW×MazeH.
+func MazeFromSeed(seed int64) (*Map, error) {
+	return GenerateMap(seed, MazeW, MazeH)
+}
+
 // GenerateMap builds a perfect maze and uses its unique route from the left
 // edge to the right edge as the enemy path. All other open cells are buildable.
 func GenerateMap(seed int64, w, h int) (*Map, error) {
