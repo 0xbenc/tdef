@@ -13,7 +13,7 @@ func TestCursorVisibleOnAllGround(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g := game.NewState(m, 1)
+	g := game.NewState(m)
 	pal := Palette()
 	l := ComputeLayout(m.W, m.H, 1)
 	cases := []struct {
@@ -41,7 +41,7 @@ func TestCursorDoesNotClobberGlyphs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g := game.NewState(m, 1)
+	g := game.NewState(m)
 	pal := Palette()
 	l := ComputeLayout(m.W, m.H, 1)
 	ui := &UI{Cursor: m.Spawn, Placing: game.TowerGunner, Selected: -1, Scale: 1}

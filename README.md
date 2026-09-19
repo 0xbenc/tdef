@@ -16,9 +16,9 @@ go build -o tdef .
 
 ./tdef play                      # play (default: winding, normal)
 ./tdef play -level canyon        # pick a map: hub | winding | garden | canyon
-./tdef play -maze -seed 123      # procedural maze (seeded, reproducible)
+./tdef play -maze 123            # procedural maze (seeded, reproducible)
 ./tdef play -diff easy           # easy | normal | hard
-./tdef play -diff hard -maze -seed 7
+./tdef play -diff hard -maze 7
 ```
 
 Requires a real TTY (raw mode, alternate screen, mouse).
@@ -115,8 +115,8 @@ The engine is deterministic, so it can be driven without a terminal:
 
 ```sh
 ./tdef bench -n 40 -maze 60   # run autoplay (greedy AI) games, report stats
-./tdef headless -level garden -seed 5   # simulate one game, print result
-./tdef capture -level canyon -seed 5 -text -out /tmp/frames   # dump frames
+./tdef headless -level garden # simulate one game, print result
+./tdef capture -level canyon -text -out /tmp/frames   # dump frames
 ./tdef maps                   # list built-in maps
 ```
 

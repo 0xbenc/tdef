@@ -9,16 +9,15 @@ type SimResult struct {
 	Leaks  int
 	Towers int
 	Time   float64
-	Seed   int64
 	Level  string
 }
 
-func RunAutoplay(m *Map, level string, seed int64) SimResult {
-	return RunAutoplayDiff(m, level, seed, Normal)
+func RunAutoplay(m *Map, level string) SimResult {
+	return RunAutoplayDiff(m, level, Normal)
 }
 
-func RunAutoplayDiff(m *Map, level string, seed int64, diff Difficulty) SimResult {
-	s := NewStateDiff(m, seed, diff)
+func RunAutoplayDiff(m *Map, level string, diff Difficulty) SimResult {
+	s := NewStateDiff(m, diff)
 	ai := NewAutoplay(s)
 	dt := 1.0 / 20.0
 	maxTowers := 0
@@ -38,7 +37,6 @@ func RunAutoplayDiff(m *Map, level string, seed int64, diff Difficulty) SimResul
 		Leaks:  s.TotalLeaks,
 		Towers: maxTowers,
 		Time:   s.Time,
-		Seed:   seed,
 		Level:  level,
 	}
 }
@@ -195,7 +193,7 @@ func Bench(levels []string, games int, seedBase int64) []SimResult {
 		if err != nil {
 			continue
 		}
-		out = append(out, RunAutoplay(m, level, seedBase+int64(i)))
+		out = append(out, RunAutoplay(m, level))
 	}
 	return out
 }

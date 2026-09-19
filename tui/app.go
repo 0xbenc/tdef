@@ -18,7 +18,6 @@ type App struct {
 	ui       render.UI
 	pal      render.Colors
 	layout   render.Layout
-	seed     int64
 	diff     game.Difficulty
 	level    string
 	scored   bool
@@ -32,7 +31,7 @@ type App struct {
 	prev   map[int]render.Cell
 }
 
-func Run(m *game.Map, name string, seed int64, diff game.Difficulty) error {
+func Run(m *game.Map, name string, diff game.Difficulty) error {
 	term, err := Open()
 	if err != nil {
 		return err
@@ -40,9 +39,8 @@ func Run(m *game.Map, name string, seed int64, diff game.Difficulty) error {
 	defer term.Close()
 	a := &App{
 		term:   term,
-		g:      game.NewStateDiff(m, seed, diff),
+		g:      game.NewStateDiff(m, diff),
 		pal:    render.Palette(),
-		seed:   seed,
 		diff:   diff,
 		level:  name,
 		events: make(chan Event, 256),
@@ -447,7 +445,7 @@ func (a *App) quit() {
 
 func (a *App) restart() {
 	m := a.g.Map
-	a.g = game.NewStateDiff(m, a.seed, a.diff)
+	a.g = game.NewStateDiff(m, a.diff)
 	a.scored = false
 	// Rebuild the UI, but keep player preferences: a zeroed UI would drop
 	// the boot-computed Scale (ComputeLayout clamps it back to 1x), so the

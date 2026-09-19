@@ -1,12 +1,7 @@
 package game
 
-import (
-	"math/rand/v2"
-)
-
 type State struct {
 	Map  *Map
-	Rng  *rand.Rand
 	Time float64
 	Diff Difficulty
 
@@ -43,16 +38,17 @@ type State struct {
 	Selected  int
 }
 
-// Waves always auto-start after NextWaveAt (Step handles it); there is no
-// manual-only mode, so no flag for it is kept.
-func NewState(m *Map, seed int64) *State {
-	return NewStateDiff(m, seed, Normal)
+// The simulation is fully deterministic: a run is determined entirely by
+// (map, difficulty). There is no in-engine randomness, so no seed is kept
+// here — the only seed in the game is the maze generator's, which happens
+// before a State exists.
+func NewState(m *Map) *State {
+	return NewStateDiff(m, Normal)
 }
 
-func NewStateDiff(m *Map, seed int64, diff Difficulty) *State {
+func NewStateDiff(m *Map, diff Difficulty) *State {
 	return &State{
 		Map:        m,
-		Rng:        rand.New(rand.NewPCG(uint64(seed), uint64(seed<<32))),
 		Gold:       diff.Gold(),
 		Lives:      diff.Lives(),
 		Diff:       diff,

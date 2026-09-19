@@ -52,7 +52,6 @@ usage:
 play flags:
   -level string   level name (default "winding"; see tdef maps)
   -maze int       use a procedural maze with this seed (0 = random)
-  -seed int64     game seed (default: time-based)
 
 bench flags:
   -n int          games per level (default 40)
@@ -67,23 +66,22 @@ capture flags:
 `)
 }
 
-func parseLevelArgs(fs *flag.FlagSet, args []string) (*game.Map, string, int64, *flag.FlagSet) {
+func parseLevelArgs(fs *flag.FlagSet, args []string) (*game.Map, string, *flag.FlagSet) {
 	level := fs.String("level", "winding", "")
 	mazeSeed := fs.Int64("maze", -1, "")
-	seed := fs.Int64("seed", 0, "")
 	_ = fs.Parse(args)
 	if *mazeSeed >= 0 {
 		m, err := game.GenerateMap(*mazeSeed, 45, 13)
 		if err != nil {
 			die("maze: %v", err)
 		}
-		return m, fmt.Sprintf("maze%d", *mazeSeed), *seed, fs
+		return m, fmt.Sprintf("maze%d", *mazeSeed), fs
 	}
 	m, err := game.LoadLevel(*level)
 	if err != nil {
 		die("%v", err)
 	}
-	return m, *level, *seed, fs
+	return m, *level, fs
 }
 
 func pickSeed(seed int64) int64 {
@@ -112,9 +110,8 @@ func diffFrom(fs *flag.FlagSet) game.Difficulty {
 func play(args []string) {
 	fs := flag.NewFlagSet("play", flag.ExitOnError)
 	parseDiff(fs)
-	m, name, seed, _ := parseLevelArgs(fs, args)
-	seed = pickSeed(seed)
-	if err := tui.Run(m, name, seed, diffFrom(fs)); err != nil {
+	m, name, _ := parseLevelArgs(fs, args)
+	if err := tui.Run(m, name, diffFrom(fs)); err != nil {
 		die("%v", err)
 	}
 }
@@ -143,7 +140,7 @@ func bench(args []string) {
 			continue
 		}
 		for i := 0; i < *n; i++ {
-			all = append(all, game.RunAutoplayDiff(m, name, int64(i+1), diff))
+			all = append(all, game.RunAutoplayDiff(m, name, diff))
 		}
 	}
 	for i := 0; i < *nMaze; i++ {
@@ -152,7 +149,7 @@ func bench(args []string) {
 		if err != nil {
 			continue
 		}
-		all = append(all, game.RunAutoplayDiff(m, "maze", s, diff))
+		all = append(all, game.RunAutoplayDiff(m, "maze", diff))
 	}
 	byLevel := map[string][]game.SimResult{}
 	for _, r := range all {
@@ -200,11 +197,10 @@ func stats(rs []game.SimResult) (wins int, waves, leaks, towers, gold, t float64
 func headless(args []string) {
 	fs := flag.NewFlagSet("headless", flag.ExitOnError)
 	parseDiff(fs)
-	m, name, seed, _ := parseLevelArgs(fs, args)
-	seed = pickSeed(seed)
-	r := game.RunAutoplayDiff(m, name, seed, diffFrom(fs))
-	fmt.Printf("%s seed=%d: %s wave=%d lives=%d gold=%d towers=%d kills=%d time=%.0fs\n",
-		name, seed, status(r.Won), r.Wave, r.Lives, r.Gold, r.Towers, r.Kills, r.Time)
+	m, name, _ := parseLevelArgs(fs, args)
+	r := game.RunAutoplayDiff(m, name, diffFrom(fs))
+	fmt.Printf("%s: %s wave=%d lives=%d gold=%d towers=%d kills=%d time=%.0fs\n",
+		name, status(r.Won), r.Wave, r.Lives, r.Gold, r.Towers, r.Kills, r.Time)
 }
 
 func status(won bool) string {
@@ -222,15 +218,14 @@ func capture(args []string) {
 	limit := fs.Int64("limit", 0, "")
 	text := fs.Bool("text", false, "")
 	scale := fs.Int("scale", 1, "playfield scale 1-4")
-	m, name, seed, _ := parseLevelArgs(fs, args)
-	seed = pickSeed(seed)
+	m, name, _ := parseLevelArgs(fs, args)
 	if *every < 1 {
 		die("capture: -every must be >= 1")
 	}
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		die("%v", err)
 	}
-	s := game.NewStateDiff(m, seed, diffFrom(fs))
+	s := game.NewStateDiff(m, diffFrom(fs))
 	ai := game.NewAutoplay(s)
 	pal := render.Palette()
 	ui := render.UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Speed: 1, Scale: *scale}

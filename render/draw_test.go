@@ -144,7 +144,7 @@ func TestUpgradePipsStyledLikeMenuSlot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g := game.NewState(m, 1)
+	g := game.NewState(m)
 	g.Gold = 1000
 	v := game.Vec{X: 7, Y: 2}
 	tw := g.Build(v, game.TowerGunner)
