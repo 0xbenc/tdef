@@ -146,23 +146,7 @@ func (l Layout) block(f *Frame, mx, my int, c Cell) {
 func Render(g *game.State, ui *UI, pal Colors) *Frame {
 	l := ComputeLayout(g.Map.W, g.Map.H, ui.Scale)
 	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
-	for y := 0; y < g.Map.H; y++ {
-		for x := 0; x < g.Map.W; x++ {
-			v := game.Vec{X: x, Y: y}
-			switch g.Map.At(v) {
-			case game.CellWall:
-				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Wall})
-			case game.CellPath:
-				l.block(f, x, y, Cell{R: '·', FG: pal.Path, BG: 0})
-			case game.CellGrass:
-				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Grass})
-			}
-		}
-	}
-	sx, sy := l.center(g.Map.Spawn.X, g.Map.Spawn.Y)
-	f.Set(sx, sy, Cell{R: '▶', FG: 46, Bold: true})
-	ex, ey := l.center(g.Map.Exit.X, g.Map.Exit.Y)
-	f.Set(ex, ey, Cell{R: 'E', FG: 196, Bold: true})
+	drawMapPreview(f, g.Map, pal, l)
 	drawRange(f, g, ui, pal, l)
 	for _, t := range g.Towers {
 		x, y := l.center(t.Cell.X, t.Cell.Y)
@@ -464,22 +448,7 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 func RenderIntro(m *game.Map, name string, diff game.Difficulty, pal Colors, scale int) *Frame {
 	l := ComputeLayout(m.W, m.H, scale)
 	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
-	for y := 0; y < m.H; y++ {
-		for x := 0; x < m.W; x++ {
-			switch m.At(game.Vec{X: x, Y: y}) {
-			case game.CellWall:
-				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Wall})
-			case game.CellPath:
-				l.block(f, x, y, Cell{R: '·', FG: pal.Path, BG: 0})
-			case game.CellGrass:
-				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Grass})
-			}
-		}
-	}
-	sx, sy := l.center(m.Spawn.X, m.Spawn.Y)
-	f.Set(sx, sy, Cell{R: '▶', FG: 46, Bold: true})
-	ex, ey := l.center(m.Exit.X, m.Exit.Y)
-	f.Set(ex, ey, Cell{R: 'E', FG: 196, Bold: true})
+	drawMapPreview(f, m, pal, l)
 	putString(f, 0, 0, " tdef — terminal tower defense", pal.Bright, 0, true)
 	putString(f, 0, 1, fmt.Sprintf(" map: %s   difficulty: %s", name, diffName(diff)), pal.Dim, 0, false)
 	// Five stacked rows, all inside the frame: the four help lines occupy
