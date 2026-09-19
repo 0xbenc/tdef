@@ -51,8 +51,11 @@ func (f *Frame) ANSI() string {
 	prevBold := false
 	b.WriteString("\x1b[?25l\x1b[2J\x1b[H")
 	for y := 0; y < f.H; y++ {
+		// Position each row with CUP. A bare cursor-up (\x1b[M) keeps the
+		// column, so on a terminal wider than the frame every row after
+		// the first would start at column W+1 and the dump would smear.
 		if y > 0 {
-			b.WriteString("\x1b[M")
+			fmt.Fprintf(&b, "\x1b[%d;1H", y+1)
 		}
 		for x := 0; x < f.W; x++ {
 			c := f.C[y*f.W+x]

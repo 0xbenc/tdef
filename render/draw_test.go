@@ -162,6 +162,22 @@ func TestUpgradePipsStyledLikeMenuSlot(t *testing.T) {
 	}
 }
 
+func TestANSIPositionsRowsWithCUP(t *testing.T) {
+	f := &Frame{W: 4, H: 3, C: make([]Cell, 12)}
+	f.Put(0, 0, 'a', 220, 0)
+	f.Put(0, 1, 'b', 220, 0)
+	f.Put(0, 2, 'c', 220, 0)
+	s := f.ANSI()
+	if strings.Contains(s, "\x1b[M") {
+		t.Error("ANSI still uses bare cursor-up for row advance")
+	}
+	for _, want := range []string{"\x1b[2;1H", "\x1b[3;1H"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("ANSI missing CUP sequence %q", want)
+		}
+	}
+}
+
 func TestDrawHPBar(t *testing.T) {
 	f := &Frame{W: 20, H: 5, C: make([]Cell, 20*5)}
 	drawHPBar(f, 10, 2, 0.5)
