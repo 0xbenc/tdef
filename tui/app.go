@@ -1,0 +1,530 @@
+package tui
+
+import (
+	"fmt"
+	"time"
+
+	"tdef/game"
+	"tdef/hiscore"
+	"tdef/render"
+)
+
+const tickRate = 20.0
+const frameRate = 30.0
+
+type App struct {
+	term    *Terminal
+	g       *game.State
+	ui      render.UI
+	pal     render.Colors
+	seed    int64
+	diff    game.Difficulty
+	level   string
+	scored  bool
+	started bool
+
+	events chan Event
+	acc    float64
+	msgTTL float64
+	overT  time.Time
+	prev   map[int]render.Cell
+}
+
+func Run(m *game.Map, name string, seed int64, diff game.Difficulty) error {
+	term, err := Open()
+	if err != nil {
+		return err
+	}
+	defer term.Close()
+	a := &App{
+		term:   term,
+		g:      game.NewStateDiff(m, seed, false, diff),
+		pal:    render.Palette(),
+		seed:   seed,
+		diff:   diff,
+		level:  name,
+		events: make(chan Event, 256),
+		prev:   map[int]render.Cell{},
+	}
+	a.ui.Cursor = game.Vec{X: m.W / 2, Y: m.H / 2}
+	a.ui.Placing = game.TowerGunner
+	a.ui.Speed = 1
+	a.ui.Paused = true
+	a.started = false
+	startReader(a.term.in, a.events)
+	term.AltScreen(true)
+	term.Cursor(false)
+	term.Mouse(true)
+	defer func() {
+		term.Mouse(false)
+		term.AltScreen(false)
+		term.Cursor(true)
+	}()
+	return a.loop()
+}
+
+func (a *App) loop() error {
+	frame := time.NewTicker(time.Second / time.Duration(frameRate))
+	defer frame.Stop()
+	last := time.Now()
+	for {
+		if !a.started {
+			select {
+			case e := <-a.events:
+				if e.Key == KeyCtrlC || e.Rune == 'q' {
+					a.quit()
+					return nil
+				}
+				a.started = true
+				a.ui.Paused = false
+			default:
+			}
+			f := render.RenderIntro(a.g.Map, a.level, a.diff, a.pal)
+			a.blit(f)
+			<-frame.C
+			continue
+		}
+		a.drainInput()
+		select {
+		case <-a.term.Winch():
+			a.prev = map[int]render.Cell{}
+		default:
+		}
+		now := time.Now()
+		real := now.Sub(last).Seconds()
+		last = now
+		if a.msgTTL > 0 {
+			a.msgTTL -= real
+			if a.msgTTL <= 0 {
+				a.ui.Message = ""
+			}
+		}
+		if a.g.Status == game.StatusRunning && !a.ui.Paused {
+			prevLives := a.g.Lives
+			prevWaveActive := a.g.WaveActive
+			prevWave := a.g.Wave
+			a.acc += real * float64(a.ui.Speed)
+			const dt = 1.0 / tickRate
+			steps := 0
+			for a.acc >= dt && steps < 10 {
+				a.g.Step(dt)
+				a.acc -= dt
+				steps++
+			}
+			if steps == 10 {
+				a.acc = 0
+			}
+			if a.g.Lives < prevLives {
+				a.term.Write([]byte("\a"))
+				a.msg("leak! -" + itoa(prevLives-a.g.Lives) + " life")
+			}
+			if prevWaveActive && !a.g.WaveActive && a.g.Wave < game.MaxWaves {
+				a.msg("wave " + itoa(prevWave) + " cleared +" + itoa(game.WaveBonus(prevWave)) + "g")
+			}
+		} else {
+			a.acc = 0
+		}
+		if a.g.Status != game.StatusRunning && !a.scored {
+			a.scored = true
+			best, isNew := hiscore.Update(a.level, a.g.Score)
+			a.ui.BestScore = best
+			a.ui.NewBest = isNew
+		}
+		a.draw()
+		<-frame.C
+	}
+}
+
+func (a *App) msg(s string) {
+	a.ui.Message = s
+	a.msgTTL = 2.5
+}
+
+func (a *App) drainInput() {
+	for {
+		select {
+		case e := <-a.events:
+			a.handle(e)
+		default:
+			return
+		}
+	}
+}
+
+func (a *App) handle(e Event) {
+	if e.Mouse {
+		a.handleMouse(e)
+		return
+	}
+	if e.Key == KeyCtrlC {
+		a.quit()
+		return
+	}
+	if a.g.Status != game.StatusRunning {
+		switch e.Rune {
+		case 'q', 'Q':
+			a.quit()
+		case 'r', 'R':
+			a.restart()
+		}
+		return
+	}
+	switch e.Rune {
+	case 'q', 'Q':
+		a.quit()
+	case 'p', 'P':
+		a.ui.Paused = !a.ui.Paused
+	case 'f', 'F':
+		switch a.ui.Speed {
+		case 1:
+			a.ui.Speed = 2
+		case 2:
+			a.ui.Speed = 4
+		default:
+			a.ui.Speed = 1
+		}
+	case 'h', 'H':
+		a.ui.Help = !a.ui.Help
+	case 'n', 'N':
+		a.startWave()
+	case 'u', 'U':
+		a.upgradeSelected()
+	case 'x', 'X':
+		a.sellSelected()
+	case 't', 'T':
+		a.cycleTarget()
+	case '1', '2', '3', '4', '5':
+		k := game.TowerKind(e.Rune - '1')
+		if k < game.TowerCount {
+			if a.ui.PlacingOn && a.ui.Placing == k {
+				a.ui.PlacingOn = false
+			} else {
+				a.ui.Placing = k
+				a.ui.PlacingOn = true
+				a.ui.Selected = -1
+			}
+		}
+	case '\r':
+		a.activate()
+	}
+	switch e.Key {
+	case KeyEnter:
+		a.activate()
+	case KeyEscape:
+		a.ui.PlacingOn = false
+		a.ui.Selected = -1
+	case KeyBackspace:
+		a.ui.PlacingOn = false
+	case KeyUp, KeyDown, KeyLeft, KeyRight:
+		m := a.g.Map
+		switch e.Key {
+		case KeyUp:
+			a.ui.Cursor.Y--
+		case KeyDown:
+			a.ui.Cursor.Y++
+		case KeyLeft:
+			a.ui.Cursor.X--
+		case KeyRight:
+			a.ui.Cursor.X++
+		}
+		if a.ui.Cursor.X < 0 {
+			a.ui.Cursor.X = 0
+		}
+		if a.ui.Cursor.Y < 0 {
+			a.ui.Cursor.Y = 0
+		}
+		if a.ui.Cursor.X >= m.W {
+			a.ui.Cursor.X = m.W - 1
+		}
+		if a.ui.Cursor.Y >= m.H {
+			a.ui.Cursor.Y = m.H - 1
+		}
+	case KeyCtrlL:
+		a.prev = map[int]render.Cell{}
+	}
+	if e.Rune >= 'a' && e.Rune <= 'z' {
+		switch e.Rune {
+		case 'w':
+			a.moveCursor(0, -1)
+		case 's':
+			a.moveCursor(0, 1)
+		case 'a':
+			a.moveCursor(-1, 0)
+		case 'd':
+			a.moveCursor(1, 0)
+		}
+	}
+}
+
+func (a *App) moveCursor(dx, dy int) {
+	a.ui.Cursor.X += dx
+	a.ui.Cursor.Y += dy
+	m := a.g.Map
+	if a.ui.Cursor.X < 0 {
+		a.ui.Cursor.X = 0
+	}
+	if a.ui.Cursor.Y < 0 {
+		a.ui.Cursor.Y = 0
+	}
+	if a.ui.Cursor.X >= m.W {
+		a.ui.Cursor.X = m.W - 1
+	}
+	if a.ui.Cursor.Y >= m.H {
+		a.ui.Cursor.Y = m.H - 1
+	}
+}
+
+func (a *App) mapBounds() (ox, oy int) {
+	return (render.FrameW - a.g.Map.W) / 2, render.HUDRows
+}
+
+func (a *App) handleMouse(e Event) {
+	if !e.Press {
+		return
+	}
+	if e.Btn == 64 {
+		a.ui.Speed = 4
+		return
+	}
+	if e.Btn == 65 {
+		if a.ui.Speed == 4 {
+			a.ui.Speed = 2
+		} else if a.ui.Speed == 2 {
+			a.ui.Speed = 1
+		}
+		return
+	}
+	ox, oy := a.mapBounds()
+	if e.Y < oy || e.Y >= oy+a.g.Map.H || e.X < ox || e.X >= ox+a.g.Map.W {
+		a.handleMenuClick(e)
+		return
+	}
+	cell := game.Vec{X: e.X - ox, Y: e.Y - oy}
+	a.ui.Cursor = cell
+	if a.ui.PlacingOn {
+		a.place()
+		return
+	}
+	if t := a.g.TowerAt(cell); t != nil {
+		a.ui.Selected = t.ID
+	} else {
+		a.ui.Selected = -1
+	}
+}
+
+func (a *App) handleMenuClick(e Event) {
+	for _, slot := range render.MenuSlots {
+		spec := game.TowerSpecs[slot.Kind]
+		labelLen := len(fmt.Sprintf("%d %s %d", slot.Kind+1, spec.Name, spec.Cost[0]))
+		if e.Y == render.MenuTop+slot.Y && e.X >= slot.X && e.X < slot.X+labelLen {
+			if a.ui.PlacingOn && a.ui.Placing == slot.Kind {
+				a.ui.PlacingOn = false
+			} else {
+				a.ui.Placing = slot.Kind
+				a.ui.PlacingOn = true
+				a.ui.Selected = -1
+			}
+			return
+		}
+	}
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	b := []byte{}
+	for n > 0 {
+		b = append([]byte{byte('0' + n%10)}, b...)
+		n /= 10
+	}
+	return string(b)
+}
+
+func (a *App) activate() {
+	if a.ui.PlacingOn {
+		a.place()
+		return
+	}
+	if t := a.g.TowerAt(a.ui.Cursor); t != nil {
+		a.ui.Selected = t.ID
+	} else {
+		a.ui.Selected = -1
+	}
+}
+
+func (a *App) place() {
+	if a.g.CanBuild(a.ui.Cursor, a.ui.Placing) {
+		a.g.Build(a.ui.Cursor, a.ui.Placing)
+		if a.g.Gold < game.TowerSpecs[a.ui.Placing].Cost[0] {
+			a.ui.PlacingOn = false
+		}
+	} else {
+		a.msg("can't build there")
+	}
+}
+
+func (a *App) upgradeSelected() {
+	if a.ui.Selected < 0 {
+		return
+	}
+	t := a.g.Tower(a.ui.Selected)
+	if t == nil {
+		return
+	}
+	if t.Level >= 3 {
+		a.msg("max level")
+		return
+	}
+	if a.g.Upgrade(t) {
+		a.msg(t.Spec().Name + " -> Lv" + itoa(t.Level))
+	} else {
+		a.msg("need " + itoa(a.g.UpgradeCost(t)) + " gold")
+	}
+}
+
+func (a *App) sellSelected() {
+	if a.ui.Selected < 0 {
+		return
+	}
+	t := a.g.Tower(a.ui.Selected)
+	if t == nil {
+		return
+	}
+	refund := a.g.Sell(t)
+	a.ui.Selected = -1
+	a.msg("sold for " + itoa(refund))
+}
+
+func (a *App) cycleTarget() {
+	t, mode := a.g.CycleTarget(a.ui.Cursor)
+	if t == nil {
+		a.msg("no tower here")
+		return
+	}
+	a.ui.Selected = t.ID
+	a.msg(t.Spec().Name + " target: " + mode.Name())
+}
+
+func (a *App) startWave() {
+	if a.g.WaveActive {
+		return
+	}
+	if a.g.Wave >= game.MaxWaves {
+		return
+	}
+	a.g.StartWave()
+	a.msg("wave " + itoa(a.g.Wave) + " incoming")
+}
+
+func (a *App) quit() {
+	a.term.Mouse(false)
+	a.term.AltScreen(false)
+	a.term.Cursor(true)
+	a.term.Close()
+}
+
+func (a *App) restart() {
+	m := a.g.Map
+	a.g = game.NewStateDiff(m, a.seed, false, a.diff)
+	a.scored = false
+	a.ui = render.UI{
+		Cursor:    game.Vec{X: m.W / 2, Y: m.H / 2},
+		Placing:   game.TowerGunner,
+		Speed:     a.ui.Speed,
+		BestScore: hiscore.Load()[a.level],
+	}
+	a.acc = 0
+	a.prev = map[int]render.Cell{}
+}
+
+func (a *App) draw() {
+	f := render.Render(a.g, &a.ui, a.pal)
+	a.blit(f)
+}
+
+type pen struct {
+	x, y int
+	fg   int
+	bg   int
+	bold bool
+}
+
+func (a *App) blit(f *render.Frame) {
+	var buf []byte
+	const chunk = 8192
+	flush := func() {
+		if len(buf) > 0 {
+			a.term.Write(buf)
+			buf = buf[:0]
+		}
+	}
+	p := pen{x: -1, y: -1, fg: -1, bg: -1, bold: false}
+	prev := a.prev
+	if len(prev) == 0 {
+		buf = append(buf, "\x1b[2J\x1b[H"...)
+	}
+	tw, th := a.term.Size()
+	fw, fh := f.W, f.H
+	if tw > 0 && tw < fw {
+		fw = tw
+	}
+	if th > 0 && th < fh {
+		fh = th
+	}
+	for y := 0; y < fh; y++ {
+		for x := 0; x < fw; x++ {
+			c := f.C[y*f.W+x]
+			if old, ok := prev[y*f.W+x]; ok && old == c {
+				continue
+			}
+			if p.x != x || p.y != y {
+				buf = appendf(buf, "\x1b[%d;%dH", y+1, x+1)
+				p.x, p.y = x, y
+			}
+			fg := c.FG
+			if fg == 0 {
+				fg = 255
+			}
+			if fg != p.fg {
+				buf = appendf(buf, "\x1b[38;5;%dm", fg)
+				p.fg = fg
+			}
+			if c.BG != p.bg {
+				if c.BG == 0 {
+					buf = append(buf, "\x1b[49m"...)
+				} else {
+					buf = appendf(buf, "\x1b[48;5;%dm", c.BG)
+				}
+				p.bg = c.BG
+			}
+			if c.Bold != p.bold {
+				if c.Bold {
+					buf = append(buf, "\x1b[1m"...)
+				} else {
+					buf = append(buf, "\x1b[22m"...)
+				}
+				p.bold = c.Bold
+			}
+			if c.R == 0 {
+				buf = append(buf, ' ')
+			} else {
+				buf = append(buf, []byte(string(c.R))...)
+			}
+			p.x, p.y = x+1, y
+			if len(buf) > chunk {
+				flush()
+			}
+		}
+		p.x = 0
+	}
+	flush()
+	a.prev = make(map[int]render.Cell, f.W*f.H)
+	for i, c := range f.C {
+		a.prev[i] = c
+	}
+}
+
+func appendf(b []byte, format string, args ...any) []byte {
+	return fmt.Appendf(b, format, args...)
+}

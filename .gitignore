@@ -1,0 +1,6 @@
+# built binary
+tdef
+
+# editor/OS cruft
+.*.swp
+.DS_Store
