@@ -70,11 +70,14 @@ func parseLevelArgs(fs *flag.FlagSet, args []string) (*game.Map, string, *flag.F
 	mazeSeed := fs.Int64("maze", -1, "")
 	_ = fs.Parse(args)
 	if *mazeSeed >= 0 {
-		m, err := game.GenerateMap(*mazeSeed, 45, 13)
+		// -maze 0 means "random maze": resolve the seed here (and name the
+		// level after the real seed, so hiscores stay per-maze).
+		ms := pickSeed(*mazeSeed)
+		m, err := game.GenerateMap(ms, 45, 13)
 		if err != nil {
 			die("maze: %v", err)
 		}
-		return m, fmt.Sprintf("maze%d", *mazeSeed), fs
+		return m, fmt.Sprintf("maze%d", ms), fs
 	}
 	m, err := game.LoadLevel(*level)
 	if err != nil {
