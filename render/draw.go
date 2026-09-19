@@ -171,8 +171,20 @@ func Render(g *game.State, ui *UI, pal Colors) *Frame {
 		if ui.Selected == t.ID {
 			f.Set(x, y, Cell{R: t.Spec().Short, FG: pal.Bright, BG: c, Bold: true})
 		}
+	}
+	// Level pips in a second pass, left of the tower. Pips skip cells that
+	// already hold an entity glyph (tower, enemy, spawn/exit), so adjacent
+	// upgraded towers can't erase each other — previously the pip pass ran
+	// interleaved with the glyph pass and clobbered the left neighbor.
+	for _, t := range g.Towers {
+		x, y := l.center(t.Cell.X, t.Cell.Y)
+		c := pal.Tower[t.Kind]
 		for i := 1; i < t.Level; i++ {
-			f.Set(x-i, y, Cell{R: '▪', FG: pal.Bright, BG: c, Bold: true})
+			if px := x - i; px >= 0 {
+				if r := f.C[y*f.W+px].R; r == 0 || r == ' ' || r == '·' {
+					f.Set(px, y, Cell{R: '▪', FG: pal.Bright, BG: c, Bold: true})
+				}
+			}
 		}
 	}
 	for _, p := range g.Projectiles {

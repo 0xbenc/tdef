@@ -191,6 +191,57 @@ func TestTowerInfoFitsFrame(t *testing.T) {
 	}
 }
 
+// A tower's level pips are drawn to its LEFT, so an upgraded tower sitting
+// right of a neighbor used to overwrite the neighbor's glyph (the pip pass
+// and glyph pass were interleaved in build order). Pips must skip occupied
+// cells so both towers stay visible.
+func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var left, right game.Vec
+	found := false
+	for y := 0; y < m.H && !found; y++ {
+		for x := 0; x+1 < m.W && !found; x++ {
+			if m.At(game.Vec{X: x, Y: y}) == game.CellGrass && m.At(game.Vec{X: x + 1, Y: y}) == game.CellGrass {
+				left, right = game.Vec{X: x, Y: y}, game.Vec{X: x + 1, Y: y}
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no adjacent grass cells found")
+	}
+	g := game.NewState(m)
+	g.Gold = 1000
+	// Build the LEFT tower first: with the old interleaved pass the right
+	// tower's pip (drawn later) clobbered its glyph.
+	tl := g.Build(left, game.TowerGunner)
+	tr := g.Build(right, game.TowerCannon)
+	if tl == nil || tr == nil {
+		t.Fatal("build failed")
+	}
+	for i := 0; i < 2; i++ { // left -> level 3 (2 pips)
+		g.Upgrade(tl)
+	}
+	g.Upgrade(tr) // right -> level 2 (1 pip, aimed at the left tower's cell)
+	l := ComputeLayout(m.W, m.H, 1)
+	f := Render(g, &UI{Selected: NoSelection, Scale: 1}, Palette())
+	lx, ly := l.center(left.X, left.Y)
+	rx, ry := l.center(right.X, right.Y)
+	if got := f.C[ly*f.W+lx].R; got != 'G' {
+		t.Errorf("left tower glyph = %q, want 'G' (clobbered by right tower's pip?)", got)
+	}
+	if got := f.C[ry*f.W+rx].R; got != 'C' {
+		t.Errorf("right tower glyph = %q, want 'C'", got)
+	}
+	// The left tower's own pips still render on the empty cells to its left.
+	if got := f.C[ly*f.W+lx-1].R; got != '▪' {
+		t.Errorf("left tower pip = %q, want '▪'", got)
+	}
+}
+
 func TestANSIPositionsRowsWithCUP(t *testing.T) {
 	f := &Frame{W: 4, H: 3, C: make([]Cell, 12)}
 	f.Put(0, 0, 'a', 220, 0)
