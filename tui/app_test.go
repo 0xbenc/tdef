@@ -45,6 +45,50 @@ func TestRestartClearsSelection(t *testing.T) {
 	}
 }
 
+// A mouse click must not place a tower once the game is over: the overlay
+// covers the field, and handle() used to route mouse events before the
+// status check.
+func TestMouseIgnoredAfterGameOver(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cell game.Vec
+	found := false
+	for y := 0; y < m.H && !found; y++ {
+		for x := 0; x < m.W && !found; x++ {
+			if m.At(game.Vec{X: x, Y: y}) == game.CellGrass {
+				cell = game.Vec{X: x, Y: y}
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no grass cell")
+	}
+	ox, oy, sc := 0, 0, 0
+	newApp := func() *App {
+		a := &App{g: game.NewState(m), layout: render.ComputeLayout(m.W, m.H, 1), ui: freshUI(m, 1)}
+		ox, oy, sc = a.mapBounds()
+		a.ui.Placing = game.TowerGunner
+		a.ui.PlacingOn = true
+		return a
+	}
+	dead := newApp()
+	dead.g.Status = game.StatusDefeat
+	dead.handle(Event{Mouse: true, Btn: 0, Press: true, X: ox + cell.X*sc, Y: oy + cell.Y*sc})
+	if len(dead.g.Towers) != 0 {
+		t.Fatalf("mouse built %d tower(s) after game over", len(dead.g.Towers))
+	}
+	// Sanity: the same click mid-game builds.
+	live := newApp()
+	live.g.Gold = 100
+	live.handle(Event{Mouse: true, Btn: 0, Press: true, X: ox + cell.X*sc, Y: oy + cell.Y*sc})
+	if len(live.g.Towers) != 1 {
+		t.Fatal("mouse did not build mid-game")
+	}
+}
+
 func TestCycleSpeedWraps(t *testing.T) {
 	a := &App{ui: render.UI{Speed: 1}}
 	// three ups wrap 1->2->4->1, three downs wrap 1->4->2->1

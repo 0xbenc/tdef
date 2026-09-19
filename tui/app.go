@@ -190,7 +190,12 @@ func (a *App) drainInput() {
 
 func (a *App) handle(e Event) {
 	if e.Mouse {
-		a.handleMouse(e)
+		// Ignore all mouse input once the game is over: a click on the
+		// grass behind the DEFEAT/VICTORY overlay would otherwise build a
+		// tower (CanBuild/Build never check Status).
+		if a.g.Status == game.StatusRunning {
+			a.handleMouse(e)
+		}
 		return
 	}
 	if e.Key == KeyCtrlC {
