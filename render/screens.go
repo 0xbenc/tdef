@@ -153,24 +153,49 @@ func titleBest(scores map[string]int) (int, string) {
 
 const titleTagline = "— terminal tower defense —"
 
-// The title screen is one long, fully scripted loop — a pure function of the
-// frame counter (30fps), titleCycle frames ≈ 56s:
+// The title screen is a fully scripted state machine, a pure function of
+// (frame, boot): `frame` is the 30fps tick counter (ambient timing) and
+// `boot` is frames since this visit to the title started.
 //
-//	0-1500    a three-wave battle in the demo box. Wave 1 (minions) plays at
-//	         true 1× gameplay speed so the opening feels like the real game;
-//	         waves 2-3 are compressed to keep the loop short. The towers hold
-//	         wave 1, mostly hold wave 2 (one runner leaks), then wave 3's
-//	         boss — the slowest thing on the board — breaks through the exit.
-//	         Tower fire-rates match the real 1× RoT.
-//	1500-1513 the exit overloads and glows
-//	1513-1585 a static whiteout, then a shockwave from the exit eats the
-//	         whole frame; the burn trail cools into a glowing grid
-//	1585-1605 a beat of the cooling grid
-//	1605-1615 a black beat with a single ignition spark
-//	1615-1685 reboot: the border draws itself, the logo drops in row by row,
-//	         the tagline types on, the demo returns to standby — frame
-//	         titleCycle-1 is exactly frame 0, so the loop is seamless.
+//	boot 0-124   the cinematic: an ignition pulse on black, a light pen
+//	             traces the TDEF slab out of digital noise (each letter
+//	             flashing white as it locks in), the slab ignites, the
+//	             subtitle decodes, then the frame chrome and an empty
+//	             battlefield fade in
+//	boot 124+    the attract loop, every titleAttractCycle frames:
+//
+//	15s idle     standby: full UI, empty battlefield — no towers, no
+//	             enemies, no BATTLE/WAVE text
+//	then 120f    "┐BATTLE┌" and "┐WAVE 1┌" decode on, the five towers
+//	             power up left to right
+//	then 1685f   the battle script: wave 1 (minions) plays at true 1×
+//	             gameplay speed; waves 2-3 are compressed. The towers hold
+//	             wave 1, mostly hold wave 2 (one runner leaks), then wave 3's
+//	             boss — the slowest thing on the board — breaks through the
+//	             exit and the exit overloads (1500-1513); a static whiteout
+//	             then a shockwave from the exit eats the whole frame
+//	             (1513-1585); the burn trail cools into a glowing grid
+//	             (1585-1605); a black beat with one ignition spark
+//	             (1605-1615); the screen reboots (1615-1684) back to the
+//	             standby state, where the 15s clock starts again.
 const (
+	titleBootPulseEnd   = 15  // 0-14:     ignition point + rings on black
+	titleBootFlashStart = 76  // 15-75:    the light pen traces the TDEF slab
+	titleBootFlashEnd   = 80  // 76-79:    the slab ignites white
+	titleBootSubEnd     = 94  // 80-93:    the subtitle decodes
+	titleBootLen        = 124 // 94-123:   the rest of the UI fades in
+)
+
+const (
+	// The attract loop: 15s of inactivity, then the battle sequence.
+	titleIdleWait     = 450 // 15s at 30fps
+	titleBattleLead   = 120 // BATTLE/WAVE text + tower power-up before wave 1
+	titleBattleLen    = titleBattleLead + titleCycle
+	titleAttractCycle = titleIdleWait + titleBattleLen
+)
+
+const (
+	// The battle + reset script, in internal frames 0-1684.
 	titleOverloadEnd = 1513
 	titleBlastEnd    = 1585
 	titleGridEnd     = 1605
@@ -234,19 +259,117 @@ var demoWaves = []demoEnemy{
 // demoX maps a 0..1 path position to a column: 2 (spawn) .. w-3 (exit).
 func demoX(w int, u float64) int { return 2 + int(u*float64(w-5)) }
 
+// ---------------------------------------------------------------- boot
+
+// bootStep is one slab cell in the light pen's serpentine path: each
+// letter's filled cells, row by row, direction alternating.
+type bootStep struct {
+	relX int // column relative to the slab's left edge
+	row  int // slab row 0-4
+	li   int // letter index (color)
+}
+
+var titlePenPath = buildBootPenPath()
+
+func buildBootPenPath() []bootStep {
+	var p []bootStep
+	for li, letters := range titleLetters {
+		for row := 0; row < 5; row++ {
+			lo, hi, step := 0, 9, 1
+			if row%2 == 1 {
+				lo, hi, step = 8, -1, -1
+			}
+			for ci := lo; ci != hi; ci += step {
+				if letters[row][ci] == 'X' {
+					p = append(p, bootStep{relX: li*11 + ci, row: row, li: li})
+				}
+			}
+		}
+	}
+	return p
+}
+
+// titleLetterDone[li] is the frame at which the pen finishes letter li.
+var titleLetterDone = func() [4]int {
+	var d [4]int
+	n := 0
+	for li, letters := range titleLetters {
+		for row := range letters {
+			for _, ch := range letters[row] {
+				if ch == 'X' {
+					d[li] = titleBootPulseEnd + (n+1)/2
+					n++
+				}
+			}
+		}
+	}
+	return d
+}()
+
+// bootPenIndex is the pen's path position at boot frame t: two cells per
+// frame from titleBootPulseEnd.
+func bootPenIndex(t int) int {
+	pos := 2 * (t - titleBootPulseEnd)
+	if pos > len(titlePenPath)-1 {
+		pos = len(titlePenPath) - 1
+	}
+	return pos
+}
+
 // RenderTitle draws the animated title screen. It is a pure function of
-// (w, h, frame, scores): the same frame index always yields the same frame,
+// (w, h, frame, boot, scores): the same inputs always yield the same frame,
 // so the animation is deterministic and unit-testable. `frame` is the 30fps
-// tick counter.
-func RenderTitle(w, h, frame int, scores map[string]int, pal Colors) *Frame {
-	fr := frame % titleCycle
+// tick counter and `boot` is the number of frames this title visit has been
+// up (any keypress leaves the title, so idle time == boot time).
+func RenderTitle(w, h, frame, boot int, scores map[string]int, pal Colors) *Frame {
+	if boot < titleBootLen {
+		f := blankFrame(w, h)
+		drawTitleBoot(f, w, h, boot, frame, pal)
+		return f
+	}
+	t := boot - titleBootLen
+	local := t % titleAttractCycle
+	if local < titleIdleWait {
+		return drawTitleStandby(w, h, frame, scores, pal)
+	}
+	return drawTitleBattleSeq(w, h, frame, local-titleIdleWait, scores, pal)
+}
+
+// titleFooter is the title screen's footer group.
+func titleFooter() []fseg {
+	return []fseg{
+		{key: "[enter]", text: " start", blink: true},
+		{key: "q", text: " quit"},
+	}
+}
+
+// drawTitleStandby is the idle title: full UI, empty battlefield — no
+// towers, no enemies, no BATTLE/WAVE text, just the path and its ambient
+// energy packet.
+func drawTitleStandby(w, h, frame int, scores map[string]int, pal Colors) *Frame {
+	lit := (frame/15)%2 == 0
+	f := screenBox(w, h, "TDEF", titleFooter(), lit, pal)
+	off := screenOff(h)
+	drawTitleChrome(f, w, h, off, scores, pal)
+	drawTitleEmptyBox(f, w, h, off, frame, pal)
+	return f
+}
+
+// drawTitleBattleSeq runs the attract battle: the BATTLE/WAVE text decodes
+// on, the towers power up, then the battle script plays (internal frame
+// fr = local - titleBattleLead).
+func drawTitleBattleSeq(w, h, frame, local int, scores map[string]int, pal Colors) *Frame {
+	if local < titleBattleLead {
+		f := drawTitleStandby(w, h, frame, scores, pal)
+		off := screenOff(h)
+		drawTitleBattleIntro(f, w, h, off, local, pal)
+		return f
+	}
+	fr := local - titleBattleLead
 	switch {
 	case fr < titleOverloadEnd:
-		lit := (fr/15)%2 == 0
-		f := screenBox(w, h, "TDEF", []fseg{
-			{key: "[enter]", text: " start", blink: true},
-			{key: "q", text: " quit"},
-		}, lit, pal)
+		lit := (frame/15)%2 == 0
+		f := screenBox(w, h, "TDEF", titleFooter(), lit, pal)
 		drawTitleBattle(f, w, h, fr, scores, pal)
 		if fr >= titleOverloadEnd-13 {
 			drawTitleOverload(f, w, h, fr-titleOverloadEnd+13, pal)
@@ -268,8 +391,281 @@ func RenderTitle(w, h, frame int, scores map[string]int, pal Colors) *Frame {
 		return f
 	default:
 		f := blankFrame(w, h)
-		drawTitleReboot(f, w, h, fr-titleVoidEnd, scores, pal)
+		drawTitleReboot(f, w, h, frame, fr-titleVoidEnd, scores, pal)
 		return f
+	}
+}
+
+// drawTitleBootIntro reveals "┐BATTLE┌" and "┐WAVE 1┌" character by
+// character (each flashing white on arrival), then powers the five towers
+// up left to right. At local == titleBattleLead the box matches battle
+// frame 0 exactly.
+func drawTitleBattleIntro(f *Frame, w, h, off, t int, pal Colors) {
+	y0 := off + demoTop
+	if y0 <= 0 || y0+demoRows >= h-1 {
+		return
+	}
+	seg := func(x int, s string, fg, at int) {
+		if t < at {
+			return
+		}
+		for i, ch := range []rune(s) {
+			ct := at + 2*i
+			if t < ct {
+				break
+			}
+			c := Cell{R: ch}
+			switch {
+			case ch == '┐' || ch == '┌':
+				c = Cell{R: ch, FG: pal.Path}
+			case t-ct < 2:
+				c = Cell{R: ch, FG: 255, Bold: true}
+			default:
+				c = Cell{R: ch, FG: fg, Bold: true}
+			}
+			f.Set(x+i, y0, c)
+		}
+	}
+	seg(2, "┐BATTLE┌", pal.Dim, 0)
+	seg(11, "┐WAVE 1┌", pal.Bright, 16)
+
+	const towerStart, towerDur = 32, 17
+	// Left to right along the path.
+	order := [5]int{0, 3, 1, 2, 4}
+	for i, k := range order {
+		tw := demoTowers[k]
+		tt := t - towerStart - i*towerDur
+		if tt < 0 {
+			continue
+		}
+		tx := demoX(w, tw.u)
+		ty := off + demoLower
+		if tw.above {
+			ty = off + demoUpper
+		}
+		g := game.TowerSpecs[tw.kind].Short
+		switch {
+		case tt < 8: // charge
+			f.Set(tx, ty, Cell{R: '·', FG: 234 + tt})
+		case tt < 10: // ignition
+			f.Set(tx, ty, Cell{R: '█', FG: 255, Bold: true})
+		default:
+			f.Set(tx, ty, Cell{R: g, FG: pal.Tower[tw.kind], Bold: true})
+		}
+	}
+}
+
+// ---------------------------------------------------------------- boot (cont.)
+
+// drawTitleBoot plays the one-shot cinematic: pulse, pen, flash, subtitle,
+// UI fade-in.
+func drawTitleBoot(f *Frame, w, h, t, frame int, pal Colors) {
+	off := screenOff(h)
+	switch {
+	case t < titleBootPulseEnd:
+		drawBootPulse(f, w, h, t)
+	case t < titleBootFlashStart:
+		drawBootPen(f, w, off, t)
+	case t < titleBootFlashEnd:
+		drawBootFlash(f, w, h, off)
+	case t < titleBootSubEnd:
+		drawTitleLogo(f, w, off, -1)
+		drawBootSubtitle(f, w, off, t-titleBootFlashEnd)
+	default:
+		drawTitleLogo(f, w, off, -1)
+		drawTitleTagline(f, w, off, len(titleTagline))
+		drawBootUI(f, w, h, off, t-titleBootSubEnd, frame, pal)
+	}
+}
+
+// drawBootPulse is the ignition: a single point, then expanding rings.
+func drawBootPulse(f *Frame, w, h, t int) {
+	cx, cy := w/2, h/2
+	if t < 4 {
+		return
+	}
+	f.Set(cx, cy, Cell{R: '·', FG: 231})
+	for k := 0; k < 3; k++ {
+		age := t - 6 - 3*k
+		if age < 0 {
+			continue
+		}
+		r := float64(age) * 2.4
+		c := 231
+		if age >= 3 {
+			c = 117
+		}
+		if age >= 6 {
+			c = 51
+		}
+		dx := int(r/0.55) + 2
+		for x := cx - dx; x <= cx+dx; x++ {
+			if x < 0 || x >= w {
+				continue
+			}
+			for y := cy - int(r) - 2; y <= cy+int(r)+2; y++ {
+				if y < 0 || y >= h {
+					continue
+				}
+				d := math.Hypot(float64(x-cx)*0.55, float64(y-cy))
+				if math.Abs(d-r) < 0.7 {
+					f.Set(x, y, Cell{R: '·', FG: c})
+				}
+			}
+		}
+	}
+}
+
+// drawBootPen traces the TDEF slab with a light pen: the tip is white, the
+// recent trail cools white -> cyan -> the letter color, and untraced cells
+// flicker as faint digital noise.
+func drawBootPen(f *Frame, w, off, t int) {
+	const logoW = 42
+	x0 := (w - logoW) / 2
+	if x0 < 0 {
+		x0 = 0
+	}
+	bevel := [5]rune{'█', '▓', '▓', '▓', '▒'}
+	pos := bootPenIndex(t)
+	for i, s := range titlePenPath {
+		x, y := x0+s.relX, off+2+s.row
+		if i <= pos {
+			fg, bold := titleColors[s.li], false
+			switch d := pos - i; {
+			case d <= 2:
+				fg, bold = 255, true
+			case d <= 8:
+				fg = 51
+			}
+			f.Set(x, y, Cell{R: bevel[s.row], FG: fg, Bold: bold})
+		} else {
+			n := titleHash(x, y, t/4)
+			r := '·'
+			if n%7 == 0 {
+				r = '+'
+			}
+			if n%11 == 0 {
+				r = '░'
+			}
+			f.Set(x, y, Cell{R: r, FG: 236 + n%3})
+		}
+	}
+	// Each letter flashes white for three frames as the pen completes it.
+	for li := 0; li < 4; li++ {
+		if t >= titleLetterDone[li] && t < titleLetterDone[li]+3 {
+			for _, s := range titlePenPath {
+				if s.li == li {
+					f.Set(x0+s.relX, off+2+s.row, Cell{R: bevel[s.row], FG: 255, Bold: true})
+				}
+			}
+		}
+	}
+	// The pen tip.
+	s := titlePenPath[pos]
+	f.Set(x0+s.relX, off+2+s.row, Cell{R: '█', FG: 255, Bold: true})
+}
+
+// drawBootFlash is the ignition: the whole frame glows as a dim grid while
+// the slab burns white.
+func drawBootFlash(f *Frame, w, h, off int) {
+	for y := 0; y < h; y += 2 {
+		for x := 0; x < w; x += 3 {
+			f.Set(x, y, Cell{R: '·', FG: 234})
+		}
+	}
+	const logoW = 42
+	x0 := (w - logoW) / 2
+	if x0 < 0 {
+		x0 = 0
+	}
+	bevel := [5]rune{'█', '▓', '▓', '▓', '▒'}
+	for _, s := range titlePenPath {
+		f.Set(x0+s.relX, off+2+s.row, Cell{R: bevel[s.row], FG: 255, Bold: true})
+	}
+}
+
+// drawBootSubtitle decodes the tagline left to right (two chars per frame)
+// with a white head and a caret.
+func drawBootSubtitle(f *Frame, w, off, t int) {
+	r := []rune(titleTagline)
+	n := 2 * t
+	if n > len(r) {
+		n = len(r)
+	}
+	x0 := (w - len(r)) / 2
+	y := off + 8
+	for i, ch := range r {
+		switch {
+		case i < n-1:
+			f.Set(x0+i, y, Cell{R: ch, FG: 245})
+		case i == n-1:
+			f.Set(x0+i, y, Cell{R: ch, FG: 255, Bold: true})
+		default:
+			g := '·'
+			if titleHash(x0+i, y, t)%9 == 0 {
+				g = '+'
+			}
+			f.Set(x0+i, y, Cell{R: g, FG: 236})
+		}
+	}
+	if n < len(r) {
+		f.Set(x0+n, y, Cell{R: '█', FG: 251})
+	}
+}
+
+// drawBootUI fades the rest of the chrome in over three staggered groups:
+// frame border + footer, then the empty battlefield, then roster + best.
+// Each group ghosts for eight frames, then lands on the exact standby form.
+func drawBootUI(f *Frame, w, h, off, t, frame int, pal Colors) {
+	lit := (frame/15)%2 == 0
+	// Group A: the outer frame.
+	if t >= 0 {
+		if t < 8 {
+			drawRoundedBox(f, 0, 0, w, h, 234)
+			embedSegment(f, 0, 2, "TDEF", '┐', '┌', 234, 244, true)
+			ghostRun(f, (w-44)/2, (w+44)/2-1, h-1)
+		} else {
+			drawRoundedBox(f, 0, 0, w, h, pal.Path)
+			embedSegment(f, 0, 2, "TDEF", '┐', '┌', pal.Path, pal.Bright, true)
+			drawFooter(f, titleFooter(), lit, pal)
+		}
+	}
+	// Group B: the empty battlefield.
+	if t >= 6 {
+		y0 := off + demoTop
+		if y0 > 0 && y0+demoRows < h-1 {
+			if t < 14 {
+				drawRoundedBox(f, 1, y0, w-2, demoRows, 234)
+				pathY := off + demoPath
+				for x := 2; x <= w-3; x++ {
+					f.Set(x, pathY, Cell{R: '·', FG: 234})
+				}
+			} else {
+				drawTitleEmptyBox(f, w, h, off, frame, pal)
+			}
+		}
+	}
+	// Group C: roster + best.
+	if t >= 12 {
+		if t < 20 {
+			ghostRun(f, (w-41)/2, (w+41)/2-1, off+14)
+			ghostRun(f, (w-41)/2, (w+41)/2-1, off+15)
+			ghostRun(f, (w-30)/2, (w+30)/2-1, off+17)
+		} else {
+			drawTitleRoster(f, w, h, off, pal)
+			drawTitleBest(f, w, off, nil)
+		}
+	}
+}
+
+// ghostRun lays a dim run of dots (a "pre-render" ghost of a text row).
+// The footer call targets the bottom border row on purpose.
+func ghostRun(f *Frame, x0, x1, y int) {
+	for x := x0; x <= x1; x++ {
+		if x < 0 || x >= f.W {
+			continue
+		}
+		f.Set(x, y, Cell{R: '·', FG: 234})
 	}
 }
 
@@ -286,11 +682,21 @@ func blankFrame(w, h int) *Frame {
 // best line) on top of a screenBox frame at battle frame fr.
 func drawTitleBattle(f *Frame, w, h, fr int, scores map[string]int, pal Colors) {
 	off := screenOff(h)
+	drawTitleChrome(f, w, h, off, scores, pal)
+	drawTitleDemo(f, w, h, off, fr, pal)
+}
+
+// drawTitleChrome is the title content shared by the standby and the
+// battle: logo, tagline, roster, best line.
+func drawTitleChrome(f *Frame, w, h, off int, scores map[string]int, pal Colors) {
 	drawTitleLogo(f, w, off, -1)
 	drawTitleTagline(f, w, off, len(titleTagline))
-	drawTitleDemo(f, w, h, off, fr, pal)
 	drawTitleRoster(f, w, h, off, pal)
-	if yy := off + 17; yy > 0 && yy < h-1 {
+	drawTitleBest(f, w, off, scores)
+}
+
+func drawTitleBest(f *Frame, w, off int, scores map[string]int) {
+	if yy := off + 17; yy > 0 && yy < f.H-1 {
 		best, name := titleBest(scores)
 		if best > 0 {
 			centerPut(f, yy, fmt.Sprintf("★ best %d — %s", best, name), 220, false)
@@ -298,6 +704,29 @@ func drawTitleBattle(f *Frame, w, h, fr int, scores map[string]int, pal Colors) 
 			centerPut(f, yy, " no scores yet ", 238, false)
 		}
 	}
+}
+
+// drawTitleEmptyBox is the idle battlefield: the sub-box and its path with
+// the ambient energy packet — no BATTLE/WAVE text, no towers, no enemies.
+func drawTitleEmptyBox(f *Frame, w, h, off, frame int, pal Colors) {
+	y0 := off + demoTop
+	if y0 <= 0 || y0+demoRows >= h-1 {
+		return
+	}
+	drawRoundedBox(f, 1, y0, w-2, demoRows, pal.Path)
+	pathY := off + demoPath
+	L := w - 5
+	for x := 2; x <= w-3; x++ {
+		f.Set(x, pathY, Cell{R: '·', FG: 240})
+	}
+	pk := frame % L
+	for i := -1; i <= 1; i++ {
+		if px := 2 + (pk+i+L)%L; px >= 2 && px <= w-3 {
+			f.Set(px, pathY, Cell{R: '·', FG: 251})
+		}
+	}
+	f.Set(2, pathY, Cell{R: '▶', FG: 46, Bold: true})
+	f.Set(w-3, pathY, Cell{R: 'E', FG: 196, Bold: true})
 }
 
 // drawTitleLogo draws the beveled TDEF slab (band rows 2-6) and its drop
@@ -767,9 +1196,9 @@ func perimCell(i, w, h int) (int, int, rune) {
 // drawTitleReboot draws the screen back into existence: the explosion's
 // grid fades, the border draws itself from the top-left, the logo drops in
 // row by row (each row flashing white on arrival), the tagline types on,
-// and the demo returns to standby. At the last frame the screen is exactly
-// the battle's frame 0, closing the loop seamlessly.
-func drawTitleReboot(f *Frame, w, h, t int, scores map[string]int, pal Colors) {
+// and the empty battlefield returns. At the last frame the screen is
+// exactly the standby, so the attract loop is seamless.
+func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Colors) {
 	const dur = titleCycle - titleVoidEnd
 	p := float64(t) / float64(dur)
 	off := screenOff(h)
@@ -810,24 +1239,16 @@ func drawTitleReboot(f *Frame, w, h, t int, scores map[string]int, pal Colors) {
 	}
 	drawTitleTagline(f, w, off, int((p-0.58)/0.14*float64(len(titleTagline))))
 	if p >= 0.72 {
-		drawTitleDemo(f, w, h, off, 0, pal)
+		drawTitleEmptyBox(f, w, h, off, frame, pal)
 	}
 	if p >= 0.80 {
 		drawTitleRoster(f, w, h, off, pal)
 	}
 	if p >= 0.88 {
-		best, name := titleBest(scores)
-		if best > 0 {
-			centerPut(f, off+17, fmt.Sprintf("★ best %d — %s", best, name), 220, false)
-		} else {
-			centerPut(f, off+17, " no scores yet ", 238, false)
-		}
+		drawTitleBest(f, w, off, scores)
 	}
 	if p >= 0.95 {
-		drawFooter(f, []fseg{
-			{key: "[enter]", text: " start"},
-			{key: "q", text: " quit"},
-		}, true, pal)
+		drawFooter(f, titleFooter(), (frame/15)%2 == 0, pal)
 	}
 }
 

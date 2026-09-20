@@ -8,11 +8,25 @@ import (
 	"tdef/game"
 )
 
+// titleAt renders the title at attract-battle internal frame fr
+// (0 = the BATTLE text starts to decode), with the visit clock set so the
+// boot cinematic and idle wait are already behind us.
+func titleAt(w, h, frame, fr int, scores map[string]int) *Frame {
+	boot := titleBootLen + titleIdleWait + titleBattleLead + fr
+	return RenderTitle(w, h, frame, boot, scores, Palette())
+}
+
+// titleStandbyAt renders the idle title (full UI, empty battlefield) at
+// visit-boot frame boot.
+func titleStandbyAt(w, h, frame, boot int, scores map[string]int) *Frame {
+	return RenderTitle(w, h, frame, titleBootLen+boot, scores, Palette())
+}
+
 func TestRenderTitleDeterministic(t *testing.T) {
 	scores := map[string]int{"winding": 100, "hub": 90}
 	for _, fr := range []int{0, 1, 7, 30, 90, 1234} {
-		a := RenderTitle(62, 19, fr, scores, Palette())
-		b := RenderTitle(62, 19, fr, scores, Palette())
+		a := RenderTitle(62, 19, fr, fr, scores, Palette())
+		b := RenderTitle(62, 19, fr, fr, scores, Palette())
 		if !reflect.DeepEqual(a, b) {
 			t.Fatalf("title frame %d is not deterministic", fr)
 		}
@@ -21,11 +35,11 @@ func TestRenderTitleDeterministic(t *testing.T) {
 
 // The title must animate: distinct frames must differ somewhere.
 func TestRenderTitleAnimates(t *testing.T) {
-	if reflect.DeepEqual(RenderTitle(80, 24, 0, nil, Palette()), RenderTitle(80, 24, 4, nil, Palette())) {
-		t.Fatal("title does not animate (frames 0 and 4 identical)")
+	if reflect.DeepEqual(RenderTitle(80, 24, 0, 0, nil, Palette()), RenderTitle(80, 24, 4, 4, nil, Palette())) {
+		t.Fatal("title boot does not animate (boot 0 and 4 identical)")
 	}
-	if reflect.DeepEqual(RenderTitle(80, 24, 0, nil, Palette()), RenderTitle(80, 24, 15, nil, Palette())) {
-		t.Fatal("title blink period not moving (frames 0 and 15 identical)")
+	if a, b := titleStandbyAt(80, 24, 0, 10, nil), titleStandbyAt(80, 24, 15, 25, nil); reflect.DeepEqual(a, b) {
+		t.Fatal("title standby does not animate (blink/packet frozen)")
 	}
 }
 
@@ -35,35 +49,48 @@ func TestRenderTitleFitsFrame(t *testing.T) {
 	scores := map[string]int{"maze12345678901234567890": 9999999999}
 	for _, size := range [][2]int{{62, 19}, {80, 24}, {120, 40}} {
 		w, h := size[0], size[1]
-		// Cover one full title loop; the frame chrome only has to be
-		// intact during the battle, the effect segments own the whole
-		// frame.
-		for fr := 0; fr < titleCycle; fr++ {
-			f := RenderTitle(w, h, fr, scores, Palette())
-			if f.W != w || f.H != h {
-				t.Fatalf("w=%d h=%d frame %d: size = %dx%d", w, h, fr, f.W, f.H)
-			}
-			if fr < titleOverloadEnd && (rowWidth(f, 0) != w || rowWidth(f, h-1) != w) {
-				t.Fatalf("w=%d h=%d frame %d: border row clipped", w, h, fr)
+		// Boot cinematic: size check only, it owns the whole frame.
+		for boot := 0; boot < titleBootLen; boot++ {
+			if f := RenderTitle(w, h, boot, boot, scores, Palette()); f.W != w || f.H != h {
+				t.Fatalf("w=%d h=%d boot %d: size = %dx%d", w, h, boot, f.W, f.H)
 			}
 		}
-		text := RenderTitle(w, h, 0, scores, Palette()).Text()
+		// One full attract cycle: the chrome only has to be intact in the
+		// standby, the intro and the battle; the effect segments own the
+		// frame.
+		for local := 0; local < titleAttractCycle; local++ {
+			f := RenderTitle(w, h, local, titleBootLen+local, scores, Palette())
+			if f.W != w || f.H != h {
+				t.Fatalf("w=%d h=%d local %d: size = %dx%d", w, h, local, f.W, f.H)
+			}
+			if local < titleIdleWait+titleBattleLead+titleOverloadEnd &&
+				(rowWidth(f, 0) != w || rowWidth(f, h-1) != w) {
+				t.Fatalf("w=%d h=%d local %d: border row clipped", w, h, local)
+			}
+		}
+		text := titleStandbyAt(w, h, 100, 100, scores).Text()
 		for _, want := range []string{
 			"█████████", // logo top bevel (T)
 			"▒▒▒",       // logo bottom bevel
 			"— terminal tower defense —",
-			"▶", "E", // demo spawn / exit
+			"▶", "E", // battlefield spawn / exit
 			" towers ", " enemies ",
 			"★ best 9999999999", // best line (longest plausible key)
 			"[enter] start", "q quit",
 		} {
 			if !strings.Contains(text, want) {
-				t.Errorf("w=%d h=%d: title missing %q:\n%s", w, h, want, text)
+				t.Errorf("w=%d h=%d: standby missing %q:\n%s", w, h, want, text)
+			}
+		}
+		// The standby battlefield must be empty: no BATTLE/WAVE text.
+		for _, absent := range []string{"BATTLE", "WAVE"} {
+			if strings.Contains(text, absent) {
+				t.Errorf("w=%d h=%d: standby shows %q:\n%s", w, h, absent, text)
 			}
 		}
 	}
 	// Empty hiscore shows the placeholder.
-	if !strings.Contains(RenderTitle(62, 19, 0, nil, Palette()).Text(), "no scores yet") {
+	if !strings.Contains(titleStandbyAt(62, 19, 0, 10, nil).Text(), "no scores yet") {
 		t.Error("title missing 'no scores yet' for an empty table")
 	}
 }
@@ -239,12 +266,12 @@ func TestScreenBoxFraming(t *testing.T) {
 	names := []string{"canyon", "garden"}
 	v := LSState{Levels: names, Cursor: 0, Seed: "42"}
 	screens := map[string]*Frame{
-		"title":     RenderTitle(62, 19, 0, nil, Palette()),
+		"title":     titleStandbyAt(62, 19, 0, 0, nil),
 		"menu":      RenderMenu(62, 19, 0, Palette()),
 		"help":      RenderHelp(62, 19, Palette()),
 		"hiscores":  RenderHighScores(62, 19, 0, map[string]int{"a": 1}, Palette()),
 		"select":    RenderLevelSelect(v, 62, 19, Palette()),
-		"title-80x": RenderTitle(80, 24, 0, nil, Palette()),
+		"title-80x": titleStandbyAt(80, 24, 0, 0, nil),
 	}
 	for name, f := range screens {
 		w, h := f.W, f.H
@@ -274,10 +301,11 @@ func TestScreenBoxFraming(t *testing.T) {
 }
 
 // The scripted loop must show each phase's signature content in order.
+// (fr is the internal battle frame; the intro frames precede it.)
 func TestTitlePhases(t *testing.T) {
 	scores := map[string]int{"ada": 42}
 	text := func(fr int) string {
-		return RenderTitle(100, 30, fr, scores, Palette()).Text()
+		return titleAt(100, 30, 0, fr, scores).Text()
 	}
 	cases := []struct {
 		fr   int
@@ -288,11 +316,11 @@ func TestTitlePhases(t *testing.T) {
 		{600, []string{"WAVE 2"}, nil},
 		{1100, []string{"WAVE 3", "B"}, nil},
 		{1505, []string{"BREACH"}, nil},
-		{1514, nil, []string{"BATTLE", "TDEF", "·"}}, // static whiteout
-		{1525, []string{"█"}, []string{"BATTLE"}},    // shockwave front
-		{1590, nil, []string{"BATTLE", "█"}},         // cooled grid only
-		{1640, nil, []string{"BATTLE", "[enter]"}},   // mid-reboot
-		{1675, []string{"BATTLE", "WAVE 1"}, []string{"[enter] start"}},
+		{1514, nil, []string{"BATTLE", "TDEF", "·"}},                  // static whiteout
+		{1525, []string{"█"}, []string{"BATTLE"}},                     // shockwave front
+		{1590, nil, []string{"BATTLE", "█"}},                          // cooled grid only
+		{1640, nil, []string{"BATTLE", "[enter]"}},                    // mid-reboot
+		{1683, []string{"[enter] start"}, []string{"BATTLE", "WAVE"}}, // rebooted into the standby
 	}
 	for _, c := range cases {
 		got := text(c.fr)
@@ -308,7 +336,7 @@ func TestTitlePhases(t *testing.T) {
 		}
 	}
 	// The void is exactly one ignition spark at the center.
-	f := RenderTitle(100, 30, 1608, scores, Palette())
+	f := titleAt(100, 30, 0, 1608, scores)
 	n := 0
 	for _, c := range f.C {
 		if c.R != ' ' && c.R != 0 {
@@ -323,14 +351,15 @@ func TestTitlePhases(t *testing.T) {
 	}
 }
 
-// Frame titleCycle-1 must be exactly frame 0 so the loop is seamless.
-func TestTitleLoopSeam(t *testing.T) {
+// The reboot's last frame must be exactly the standby, so the attract loop
+// (standby -> battle -> shockwave -> reboot -> standby) is seamless.
+func TestTitleRebootSeam(t *testing.T) {
 	for _, size := range [][2]int{{62, 19}, {100, 30}, {137, 45}} {
 		scores := map[string]int{"ada": 42}
-		a := RenderTitle(size[0], size[1], titleCycle-1, scores, Palette())
-		b := RenderTitle(size[0], size[1], 0, scores, Palette())
+		a := titleAt(size[0], size[1], 37, titleCycle-1, scores)
+		b := titleStandbyAt(size[0], size[1], 37, titleIdleWait-1, scores)
 		if !reflect.DeepEqual(a, b) {
-			t.Errorf("w=%d h=%d: frame titleCycle-1 differs from frame 0", size[0], size[1])
+			t.Errorf("w=%d h=%d: reboot end differs from the standby", size[0], size[1])
 		}
 	}
 }
@@ -338,7 +367,7 @@ func TestTitleLoopSeam(t *testing.T) {
 // The last blast frame must be a full-frame grid: nothing but grid points
 // (·) on the 3x2 lattice and spaces.
 func TestTitleBlastCoversFrame(t *testing.T) {
-	f := RenderTitle(100, 30, titleBlastEnd-1, nil, Palette())
+	f := titleAt(100, 30, 0, titleBlastEnd-1, nil)
 	for y := 0; y < f.H; y++ {
 		for x := 0; x < f.W; x++ {
 			c := f.C[y*f.W+x]
@@ -359,7 +388,7 @@ func TestTitleBattleScript(t *testing.T) {
 	off := screenOff(h)
 	pathY, topY, botY := off+demoPath, off+demoUpper, off+demoLower
 	pathRow := func(fr int) string {
-		f := RenderTitle(w, h, fr, nil, Palette())
+		f := titleAt(w, h, 0, fr, nil)
 		var b strings.Builder
 		for x := 0; x < w; x++ {
 			b.WriteRune(f.C[pathY*w+x].R)
@@ -371,7 +400,7 @@ func TestTitleBattleScript(t *testing.T) {
 	}
 	// The first minion dies at frame 370 and bursts at its death point
 	// (u = 340/445, inside the mortar's range).
-	f371 := RenderTitle(w, h, 371, nil, Palette())
+	f371 := titleAt(w, h, 0, 371, nil)
 	if r := f371.C[pathY*w+demoX(w, 340.0/445)].R; r != '*' {
 		t.Errorf("frame 371: death burst rune = %q, want *", r)
 	}
@@ -382,12 +411,12 @@ func TestTitleBattleScript(t *testing.T) {
 		t.Errorf("frame 1120: want boss + 3 wave-3 minions, got %q", got)
 	}
 	// The leaked runner (exits at frame 855) flashes the exit marker red.
-	fl := RenderTitle(w, h, 856, nil, Palette())
+	fl := titleAt(w, h, 0, 856, nil)
 	if c := fl.C[pathY*w+(w-3)]; c.BG != 167 {
 		t.Errorf("frame 856: exit cell BG = %d, want 167 (leak flash)", c.BG)
 	}
 	// Tower rows: sniper and mortar above, gunner/cannon/frost below.
-	f0 := RenderTitle(w, h, 0, nil, Palette())
+	f0 := titleAt(w, h, 0, 0, nil)
 	for _, tw := range demoTowers {
 		tx := demoX(w, tw.u)
 		row := topY
@@ -403,7 +432,7 @@ func TestTitleBattleScript(t *testing.T) {
 
 // The title's prompt lives in the bottom border (btop style) and blinks.
 func TestTitlePromptInBottomBorder(t *testing.T) {
-	f := RenderTitle(62, 19, 0, nil, Palette())
+	f := titleStandbyAt(62, 19, 0, 0, nil)
 	bottom := f.Text()
 	lines := strings.Split(bottom, "\n")
 	row := lines[18]
@@ -411,6 +440,146 @@ func TestTitlePromptInBottomBorder(t *testing.T) {
 		if !strings.Contains(row, want) {
 			t.Errorf("bottom border row missing %q: %q", want, row)
 		}
+	}
+}
+
+// The boot cinematic plays in order — black, ignition, light-pen trace,
+// white flash, subtitle decode, chrome fade-in — and its last frame is
+// exactly the standby.
+func TestTitleBootSequence(t *testing.T) {
+	const w, h = 100, 30
+	off := screenOff(h)
+	x0 := (w - 42) / 2
+	// Boot 0: pure black.
+	f0 := RenderTitle(w, h, 0, 0, nil, Palette())
+	for i, c := range f0.C {
+		if c.R != ' ' && c.R != 0 {
+			t.Fatalf("boot 0 cell %d = %q, want black", i, c.R)
+		}
+	}
+	// Boot 6: the ignition point at the center.
+	f6 := RenderTitle(w, h, 6, 6, nil, Palette())
+	if c := f6.C[(h/2)*w+w/2]; c.R != '·' || c.FG != 231 {
+		t.Fatalf("boot 6 ignition = %+v, want ·/231 at center", c)
+	}
+	// Boot 40: the pen is mid-trace — the tip is white, untraced cells
+	// flicker as dim noise.
+	f40 := RenderTitle(w, h, 40, 40, nil, Palette())
+	tip := titlePenPath[bootPenIndex(40)]
+	if c := f40.C[(off+2+tip.row)*w+x0+tip.relX]; c.R != '█' || c.FG != 255 || !c.Bold {
+		t.Fatalf("boot 40 pen tip = %+v, want █/255/bold", c)
+	}
+	ghost := titlePenPath[len(titlePenPath)-1]
+	if c := f40.C[(off+2+ghost.row)*w+x0+ghost.relX]; (c.R != '·' && c.R != '+' && c.R != '░') || c.FG < 236 || c.FG > 238 {
+		t.Fatalf("boot 40 untraced cell = %+v, want dim noise", c)
+	}
+	// Boot 78: the whole slab burns white.
+	f78 := RenderTitle(w, h, 78, 78, nil, Palette())
+	for _, s := range titlePenPath {
+		if c := f78.C[(off+2+s.row)*w+x0+s.relX]; c.FG != 255 || !c.Bold {
+			t.Fatalf("boot 78 slab cell (letter %d) = %+v, want white", s.li, c)
+		}
+	}
+	// Boot 85: the subtitle decodes left to right with a caret.
+	f85 := RenderTitle(w, h, 85, 85, nil, Palette())
+	tag := []rune(titleTagline)
+	sx, sy := (w-len(tag))/2, off+8
+	if c := f85.C[sy*w+sx+9]; c.FG != 255 || !c.Bold {
+		t.Fatalf("boot 85 subtitle head = %+v, want white bold", c)
+	}
+	if c := f85.C[sy*w+sx+10]; c.R != '█' || c.FG != 251 {
+		t.Fatalf("boot 85 caret = %+v, want █/251", c)
+	}
+	// Boot 96: the chrome fades in — border and footer still ghosted.
+	// (x=20 is clear of the embedded TDEF title.)
+	f96 := RenderTitle(w, h, 96, 96, nil, Palette())
+	if c := f96.C[0*w+20]; c.FG != 234 {
+		t.Fatalf("boot 96 border = %+v, want ghost 234", c)
+	}
+	if c := f96.C[(h-1)*w+40]; c.R != '·' || c.FG != 234 {
+		t.Fatalf("boot 96 footer = %+v, want ghost", c)
+	}
+	// Boot 110: border and battlefield have landed, roster still ghosting.
+	f110 := RenderTitle(w, h, 110, 110, nil, Palette())
+	if c := f110.C[0*w+20]; c.FG != 240 {
+		t.Fatalf("boot 110 border = %+v, want 240", c)
+	}
+	if c := f110.C[(off+14)*w+40]; c.R != '·' || c.FG != 234 {
+		t.Fatalf("boot 110 roster = %+v, want ghost", c)
+	}
+	// Boot 123 (the last boot frame) == the standby at the same clock.
+	if a, b := RenderTitle(w, h, 123, 123, nil, Palette()), RenderTitle(w, h, 123, 124, nil, Palette()); !reflect.DeepEqual(a, b) {
+		t.Fatal("the boot's last frame differs from the standby")
+	}
+}
+
+// The standby battlefield is empty: no BATTLE/WAVE text, no towers, no
+// enemies — just the path, its ambient packet, and the spawn/exit markers.
+func TestTitleStandbyEmpty(t *testing.T) {
+	const w, h = 100, 30
+	off := screenOff(h)
+	f := titleStandbyAt(w, h, 0, 100, nil)
+	text := f.Text()
+	for _, absent := range []string{"BATTLE", "WAVE"} {
+		if strings.Contains(text, absent) {
+			t.Errorf("standby shows %q:\n%s", absent, text)
+		}
+	}
+	for _, tw := range demoTowers {
+		tx := demoX(w, tw.u)
+		ty := off + demoLower
+		if tw.above {
+			ty = off + demoUpper
+		}
+		if c := f.C[ty*w+tx]; c.R != ' ' {
+			t.Errorf("standby tower cell %d,%d = %q, want empty", tx, ty, c.R)
+		}
+	}
+	var b strings.Builder
+	for x := 0; x < w; x++ {
+		b.WriteRune(f.C[(off+demoPath)*w+x].R)
+	}
+	path := b.String()
+	for _, r := range []string{"o", "r", "B"} {
+		if strings.Contains(path, r) {
+			t.Errorf("standby path has an enemy %q: %s", r, path)
+		}
+	}
+	if !strings.Contains(path, "▶") || !strings.Contains(path, "E") {
+		t.Errorf("standby path missing spawn/exit: %s", path)
+	}
+}
+
+// The attract loop: 15s (450 frames) of standby, then the BATTLE/WAVE
+// decode and tower power-up, then the battle script; it repeats.
+func TestTitleIdleGate(t *testing.T) {
+	const w, h = 100, 30
+	text := func(boot int) string {
+		return RenderTitle(w, h, boot, boot, nil, Palette()).Text()
+	}
+	// The frame before the 15s deadline: still idle.
+	if got := text(titleBootLen + titleIdleWait - 1); strings.Contains(got, "BATTLE") {
+		t.Fatalf("1 frame before the idle deadline the battle text is up:\n%s", got)
+	}
+	// 1s past: BATTLE has decoded, WAVE 1 is still arriving.
+	at := titleBootLen + titleIdleWait + 20
+	if got := text(at); !strings.Contains(got, "BATTLE") || strings.Contains(got, "WAVE 1") {
+		t.Fatalf("1s past the deadline want BATTLE up and WAVE 1 decoding:\n%s", text(at))
+	}
+	// 2s past: WAVE 1 is on.
+	at += 20
+	if got := text(at); !strings.Contains(got, "WAVE 1") {
+		t.Fatalf("2s past the deadline want WAVE 1:\n%s", text(at))
+	}
+	// Past the lead-in: the wave-1 script is running.
+	at = titleBootLen + titleIdleWait + titleBattleLead + 200
+	if got := text(at); !strings.Contains(got, "WAVE 1") {
+		t.Fatalf("battle frame 200: want the WAVE 1 label:\n%s", text(at))
+	}
+	// One full attract cycle later the battle is running again.
+	at = titleBootLen + titleAttractCycle + titleIdleWait + titleBattleLead + 600
+	if got := text(at); !strings.Contains(got, "WAVE 2") {
+		t.Fatalf("second cycle, battle frame 600: want WAVE 2:\n%s", text(at))
 	}
 }
 

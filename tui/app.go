@@ -39,6 +39,7 @@ type App struct {
 	// Pre-game screen state.
 	screen       Screen
 	frameNo      int // 30fps tick counter; animates the title
+	titleBootAt  int // frameNo when this title visit started (boot clock)
 	menuSel      int // main-menu selection
 	hsTop        int // high-score scroll offset
 	ls           render.LSState
@@ -246,7 +247,7 @@ func (a *App) drawScreen() {
 	w, h := a.termSize()
 	switch a.screen {
 	case ScreenTitle:
-		a.blit(render.RenderTitle(w, h, a.frameNo, a.scores, a.pal))
+		a.blit(render.RenderTitle(w, h, a.frameNo, a.frameNo-a.titleBootAt, a.scores, a.pal))
 	case ScreenMenu:
 		a.blit(render.RenderMenu(w, h, a.menuSel, a.pal))
 	case ScreenHelp:
@@ -636,6 +637,8 @@ func (a *App) toScreen(s Screen) {
 	a.screen = s
 	a.prev = nil
 	switch s {
+	case ScreenTitle:
+		a.titleBootAt = a.frameNo // replay the boot cinematic
 	case ScreenHiscores:
 		a.scores = hiscore.Load()
 		a.hsTop = 0
