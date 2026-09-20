@@ -1,10 +1,9 @@
 package tui
 
 import (
-	"errors"
-	"io"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 	"unicode/utf8"
 )
@@ -38,6 +37,12 @@ type reader struct {
 	ch    chan Event
 	state int
 	buf   []byte
+
+	// escT implements the bare-ESC fallback. A pty does not support read
+	// deadlines (SetReadDeadline returns an error), so a lone 0x1b cannot
+	// be resolved by the reader unblocking; a timer resolves it instead.
+	mu   sync.Mutex
+	escT *time.Timer
 }
 
 // escWindow is how long to wait after a bare ESC for a following '[' or 'O'
@@ -50,32 +55,37 @@ func startReader(in *os.File, ch chan Event) {
 	go func() {
 		tmp := make([]byte, 512)
 		for {
-			// State 1 means we saw an ESC and are waiting to see whether a
-			// CSI/SS3 sequence follows. Arm a deadline so a bare Escape is
-			// not swallowed until the next unrelated keypress.
-			if r.state == 1 {
-				_ = in.SetReadDeadline(time.Now().Add(escWindow))
-			} else {
-				_ = in.SetReadDeadline(time.Time{})
-			}
 			n, err := in.Read(tmp)
-			if err == io.EOF {
-				return
-			}
 			if n > 0 {
 				r.feed(tmp[:n])
-				continue
-			}
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				r.state = 0
-				r.emit(Event{Key: KeyEscape})
-				continue
 			}
 			if err != nil {
 				return
 			}
 		}
 	}()
+}
+
+// armEsc arms the bare-ESC fallback: if no further byte arrives within
+// escWindow, the pending 0x1b is treated as the Escape key.
+func (r *reader) armEsc() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.escT != nil {
+		r.escT.Stop()
+	}
+	r.escT = time.AfterFunc(escWindow, func() {
+		r.mu.Lock()
+		fire := r.state == 1 && r.escT != nil
+		if fire {
+			r.state = 0
+			r.escT = nil
+		}
+		r.mu.Unlock()
+		if fire {
+			r.emit(Event{Key: KeyEscape})
+		}
+	})
 }
 
 func (r *reader) feed(data []byte) {
@@ -85,101 +95,119 @@ func (r *reader) feed(data []byte) {
 }
 
 func (r *reader) step(data []byte) []byte {
-	if len(data) == 0 {
-		return data
-	}
-	switch r.state {
-	case 0:
+	for len(data) > 0 {
+		r.mu.Lock()
+		st := r.state
+		r.mu.Unlock()
 		b := data[0]
 		data = data[1:]
-		switch {
-		case b == 0x1b:
-			r.state = 1
-			if len(data) == 0 {
-				return data
+		switch st {
+		case 0:
+			switch {
+			case b == 0x1b:
+				r.setState(1)
+				if len(data) == 0 {
+					// Bare ESC: the reader is blocked in Read and the fd
+					// may not support deadlines, so a timer resolves it.
+					r.armEsc()
+					return data
+				}
+			case b == '\r' || b == '\n':
+				r.emit(Event{Key: KeyEnter})
+			case b == 0x7f || b == 0x08:
+				r.emit(Event{Key: KeyBackspace})
+			case b == 0x03:
+				r.emit(Event{Key: KeyCtrlC})
+			case b == 0x0c:
+				r.emit(Event{Key: KeyCtrlL})
+			case b < 0x20:
+			default:
+				if b < 0x80 {
+					r.emit(Event{Rune: rune(b)})
+				} else {
+					r.buf = append(r.buf, b)
+					_, size := utf8.DecodeRune(r.buf)
+					for size > len(r.buf) && len(data) > 0 {
+						r.buf = append(r.buf, data[0])
+						data = data[1:]
+						_, size = utf8.DecodeRune(r.buf)
+					}
+					if size <= len(r.buf) {
+						_, sz := utf8.DecodeRune(r.buf)
+						r.emit(Event{Rune: rune(r.buf[0])})
+						r.buf = r.buf[sz:]
+					}
+				}
 			}
-			return r.step(data)
-		case b == '\r' || b == '\n':
-			r.emit(Event{Key: KeyEnter})
-		case b == 0x7f || b == 0x08:
-			r.emit(Event{Key: KeyBackspace})
-		case b == 0x03:
-			r.emit(Event{Key: KeyCtrlC})
-		case b == 0x0c:
-			r.emit(Event{Key: KeyCtrlL})
-		case b < 0x20:
-		default:
-			if b < 0x80 {
+		case 1:
+			// A byte arrived for the pending bare ESC. Settle it under the
+			// lock so the fallback timer cannot fire between the check and
+			// the transition.
+			r.mu.Lock()
+			if r.state != 1 {
+				// The fallback already emitted KeyEscape; parse this byte
+				// fresh in state 0.
+				r.mu.Unlock()
+				data = append([]byte{b}, data...)
+				continue
+			}
+			if r.escT != nil {
+				r.escT.Stop()
+				r.escT = nil
+			}
+			if b == 0x1b {
+				// A second ESC settles the first one: a CSI sequence never
+				// starts with ESC, so the pending 0x1b was the Escape key.
+				// Emit it and keep watching — this byte may start the next
+				// sequence (a fast Escape+arrow must not lose the arrow).
+				r.mu.Unlock()
+				r.emit(Event{Key: KeyEscape})
+				if len(data) == 0 {
+					r.armEsc()
+					return data
+				}
+				continue
+			}
+			switch b {
+			case '[', 'O':
+				r.state = 2
+				r.buf = r.buf[:0]
+				r.mu.Unlock()
+			default:
+				r.state = 0
+				r.mu.Unlock()
 				r.emit(Event{Rune: rune(b)})
-			} else {
-				r.buf = append(r.buf, b)
-				_, size := utf8.DecodeRune(r.buf)
-				for size > len(r.buf) && len(data) > 0 {
-					r.buf = append(r.buf, data[0])
-					data = data[1:]
-					_, size = utf8.DecodeRune(r.buf)
-				}
-				if size <= len(r.buf) {
-					_, sz := utf8.DecodeRune(r.buf)
-					r.emit(Event{Rune: rune(r.buf[0])})
-					r.buf = r.buf[sz:]
+			}
+		case 2:
+			if b == '<' {
+				r.setState(3)
+				r.buf = r.buf[:0]
+				continue
+			}
+			r.buf = append(r.buf, b)
+			if k, done := r.interpret(); done {
+				r.setState(0)
+				if k != KeyNone {
+					r.emit(Event{Key: k})
 				}
 			}
-		}
-	case 1:
-		if len(data) == 0 {
-			return data
-		}
-		b := data[0]
-		data = data[1:]
-		if b == 0x1b {
-			r.state = 0
-			r.emit(Event{Key: KeyEscape})
-			return r.step(data)
-		}
-		if b == '[' || b == 'O' {
-			r.state = 2
-			r.buf = r.buf[:0]
-			return r.step(data)
-		}
-		r.state = 0
-		r.emit(Event{Rune: rune(b)})
-		return r.step(data)
-	case 2:
-		if len(data) == 0 {
-			return data
-		}
-		b := data[0]
-		data = data[1:]
-		if b == '<' {
-			r.state = 3
-			r.buf = r.buf[:0]
-			return r.step(data)
-		}
-		r.buf = append(r.buf, b)
-		if k, done := r.interpret(); done {
-			r.state = 0
-			if k != KeyNone {
-				r.emit(Event{Key: k})
+		case 3:
+			if b == 'M' || b == 'm' {
+				r.setState(0)
+				r.mouse(b == 'M')
+				continue
 			}
-			return r.step(data)
+			r.buf = append(r.buf, b)
 		}
-		return r.step(data)
-	case 3:
-		if len(data) == 0 {
-			return data
-		}
-		b := data[0]
-		data = data[1:]
-		if b == 'M' || b == 'm' {
-			r.state = 0
-			r.mouse(b == 'M')
-			return r.step(data)
-		}
-		r.buf = append(r.buf, b)
-		return r.step(data)
 	}
 	return data
+}
+
+// setState stores a parser state under the lock.
+func (r *reader) setState(s int) {
+	r.mu.Lock()
+	r.state = s
+	r.mu.Unlock()
 }
 
 func (r *reader) interpret() (Key, bool) {

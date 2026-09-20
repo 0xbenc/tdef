@@ -70,6 +70,22 @@ func TestDoubleEscape(t *testing.T) {
 	}
 }
 
+// Escape released less than escWindow before an arrow: the second ESC
+// settles the first as KeyEscape and the arrow still parses. A naive
+// "second ESC ends the sequence" rule would eat the "[B" as runes.
+func TestEscapeThenArrowInWindow(t *testing.T) {
+	evs := feed(t, []byte{0x1b, 0x1b, '[', 'B'}, 2)
+	if len(evs) != 2 {
+		t.Fatalf("got %d events, want 2: %+v", len(evs), evs)
+	}
+	if evs[0].Key != KeyEscape {
+		t.Errorf("ev0 = %v, want KeyEscape", evs[0])
+	}
+	if evs[1].Key != KeyDown {
+		t.Errorf("ev1 = %v, want KeyDown", evs[1])
+	}
+}
+
 // A real terminal sends a single 0x1b byte for the Escape key. The reader
 // must emit KeyEscape after escWindow without any further input.
 func TestBareEscapeTimeout(t *testing.T) {
@@ -123,6 +139,42 @@ func TestBareEscapeDoesNotSwallowNextKey(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("'x' swallowed after bare ESC")
+	}
+}
+
+// A bare ESC resolved by the fallback must not eat the next keypress: an
+// arrow burst typed after the timeout parses as a plain arrow. This is the
+// sequence that broke on a real pty, where read deadlines do not fire.
+func TestBareEscapeThenArrow(t *testing.T) {
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pr.Close()
+	defer pw.Close()
+	ch := make(chan Event, 64)
+	startReader(pr, ch)
+	if _, err := pw.Write([]byte{0x1b}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case e := <-ch:
+		if e.Key != KeyEscape {
+			t.Fatalf("got %+v, want KeyEscape", e)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no KeyEscape emitted for bare ESC")
+	}
+	if _, err := pw.Write([]byte("\x1b[B")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case e := <-ch:
+		if e.Key != KeyDown {
+			t.Fatalf("got %+v, want KeyDown after bare ESC", e)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("arrow swallowed after bare ESC")
 	}
 }
 
