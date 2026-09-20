@@ -25,42 +25,8 @@ func TestComputeScale(t *testing.T) {
 	}
 }
 
-func TestComputeLayout(t *testing.T) {
-	l := ComputeLayout(45, 13, 2)
-	if l.Scale != 2 {
-		t.Errorf("Scale = %d, want 2", l.Scale)
-	}
-	// map is 45*2=90 wide; frame must be at least 92 (mapW+2) and >= FrameW(62)
-	if l.W < 92 {
-		t.Errorf("W = %d, want >= 92", l.W)
-	}
-	// height = HUDRows(2) + mapH(13*2=26) + 4 = 32
-	if l.H != 32 {
-		t.Errorf("H = %d, want 32", l.H)
-	}
-	// map origin: centered horizontally, below HUD
-	if l.Oy != 2 {
-		t.Errorf("Oy = %d, want 2", l.Oy)
-	}
-	// X/Y mapping
-	if got := l.X(10); got != l.Ox+20 {
-		t.Errorf("X(10) = %d, want %d", got, l.Ox+20)
-	}
-	if got := l.Y(5); got != l.Oy+10 {
-		t.Errorf("Y(5) = %d, want %d", got, l.Oy+10)
-	}
-	// menu top is the last 4 rows
-	if got := l.MenuTop(); got != l.H-4 {
-		t.Errorf("MenuTop() = %d, want %d", got, l.H-4)
-	}
-	// scale clamps to >=1
-	if c := ComputeLayout(45, 13, 0).Scale; c != 1 {
-		t.Errorf("clamp Scale = %d, want 1", c)
-	}
-}
-
 func TestDrawRing(t *testing.T) {
-	l := ComputeLayout(45, 13, 1)
+	l := GameLayout(45, 13, 62, 19)
 	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
 	fx := &game.Fx{Pos: game.Pos{X: 20, Y: 6}, TTL: 0.25, Max: 0.25, Ring: 2.0, Color: 203}
 	drawRing(f, l, fx)
@@ -123,7 +89,7 @@ func TestFormatTime(t *testing.T) {
 }
 
 func TestDrawGameOver(t *testing.T) {
-	l := ComputeLayout(45, 13, 1)
+	l := GameLayout(45, 13, 62, 19)
 	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
 	g := &game.State{
 		Status:     game.StatusVictory,
@@ -156,8 +122,8 @@ func TestUpgradePipsStyledLikeMenuSlot(t *testing.T) {
 	g.Upgrade(tw)
 	g.Upgrade(tw)
 	pal := Palette()
-	l := ComputeLayout(m.W, m.H, 1)
-	f := Render(g, &UI{Placing: game.TowerGunner, Selected: -1, Scale: 1}, pal)
+	l := GameLayout(m.W, m.H, 62, 19)
+	f := Render(g, &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}, pal, 62, 19)
 	x, y := l.center(v.X, v.Y)
 	want := Cell{R: '▪', FG: pal.Bright, BG: pal.Tower[game.TowerGunner], Bold: true}
 	for i := 1; i < 3; i++ {
@@ -226,8 +192,8 @@ func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
 		g.Upgrade(tl)
 	}
 	g.Upgrade(tr) // right -> level 2 (1 pip, aimed at the left tower's cell)
-	l := ComputeLayout(m.W, m.H, 1)
-	f := Render(g, &UI{Selected: NoSelection, Scale: 1}, Palette())
+	l := GameLayout(m.W, m.H, 62, 19)
+	f := Render(g, &UI{Selected: NoSelection, Level: "winding"}, Palette(), 62, 19)
 	lx, ly := l.center(left.X, left.Y)
 	rx, ry := l.center(right.X, right.Y)
 	if got := f.C[ly*f.W+lx].R; got != 'G' {
@@ -253,70 +219,29 @@ func rowWidth(f *Frame, y int) int {
 	return w
 }
 
-// The menu hint/help rows sit at the bottom of a frame that is exactly
-// FrameW wide at scale 1; anything longer is silently clipped.
-func TestMenuLinesFitFrame(t *testing.T) {
+// The footer rows (hint/help line and the bottom border with the embedded
+// tower info) must never exceed the frame width at the minimum terminal.
+func TestFooterLinesFitFrame(t *testing.T) {
 	m, err := game.LoadLevel("winding")
 	if err != nil {
 		t.Fatal(err)
 	}
-	l := ComputeLayout(m.W, m.H, 1)
-	g := &game.State{Map: m, Gold: 1000}
+	g := &game.State{Map: m, Gold: 1000, Status: game.StatusRunning}
+	tower := &game.Tower{Kind: game.TowerMortar, Level: 3, TargetMode: game.TargetStrongest}
+	g.Towers = []*game.Tower{tower}
 	check := func(ui *UI, rows ...int) {
-		f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
-		drawMenu(f, g, ui, Palette())
+		f := Render(g, ui, Palette(), 62, 19)
 		for _, y := range rows {
-			if w := rowWidth(f, y); w > FrameW {
-				t.Errorf("menu row %d is %d cols, want <= %d", y, w, FrameW)
+			if w := rowWidth(f, y); w > 62 {
+				t.Errorf("footer row %d is %d cols, want <= 62", y, w)
 			}
 		}
 	}
-	hintRow := l.H - 4 + 2
-	// compact hint
-	check(&UI{Placing: game.TowerGunner, Scale: 1}, hintRow)
-	// two help lines
-	check(&UI{Placing: game.TowerGunner, Help: true, Scale: 1}, hintRow, hintRow+1)
-}
-
-// Every HUD line combination must fit the 62-col frame at scale 1. The old
-// break line (theme + preview + countdown + bonus) exceeded it from wave 17
-// on, hiding the early-start bonus hint.
-func TestHUDLinesFitFrame(t *testing.T) {
-	m, err := game.LoadLevel("winding")
-	if err != nil {
-		t.Fatal(err)
-	}
-	l := ComputeLayout(m.W, m.H, 1)
-	check := func(g *game.State, ui *UI) {
-		f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
-		drawHUD(f, g, ui, Palette())
-		for y := 0; y < 2; y++ {
-			if w := rowWidth(f, y); w > FrameW {
-				t.Errorf("wave %d msg=%q paused=%v: HUD row %d is %d cols, want <= %d",
-					g.Wave, ui.Message, ui.Paused, y, w, FrameW)
-			}
-		}
-	}
-	msgs := []string{"", "wave 18 cleared +93g", "Faster ones are coming."}
-	for wave := 1; wave < game.MaxWaves; wave++ {
-		for _, paused := range []bool{false, true} {
-			for _, msg := range msgs {
-				// inter-wave break (telegraph or transient message)
-				g := &game.State{
-					Map: m, Status: game.StatusRunning, Wave: wave,
-					NextWaveAt: 9.5, Time: 5.0, WaveActive: false,
-					Gold: 9999, Lives: 15, Score: 999999,
-				}
-				check(g, &UI{Speed: 4, Paused: paused, Message: msg, Scale: 1})
-			}
-		}
-	}
-	// active wave, worst-case combo + leak message
-	g := &game.State{
-		Map: m, Status: game.StatusRunning, Wave: 20, WaveActive: true,
-		Combo: 123, Gold: 9999, Lives: 15, Score: 999999,
-	}
-	check(g, &UI{Speed: 4, Paused: true, Message: "leak! -6 lives", Scale: 1})
+	hintRow := 19 - 2
+	check(&UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}, hintRow, 19-1)
+	check(&UI{Placing: game.TowerGunner, Help: true, Selected: NoSelection, Level: "winding"}, hintRow, 19-1)
+	check(&UI{Placing: game.TowerGunner, Selected: 0, Level: "winding"}, hintRow, 19-1)
+	_ = tower
 }
 
 func TestGameLayoutCentering(t *testing.T) {
@@ -417,7 +342,7 @@ func TestHeaderSegmentsAt62(t *testing.T) {
 	}
 	ui := &UI{Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "winding"}
 	check := func(tw, th int, present, absent []string) {
-		f := RenderAt(g, ui, Palette(), tw, th)
+		f := Render(g, ui, Palette(), tw, th)
 		var b strings.Builder
 		for x := 0; x < f.W; x++ {
 			b.WriteRune(f.C[x].R)
@@ -437,7 +362,7 @@ func TestHeaderSegmentsAt62(t *testing.T) {
 	check(62, 19, []string{"tdef", "wave 5/20", "⛁"}, []string{"winding", "normal"})
 	// At 80 everything fits.
 	check(80, 24, []string{"tdef", "winding", "normal", "wave 5/20", "⛁"}, nil)
-	if f := RenderAt(g, ui, Palette(), 62, 19); f.C[0].R != '╭' || f.C[f.W-1].R != '╮' {
+	if f := Render(g, ui, Palette(), 62, 19); f.C[0].R != '╭' || f.C[f.W-1].R != '╮' {
 		t.Errorf("top border corners missing: %q %q", f.C[0].R, f.C[f.W-1].R)
 	}
 }
@@ -459,7 +384,7 @@ func TestHeaderNoOverflow(t *testing.T) {
 					Gold: 9999, Lives: 15, Score: 999999,
 				}
 				ui := &UI{Speed: 4, Paused: paused, Message: msg, Level: "winding"}
-				f := RenderAt(g, ui, Palette(), tw, 24)
+				f := Render(g, ui, Palette(), tw, 24)
 				if w := rowWidth(f, 0); w != tw {
 					t.Errorf("wave-active off paused=%v msg=%q: header row %d cols, want %d", paused, msg, w, tw)
 				}
@@ -468,7 +393,7 @@ func TestHeaderNoOverflow(t *testing.T) {
 				}
 				g.WaveActive = true
 				g.Combo = 123
-				f = RenderAt(g, ui, Palette(), tw, 24)
+				f = Render(g, ui, Palette(), tw, 24)
 				if w := rowWidth(f, 0); w != tw {
 					t.Errorf("wave-active paused=%v msg=%q: header row %d cols, want %d", paused, msg, w, tw)
 				}
@@ -480,14 +405,14 @@ func TestHeaderNoOverflow(t *testing.T) {
 	}
 }
 
-func TestRenderAtSmoke(t *testing.T) {
+func TestRenderSmoke(t *testing.T) {
 	m, err := game.LoadLevel("winding")
 	if err != nil {
 		t.Fatal(err)
 	}
 	g := game.NewState(m)
 	ui := &UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "winding"}
-	f := RenderAt(g, ui, Palette(), 80, 24)
+	f := Render(g, ui, Palette(), 80, 24)
 	if f.W != 80 || f.H != 24 {
 		t.Fatalf("frame = %dx%d, want 80x24", f.W, f.H)
 	}

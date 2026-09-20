@@ -22,7 +22,6 @@ type UI struct {
 	Paused    bool
 	Help      bool
 	Message   string
-	Scale     int // playfield scale (1-4), computed once at boot
 
 	Level string // level name for the header, e.g. "winding" or "maze1234"
 
@@ -31,8 +30,7 @@ type UI struct {
 }
 
 const (
-	HUDRows = 2
-	FrameW  = 62
+	FrameW = 62 // minimum frame width at scale 1
 
 	// Chrome budget of the terminal-sized in-game frame: rows 0-1 on top
 	// (header segments embedded in the top border, message row) and rows
@@ -85,19 +83,6 @@ func ComputeScale(mW, mH, tw, th int) int {
 		s = 4
 	}
 	return s
-}
-
-func ComputeLayout(mW, mH, scale int) Layout {
-	if scale < 1 {
-		scale = 1
-	}
-	mapW, mapH := mW*scale, mH*scale
-	fw := FrameW
-	if mapW+2 > fw {
-		fw = mapW + 2
-	}
-	fh := HUDRows + mapH + 4
-	return Layout{Ox: (fw - mapW) / 2, Oy: HUDRows, Scale: scale, W: fw, H: fh}
 }
 
 // GameLayout is the frame layout for a tw×th terminal at the largest
@@ -170,109 +155,6 @@ func (l Layout) block(f *Frame, mx, my int, c Cell) {
 			f.Set(l.X(mx)+dx, l.Y(my)+dy, c)
 		}
 	}
-}
-
-func Render(g *game.State, ui *UI, pal Colors) *Frame {
-	l := ComputeLayout(g.Map.W, g.Map.H, ui.Scale)
-	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
-	drawMapPreview(f, g.Map, pal, l)
-	drawRange(f, g, ui, pal, l)
-	for _, t := range g.Towers {
-		x, y := l.center(t.Cell.X, t.Cell.Y)
-		c := pal.Tower[t.Kind]
-		f.Put(x, y, t.Spec().Short, c, 0)
-		if ui.Selected == t.ID {
-			f.Set(x, y, Cell{R: t.Spec().Short, FG: pal.Bright, BG: c, Bold: true})
-		}
-	}
-	// Level pips in a second pass, left of the tower. Pips skip cells that
-	// already hold an entity glyph (tower, enemy, spawn/exit), so adjacent
-	// upgraded towers can't erase each other — previously the pip pass ran
-	// interleaved with the glyph pass and clobbered the left neighbor.
-	for _, t := range g.Towers {
-		x, y := l.center(t.Cell.X, t.Cell.Y)
-		c := pal.Tower[t.Kind]
-		for i := 1; i < t.Level; i++ {
-			if px := x - i; px >= 0 {
-				if r := f.C[y*f.W+px].R; r == 0 || r == ' ' || r == '·' {
-					f.Set(px, y, Cell{R: '▪', FG: pal.Bright, BG: c, Bold: true})
-				}
-			}
-		}
-	}
-	for _, p := range g.Projectiles {
-		f.Put(l.FX(p.Pos.X), l.FY(p.Pos.Y), '+', pal.Beam[p.Kind], 0)
-	}
-	for _, bm := range g.Beams {
-		for i := 1; i < len(bm.From); i++ {
-			drawLine(f, l.FX(bm.From[i-1].X), l.FY(bm.From[i-1].Y), l.FX(bm.From[i].X), l.FY(bm.From[i].Y), pal.Beam[bm.Kind])
-		}
-	}
-	for _, e := range g.Enemies {
-		x, y := l.FX(e.Pos.X), l.FY(e.Pos.Y)
-		if x < 0 || y < 0 || x >= f.W || y >= f.H {
-			continue
-		}
-		hp := e.HP / e.MaxHP
-		fg := pal.Enemy[e.Kind]
-		if hp < 0.34 {
-			fg = 196
-		} else if hp < 0.67 {
-			fg = 214
-		}
-		bold := e.Kind == game.EnemyBoss
-		if e.HitTTL > g.Time {
-			fg = 231 // hit flash: brief white
-			bold = true
-		}
-		f.Set(x, y, Cell{R: game.EnemySpecs[e.Kind].Short, FG: fg, Bold: bold})
-		// Skip the bar when it would land on the HUD rows above the map.
-		if hp < 1 && y-1 >= l.Oy {
-			drawHPBar(f, x, y-1, hp)
-		}
-	}
-	for _, fx := range g.Fx {
-		if fx.Ring > 0 {
-			drawRing(f, l, fx)
-			continue
-		}
-		x, y := l.FX(fx.Pos.X), l.FY(fx.Pos.Y)
-		if x >= 0 && y >= 0 && x < f.W && y < f.H {
-			f.Put(x, y, fx.R, fx.Color, 0)
-		}
-	}
-	if g.LeakFlash > 0 {
-		ex, ey := l.center(g.Map.Exit.X, g.Map.Exit.Y)
-		f.Set(ex, ey, Cell{R: 'E', FG: 231, BG: 196, Bold: true})
-	}
-	if ui.PlacingOn {
-		c := 196
-		if g.CanBuild(ui.Cursor, ui.Placing) {
-			c = 46
-		}
-		cx, cy := l.center(ui.Cursor.X, ui.Cursor.Y)
-		f.Set(cx, cy, Cell{R: game.TowerSpecs[ui.Placing].Short, FG: c, Bold: true})
-	} else if ui.Selected < 0 {
-		x, y := l.X(ui.Cursor.X), l.Y(ui.Cursor.Y)
-		if x >= 0 && y >= 0 && x < f.W && y < f.H {
-			cc := f.C[y*f.W+x]
-			// Ground glyphs (grass/wall space, path dot) get the cursor
-			// marker; entity glyphs (towers, enemies, spawn/exit) just bold.
-			if cc.R == 0 || cc.R == ' ' || cc.R == '·' {
-				cc.R = '◻'
-				cc.FG = pal.Dim
-			} else {
-				cc.Bold = true
-			}
-			f.Set(x, y, cc)
-		}
-	}
-	drawHUD(f, g, ui, pal)
-	drawMenu(f, g, ui, pal)
-	if g.Status != game.StatusRunning {
-		drawGameOver(f, g, ui, pal)
-	}
-	return f
 }
 
 func drawRange(f *Frame, g *game.State, ui *UI, pal Colors, l Layout) {
@@ -372,107 +254,11 @@ func drawRing(f *Frame, l Layout, fx *game.Fx) {
 	}
 }
 
-// drawHUD renders the two top rows. Both must stay within FrameW (62) at
-// scale 1 — the break line used to exceed it from wave 17 on (long theme +
-// preview + countdown). TestHUDLinesFitFrame pins the worst cases.
-func drawHUD(f *Frame, g *game.State, ui *UI, pal Colors) {
-	pause := ""
-	if ui.Paused {
-		pause = " ⏸ "
-	}
-	combo := ""
-	if g.Combo >= 5 {
-		combo = fmt.Sprintf("  ⚡%d", g.Combo)
-	}
-	inBreak := g.Status == game.StatusRunning && !g.WaveActive && g.Wave < game.MaxWaves
-	// A telegraph during the break takes the whole top line (so it isn't
-	// truncated); the wave indicator moves to the stat line.
-	telegraph := inBreak && ui.Message != ""
-	line0 := " tdef "
-	line1 := ""
-	switch {
-	case g.Status == game.StatusRunning && g.WaveActive:
-		line0 += fmt.Sprintf("Wave %d/%d%s", g.Wave, game.MaxWaves, combo)
-	case inBreak && !telegraph:
-		nw := g.Wave + 1
-		in := int(g.NextWaveAt-g.Time) + 1
-		if in < 0 {
-			in = 0
-		}
-		bonus := game.EarlyBonus(g.Wave)
-		line0 += fmt.Sprintf("next wave %d (%s) in %ds [n +%dg]", nw, game.WaveTheme(nw), in, bonus)
-		if ui.Message == "" {
-			// Composition preview on the stat row; a transient message
-			// (e.g. "wave 18 cleared +93g") takes its place instead.
-			line1 = fmt.Sprintf(" →%d: %s", nw, game.WavePreview(nw))
-		}
-	}
-	if telegraph {
-		line0 = "  " + ui.Message
-		nw := g.Wave + 1
-		line1 = fmt.Sprintf(" →%d %s: %s", nw, game.WaveTheme(nw), game.WavePreview(nw))
-	}
-	line0 += pause
-	if ui.Message != "" && !inBreak {
-		line0 += "  " + ui.Message
-	} else if ui.Message != "" && inBreak && !telegraph {
-		line1 = "  " + ui.Message
-	}
-	line1 += fmt.Sprintf("   ⛁ %d  ♥ %d  ★ %d  x%d", g.Gold, g.Lives, g.Score, ui.Speed)
-	putString(f, 0, 0, line0, pal.Bright, 0, true)
-	putString(f, 0, 1, line1, pal.Gold, 0, false)
-}
-
 type MenuSlot struct {
 	Kind game.TowerKind
 	X    int
 	Y    int
 	W    int // rendered label width ("k Name cost")
-}
-
-var MenuSlots = []MenuSlot{
-	{Kind: game.TowerGunner, X: 1, Y: 0}, {Kind: game.TowerCannon, X: 14, Y: 0}, {Kind: game.TowerFrost, X: 28, Y: 0}, {Kind: game.TowerSniper, X: 40, Y: 0},
-	{Kind: game.TowerTesla, X: 1, Y: 1}, {Kind: game.TowerMortar, X: 14, Y: 1}, {Kind: game.TowerFlak, X: 28, Y: 1},
-}
-
-func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
-	menuTop := f.H - 4
-	for _, slot := range MenuSlots {
-		k := slot.Kind
-		spec := game.TowerSpecs[k]
-		afford := g.Gold >= spec.Cost[0]
-		c := pal.Tower[k]
-		if !afford {
-			c = pal.Dim
-		}
-		y := menuTop + slot.Y
-		label := fmt.Sprintf("%d %s %d", k+1, spec.Name, spec.Cost[0])
-		if ui.PlacingOn && ui.Placing == k {
-			for i := 0; i < len(label); i++ {
-				f.Set(slot.X+i, y, Cell{R: rune(label[i]), FG: pal.Bright, BG: c, Bold: true})
-			}
-		} else {
-			putString(f, slot.X, y, label, c, 0, false)
-		}
-	}
-	y := menuTop + 2
-	// Every line here must fit FrameW (62) at scale 1 — TestMenuLinesFitFrame.
-	if ui.Help {
-		putString(f, 0, y, " move: arrows/wasd  place: enter/click  select: click tower", pal.Dim, 0, false)
-		y++
-		putString(f, 0, y, " u up · x sell · t target · n wave (early=bonus) · p pause · f speed", pal.Dim, 0, false)
-	} else {
-		putString(f, 0, y, " enter place · u up · x sell · t target · n wave · p pause · q", pal.Dim, 0, false)
-	}
-	// With help on, both hint rows are taken, so the selected-tower info
-	// line can't render (it would land off-frame at the bottom).
-	if !ui.Help && ui.Selected >= 0 {
-		if t := g.Tower(ui.Selected); t != nil {
-			y++
-			info := towerInfo(t, g.UpgradeCost(t), int(float64(t.Invested)*game.SellRefund))
-			putString(f, 0, y, info, pal.Tower[t.Kind], 0, false)
-		}
-	}
 }
 
 // towerInfo is the menu line for the selected tower. It must fit within
@@ -494,59 +280,55 @@ func diffName(d game.Difficulty) string {
 	return "normal"
 }
 
+// drawGameOver renders the end-of-game box: a 46×12 rounded box centered in
+// the frame, the state title embedded in its top border (btop grammar),
+// two-column stats, the best-score line and the restart/quit hint.
 func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
-	won := g.Status == game.StatusVictory
-	title, tc := " VICTORY ", 46
-	if !won {
-		title, tc = " DEFEAT ", 196
+	const bg, border = 236, 240
+	title, tc := "VICTORY", 48
+	if g.Status != game.StatusVictory {
+		title, tc = "DEFEAT", 167
 	}
-	const bg = 236
-	bw, bh := 40, 10
+	bw, bh := 46, 12
 	bx, by := (f.W-bw)/2, (f.H-bh)/2
 	for y := by; y < by+bh; y++ {
 		for x := bx; x < bx+bw; x++ {
 			f.Set(x, y, Cell{R: ' ', BG: bg})
 		}
 	}
-	for x := bx; x < bx+bw; x++ {
-		f.Set(x, by, Cell{R: '─', FG: pal.Bright, BG: bg})
-		f.Set(x, by+bh-1, Cell{R: '─', FG: pal.Bright, BG: bg})
+	drawRoundedBox(f, bx, by, bw, bh, border)
+	embedSegment(f, by, bx+(bw-len([]rune(title))-2)/2, title, '┐', '┌', border, tc, true)
+	put := func(y, col int, k, v string) {
+		putString(f, bx+col, y, fmt.Sprintf("%-7s", k), 254, bg, true)
+		putString(f, bx+col+7, y, v, 251, bg, false)
 	}
-	for y := by; y < by+bh; y++ {
-		f.Set(bx, y, Cell{R: '│', FG: pal.Bright, BG: bg})
-		f.Set(bx+bw-1, y, Cell{R: '│', FG: pal.Bright, BG: bg})
-	}
-	f.Set(bx, by, Cell{R: '╔', FG: pal.Bright, BG: bg})
-	f.Set(bx+bw-1, by, Cell{R: '╗', FG: pal.Bright, BG: bg})
-	f.Set(bx, by+bh-1, Cell{R: '╚', FG: pal.Bright, BG: bg})
-	f.Set(bx+bw-1, by+bh-1, Cell{R: '╝', FG: pal.Bright, BG: bg})
-
-	cy := by + 1
-	putString(f, (f.W-len(title))/2, cy, title, tc, bg, true)
-	cy++
-	type kv struct{ k, v string }
-	stats := []kv{
-		{"wave", fmt.Sprintf("%d/%d", g.Wave, game.MaxWaves)},
-		{"kills", fmt.Sprintf("%d", g.TotalKills)},
-		{"leaks", fmt.Sprintf("%d", g.TotalLeaks)},
-		{"towers", fmt.Sprintf("%d", len(g.Towers))},
-		{"score", fmt.Sprintf("%d", g.Score)},
-		{"combo", "x" + fmt.Sprintf("%d", g.MaxCombo)},
-	}
-	for i := 0; i < len(stats); i += 2 {
-		line := fmt.Sprintf("%-7s %-9s %-7s %s", stats[i].k, stats[i].v, stats[i+1].k, stats[i+1].v)
-		putString(f, (f.W-len(line))/2, cy, line, pal.Dim, bg, false)
-		cy++
-	}
-	putString(f, (f.W-len("time "+formatTime(g.Time)))/2, cy, "time "+formatTime(g.Time), pal.Dim, bg, false)
-	cy++
+	put(by+2, 2, "wave", fmt.Sprintf("%d/%d", g.Wave, game.MaxWaves))
+	put(by+2, 24, "score", fmt.Sprintf("%d", g.Score))
+	put(by+3, 2, "kills", fmt.Sprintf("%d", g.TotalKills))
+	put(by+3, 24, "combo", fmt.Sprintf("x%d", g.MaxCombo))
+	put(by+4, 2, "leaks", fmt.Sprintf("%d", g.TotalLeaks))
+	put(by+4, 24, "time", formatTime(g.Time))
+	put(by+5, 2, "towers", fmt.Sprintf("%d", len(g.Towers)))
+	put(by+5, 24, "best", fmt.Sprintf("%d", ui.BestScore))
 	bestLine := fmt.Sprintf("best %d", ui.BestScore)
+	bold := false
 	if ui.NewBest {
 		bestLine = fmt.Sprintf("★ NEW BEST %d ★", ui.BestScore)
+		bold = true
 	}
-	putString(f, (f.W-len(bestLine))/2, cy, bestLine, 220, bg, ui.NewBest)
-	cy++
-	putString(f, (f.W-22)/2, cy, "r restart   q quit", pal.Bright, bg, false)
+	putString(f, bx+(bw-len([]rune(bestLine)))/2, by+7, bestLine, 220, bg, bold)
+	x := bx + (bw-len("r restart | q quit"))/2
+	for _, part := range []struct {
+		s  string
+		fg int
+	}{
+		{"r", 167}, {" restart | ", 251}, {"q", 167}, {" quit", 251},
+	} {
+		for _, ch := range part.s {
+			f.Set(x, by+9, Cell{R: ch, FG: part.fg, BG: bg, Bold: part.fg == 167})
+			x++
+		}
+	}
 }
 
 func formatTime(t float64) string {
@@ -567,7 +349,7 @@ func putString(f *Frame, x, y int, s string, fg, bg int, bold bool) {
 // ---------------------------------------------------------------------------
 // Terminal-sized in-game frame (btop-style chrome).
 //
-// RenderAt draws a frame that is exactly tw×th — the full terminal —
+// Render draws a frame that is exactly tw×th — the full terminal —
 // wrapped in one rounded box: a header of segments embedded in the top
 // border (row 0), a message/telegraph row (row 1), the map centered in the
 // playfield region, and the tower menu across the bottom (rows th-4..th-1,
@@ -779,10 +561,10 @@ func drawHeader(f *Frame, g *game.State, ui *UI, pal Colors) {
 	}
 }
 
-// drawMenuBar renders the bottom chrome: the tower slots (rows th-4/th-3),
+// drawMenu renders the bottom chrome: the tower slots (rows th-4/th-3),
 // the hint line (row th-2) and the bottom border (row th-1), which carries
 // the selected-tower info embedded btop-style (╰──┘info└──╯).
-func drawMenuBar(f *Frame, g *game.State, ui *UI, pal Colors) {
+func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 	const border = 240
 	for _, slot := range TowerSlots(f.W, f.H) {
 		k := slot.Kind
@@ -865,10 +647,9 @@ func drawMenuBar(f *Frame, g *game.State, ui *UI, pal Colors) {
 	}
 }
 
-// RenderAt draws the full terminal-sized in-game frame (see the section
-// comment above). The entity passes are identical to the Layout-sized
-// Render; only the frame construction and the chrome differ.
-func RenderAt(g *game.State, ui *UI, pal Colors, tw, th int) *Frame {
+// Render draws the full terminal-sized in-game frame (see the section
+// comment above).
+func Render(g *game.State, ui *UI, pal Colors, tw, th int) *Frame {
 	l := GameLayout(g.Map.W, g.Map.H, tw, th)
 	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
 	drawRoundedBox(f, 0, 0, l.W, l.H, pal.Path)
@@ -965,9 +746,37 @@ func RenderAt(g *game.State, ui *UI, pal Colors, tw, th int) *Frame {
 			f.Set(x, y, cc)
 		}
 	}
-	drawMenuBar(f, g, ui, pal)
+	drawMenu(f, g, ui, pal)
 	if g.Status != game.StatusRunning {
 		drawGameOver(f, g, ui, pal)
 	}
 	return f
+}
+
+// GameFrame renders the in-game frame for a tw×th terminal, or a centered
+// "enlarge" notice when the terminal is smaller than MinFrame.
+func GameFrame(g *game.State, ui *UI, pal Colors, tw, th int) *Frame {
+	minW, minH := MinFrame(g.Map.W, g.Map.H)
+	if tw > 0 && th > 0 && (tw < minW || th < minH) {
+		return RenderTooSmall(tw, th, minW, minH)
+	}
+	return Render(g, ui, pal, tw, th)
+}
+
+// CaptureSize is the minimum terminal size that yields the given playfield
+// scale: capture pins its virtual terminal here so output is
+// environment-deterministic.
+func CaptureSize(mW, mH, scale int) (tw, th int) {
+	if scale < 1 {
+		scale = 1
+	}
+	if scale > 4 {
+		scale = 4
+	}
+	tw = FrameW
+	if mW*scale+2 > tw {
+		tw = mW*scale + 2
+	}
+	th = ChromeTop + mH*scale + ChromeBot
+	return
 }

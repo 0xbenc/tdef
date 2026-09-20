@@ -239,13 +239,20 @@ func capture(args []string) {
 	if *every < 1 {
 		die("capture: -every must be >= 1")
 	}
+	if *scale < 1 || *scale > 4 {
+		die("capture: -scale must be 1-4")
+	}
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		die("%v", err)
 	}
+	// The virtual terminal is pinned to the minimum size that yields the
+	// requested scale, so output is identical in any environment (the
+	// real tty size is never inherited).
+	tw, th := render.CaptureSize(m.W, m.H, *scale)
 	s := game.NewStateDiff(m, diffFrom(fs))
 	ai := game.NewAutoplay(s)
 	pal := render.Palette()
-	ui := render.UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Selected: render.NoSelection, Speed: 1, Scale: *scale}
+	ui := render.UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Selected: render.NoSelection, Speed: 1, Level: name}
 	dt := 1.0 / 20.0
 	tick := int64(0)
 	for s.Status == game.StatusRunning {
@@ -253,7 +260,7 @@ func capture(args []string) {
 		s.Step(dt)
 		tick++
 		if tick%int64(*every) == 0 {
-			f := render.Render(s, &ui, pal)
+			f := render.Render(s, &ui, pal, tw, th)
 			p := filepath.Join(*out, fmt.Sprintf("%s_%06d", name, tick))
 			var content string
 			if *text {

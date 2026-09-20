@@ -106,19 +106,18 @@ func (a *App) termSize() (int, int) {
 	return a.term.Size()
 }
 
-// enterGame starts a game on map m: it computes the render scale from the
-// current terminal size and builds fresh state and UI.
+// enterGame starts a game on map m with fresh state and UI. The render
+// layout is computed from the current terminal size; it is refreshed every
+// frame (drawGame), so resizes reflow the playfield live.
 func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
-	scale := 1
-	if tw, th := a.termSize(); tw > 0 && th > 0 {
-		scale = render.ComputeScale(m.W, m.H, tw, th)
-	}
 	a.g = game.NewStateDiff(m, diff)
 	a.diff = diff
 	a.level = name
-	a.ui = freshUI(m, scale)
+	a.ui = freshUI(m)
+	a.ui.Level = name
 	a.ui.Paused = false
-	a.layout = render.ComputeLayout(m.W, m.H, a.ui.Scale)
+	tw, th := a.termSize()
+	a.layout = render.GameLayout(m.W, m.H, tw, th)
 	a.scored = false
 	a.acc = 0
 	a.msgTTL = 0
@@ -144,14 +143,14 @@ func (a *App) run() error {
 
 // freshUI builds the UI for a new game. Selected must be pinned to
 // NoSelection (see render.NoSelection) — the zero value is tower ID 0.
-func freshUI(m *game.Map, scale int) render.UI {
+// The playfield scale is not stored: it follows the live terminal size.
+func freshUI(m *game.Map) render.UI {
 	return render.UI{
 		Cursor:   game.Vec{X: m.W / 2, Y: m.H / 2},
 		Placing:  game.TowerGunner,
 		Selected: render.NoSelection,
 		Speed:    1,
 		Paused:   true,
-		Scale:    scale,
 	}
 }
 
@@ -240,9 +239,9 @@ func (a *App) stepGame(real float64) {
 	}
 }
 
-// drawScreen renders the current screen. The playfield frame is
-// Layout-sized and guarded; the menu screens are terminal-sized. A switch
-// changes the frame size, so the blit always full-redraws.
+// drawScreen renders the current screen. Every screen, game included, is
+// terminal-sized. A screen switch resets prev, so the blit always
+// full-redraws.
 func (a *App) drawScreen() {
 	w, h := a.termSize()
 	switch a.screen {
@@ -257,8 +256,34 @@ func (a *App) drawScreen() {
 	case ScreenLevelSelect:
 		a.blit(render.RenderLevelSelect(a.lsView(), w, h, a.pal))
 	default:
-		a.renderGuarded(func() *render.Frame { return render.Render(a.g, &a.ui, a.pal) })
+		a.drawGame()
 	}
+}
+
+// drawGame renders the in-game frame at the live terminal size, recomputing
+// the layout each frame so resizes reflow (scale step, centering, menu
+// slots) without a restart. Below MinFrame the sim is paused and an
+// "enlarge" notice is shown: running blind behind it would silently lose
+// lives. The player resumes with p once the window fits again.
+func (a *App) drawGame() {
+	tw, th := a.termSize()
+	a.layout = render.GameLayout(a.g.Map.W, a.g.Map.H, tw, th)
+	mw, mh := render.MinFrame(a.g.Map.W, a.g.Map.H)
+	if a.tooSmall(tw, th, mw, mh) {
+		a.prev = nil
+		if a.g.Status == game.StatusRunning && !a.ui.Paused {
+			a.ui.Paused = true
+		}
+		a.blit(render.RenderTooSmall(tw, th, mw, mh))
+		return
+	}
+	a.blit(render.Render(a.g, &a.ui, a.pal, tw, th))
+}
+
+// tooSmall reports whether a tw×th terminal cannot show the playfield at
+// scale 1. A 0×0 (unknown) size is not "too small": it renders normally.
+func (a *App) tooSmall(tw, th, mw, mh int) bool {
+	return tw > 0 && th > 0 && (tw < mw || th < mh)
 }
 
 func (a *App) msg(s string) {
@@ -775,11 +800,10 @@ func (a *App) handleMouse(e Event) {
 }
 
 func (a *App) handleMenuClick(e Event) {
-	menuTop := a.layout.H - 4
-	for _, slot := range render.MenuSlots {
-		spec := game.TowerSpecs[slot.Kind]
-		labelLen := len(fmt.Sprintf("%d %s %d", slot.Kind+1, spec.Name, spec.Cost[0]))
-		if e.Y == menuTop+slot.Y && e.X >= slot.X && e.X < slot.X+labelLen {
+	// Same slot geometry the renderer draws (TowerSlots), so clicks can
+	// never drift from the labels across a resize.
+	for _, slot := range render.TowerSlots(a.layout.W, a.layout.H) {
+		if e.Y == slot.Y && e.X >= slot.X && e.X < slot.X+slot.W {
 			if a.ui.PlacingOn && a.ui.Placing == slot.Kind {
 				a.ui.PlacingOn = false
 			} else {
@@ -895,37 +919,20 @@ func (a *App) restart() {
 	m := a.g.Map
 	a.g = game.NewStateDiff(m, a.diff)
 	a.scored = false
-	// Rebuild the UI, but keep player preferences: a zeroed UI would drop
-	// the boot-computed Scale (ComputeLayout clamps it back to 1x), so the
-	// playfield would shrink after every game-over restart.
+	// Rebuild the UI, but keep player preferences (speed, help). The
+	// playfield scale follows the live terminal size, so there is nothing
+	// to preserve there.
 	a.ui = render.UI{
 		Cursor:    game.Vec{X: m.W / 2, Y: m.H / 2},
 		Placing:   game.TowerGunner,
 		Selected:  render.NoSelection,
 		Speed:     a.ui.Speed,
 		Help:      a.ui.Help,
-		Scale:     a.ui.Scale,
+		Level:     a.level,
 		BestScore: hiscore.Load()[a.level],
 	}
 	a.acc = 0
 	a.prev = nil
-}
-
-// renderGuarded blits the given frame, unless the terminal has shrunk below
-// the (boot-fixed) frame size, in which case it shows an "enlarge" notice
-// and pauses the game: running blind behind the notice would silently
-// lose lives. The player resumes with p once the window fits again.
-func (a *App) renderGuarded(makeFrame func() *render.Frame) {
-	tw, th := a.term.Size()
-	if tw > 0 && th > 0 && (tw < a.layout.W || th < a.layout.H) {
-		a.prev = nil
-		if a.g.Status == game.StatusRunning && !a.ui.Paused {
-			a.ui.Paused = true
-		}
-		a.blit(render.RenderTooSmall(tw, th, a.layout.W, a.layout.H))
-		return
-	}
-	a.blit(makeFrame())
 }
 
 type pen struct {
