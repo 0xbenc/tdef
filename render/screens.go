@@ -157,12 +157,18 @@ const titleTagline = "— terminal tower defense —"
 // (frame, boot): `frame` is the 30fps tick counter (ambient timing) and
 // `boot` is frames since this visit to the title started.
 //
-//	boot 0-124   the cinematic: an ignition pulse on black, a light pen
-//	             traces the TDEF slab out of digital noise (each letter
-//	             flashing white as it locks in), the slab ignites, the
-//	             subtitle decodes, then the frame chrome and an empty
-//	             battlefield fade in
-//	boot 124+    the attract loop, every titleAttractCycle frames:
+//	boot 0-272   the cinematic (~9s): an ignition pulse on black (point +
+//	             rings, then the rings settle, a crosshair zaps out and the
+//	             slab's bounding box draws itself with a scan flicker); a
+//	             light pen traces the TDEF slab out of digital noise (each
+//	             letter flashing white as it locks in); then each letter,
+//	             left to right, fires a different weapon at a lock-on
+//	             reticle on the frame edge — Gunner tracer spray, Cannon
+//	             shell + AOE burst, Sniper charge + piercing beam, Tesla
+//	             chain lightning; the slab ignites white, the subtitle
+//	             decodes, then the frame chrome and an empty battlefield
+//	             fade in
+//	boot 273+    the attract loop, every titleAttractCycle frames:
 //
 //	15s idle     standby: full UI, empty battlefield — no towers, no
 //	             enemies, no BATTLE/WAVE text
@@ -179,11 +185,13 @@ const titleTagline = "— terminal tower defense —"
 //	             (1605-1615); the screen reboots (1615-1684) back to the
 //	             standby state, where the 15s clock starts again.
 const (
-	titleBootPulseEnd   = 15  // 0-14:     ignition point + rings on black
-	titleBootFlashStart = 76  // 15-75:    the light pen traces the TDEF slab
-	titleBootFlashEnd   = 80  // 76-79:    the slab ignites white
-	titleBootSubEnd     = 94  // 80-93:    the subtitle decodes
-	titleBootLen        = 124 // 94-123:   the rest of the UI fades in
+	titleBootPulseEnd   = 30  // 0-29:     ignition: point + rings (0-14), ring settle + crosshair zap (15-19), slab box self-draws with scan flicker (20-29)
+	titleBootPenEnd     = 95  // 30-94:    the light pen traces the TDEF slab
+	titleBootWeaponsEnd = 225 // 95-224:   the letters fire: Gunner, Cannon, Sniper, Tesla
+	titleBootFlashStart = 225 // 225-228:  the slab ignites white
+	titleBootFlashEnd   = 229 //
+	titleBootSubEnd     = 243 // 229-242:  the subtitle decodes
+	titleBootLen        = 273 // 243-272:  the rest of the UI fades in
 )
 
 const (
@@ -457,15 +465,17 @@ func drawTitleBattleIntro(f *Frame, w, h, off, t int, pal Colors) {
 
 // ---------------------------------------------------------------- boot (cont.)
 
-// drawTitleBoot plays the one-shot cinematic: pulse, pen, flash, subtitle,
-// UI fade-in.
+// drawTitleBoot plays the one-shot cinematic: pulse, pen, the weapon fan,
+// flash, subtitle, UI fade-in.
 func drawTitleBoot(f *Frame, w, h, t, frame int, pal Colors) {
 	off := screenOff(h)
 	switch {
 	case t < titleBootPulseEnd:
-		drawBootPulse(f, w, h, t)
-	case t < titleBootFlashStart:
+		drawBootPulse(f, w, h, off, t)
+	case t < titleBootPenEnd:
 		drawBootPen(f, w, off, t)
+	case t < titleBootWeaponsEnd:
+		drawBootWeapons(f, w, h, off, t-titleBootPenEnd)
 	case t < titleBootFlashEnd:
 		drawBootFlash(f, w, h, off)
 	case t < titleBootSubEnd:
@@ -478,53 +488,193 @@ func drawTitleBoot(f *Frame, w, h, t, frame int, pal Colors) {
 	}
 }
 
-// drawBootPulse is the ignition: a single point, then expanding rings.
-func drawBootPulse(f *Frame, w, h, t int) {
+// drawBootPulse is the ignition: a point and expanding rings (0-14); the
+// rings settle dim (15-17); a crosshair zaps out across the frame (18-19);
+// the cross collapses into the slab's bounding box, which draws itself over
+// a scan flicker (20-29).
+func drawBootPulse(f *Frame, w, h, off, t int) {
 	cx, cy := w/2, h/2
 	if t < 4 {
 		return
 	}
-	f.Set(cx, cy, Cell{R: '·', FG: 231})
-	for k := 0; k < 3; k++ {
-		age := t - 6 - 3*k
-		if age < 0 {
-			continue
-		}
-		r := float64(age) * 2.4
-		c := 231
-		if age >= 3 {
-			c = 117
-		}
-		if age >= 6 {
-			c = 51
-		}
-		dx := int(r/0.55) + 2
-		for x := cx - dx; x <= cx+dx; x++ {
-			if x < 0 || x >= w {
+	if t < 15 {
+		f.Set(cx, cy, Cell{R: '·', FG: 231})
+		for k := 0; k < 3; k++ {
+			age := t - 6 - 3*k
+			if age < 0 {
 				continue
 			}
-			for y := cy - int(r) - 2; y <= cy+int(r)+2; y++ {
-				if y < 0 || y >= h {
+			r := float64(age) * 2.4
+			c := 231
+			if age >= 3 {
+				c = 117
+			}
+			if age >= 6 {
+				c = 51
+			}
+			dx := int(r/0.55) + 2
+			for x := cx - dx; x <= cx+dx; x++ {
+				if x < 0 || x >= w {
 					continue
 				}
-				d := math.Hypot(float64(x-cx)*0.55, float64(y-cy))
-				if math.Abs(d-r) < 0.7 {
-					f.Set(x, y, Cell{R: '·', FG: c})
+				for y := cy - int(r) - 2; y <= cy+int(r)+2; y++ {
+					if y < 0 || y >= h {
+						continue
+					}
+					d := math.Hypot(float64(x-cx)*0.55, float64(y-cy))
+					if math.Abs(d-r) < 0.7 {
+						f.Set(x, y, Cell{R: '·', FG: c})
+					}
 				}
+			}
+		}
+		return
+	}
+	if t < 18 {
+		// The rings freeze at their last radii and settle into the dark.
+		f.Set(cx, cy, Cell{R: '·', FG: 236})
+		c := 238 - (t - 15)
+		for k := 0; k < 3; k++ {
+			r := float64(8-3*k) * 2.4
+			dx := int(r/0.55) + 2
+			for x := cx - dx; x <= cx+dx; x++ {
+				if x < 0 || x >= w {
+					continue
+				}
+				for y := cy - int(r) - 2; y <= cy+int(r)+2; y++ {
+					if y < 0 || y >= h {
+						continue
+					}
+					d := math.Hypot(float64(x-cx)*0.55, float64(y-cy))
+					if math.Abs(d-r) < 0.7 {
+						f.Set(x, y, Cell{R: '·', FG: c})
+					}
+				}
+			}
+		}
+		return
+	}
+	if t < 20 {
+		// A crosshair zaps out: 70% then 100% across the whole frame.
+		hx, hy := 0.7, 0.4
+		if t == 19 {
+			hx, hy = 1, 1
+		}
+		for x := 0; x < w; x++ {
+			if math.Abs(float64(x-cx)) <= float64(w)*hx/2 {
+				f.Set(x, cy, Cell{R: '·', FG: 234})
+			}
+		}
+		for y := 0; y < h; y++ {
+			if math.Abs(float64(y-cy)) <= float64(h)*hy/2 {
+				f.Set(cx, y, Cell{R: '·', FG: 234})
+			}
+		}
+		return
+	}
+	// The bounding box draws itself (10 cells/frame) over a scan flicker.
+	pos := (t - 19) * 98 / 10
+	drawBootBox(f, w, off, pos, 1, 234)
+	for y := off + 2; y <= off+6; y++ {
+		for x := 0; x < w; x++ {
+			n := titleHash(x, y, t)
+			if n%13 == 0 {
+				f.Set(x, y, Cell{R: '·', FG: 235})
+			} else if n%17 == 0 {
+				f.Set(x, y, Cell{R: '+', FG: 237})
 			}
 		}
 	}
 }
 
+// boxCell is the i-th cell of a bw×bh box perimeter starting top-left and
+// running clockwise.
+func boxCell(i, bx, by int, bw, bh int) (int, int, rune) {
+	switch {
+	case i == 0:
+		return bx, by, '╭'
+	case i < bw:
+		if i == bw-1 {
+			return bx + bw - 1, by, '╮'
+		}
+		return bx + i, by, '─'
+	case i < bw+(bh-2):
+		j := i - bw
+		return bx + bw - 1, by + 1 + j, '│'
+	case i == 2*bw+(bh-2)-1:
+		return bx + bw - 1, by + bh - 1, '╯'
+	case i < 2*bw+(bh-2):
+		j := i - bw - (bh - 2)
+		return bx + bw - 1 - j, by + bh - 1, '─'
+	default:
+		j := i - 2*bw - (bh - 2)
+		return bx, by + bh - 2 - j, '│'
+	}
+}
+
+// drawBootBox draws the slab's bounding box (44×7, one cell around the
+// slab). pos is how many of the 98 perimeter cells are drawn; tip lights
+// the last cell while it is still being drawn.
+func drawBootBox(f *Frame, w, off, pos, tip, fg int) {
+	const logoW = 42
+	x0 := (w - logoW) / 2
+	if x0 < 1 {
+		x0 = 1
+	}
+	bx, by := x0-1, off+1
+	if pos > 98 {
+		pos = 98
+	}
+	for i := 0; i < pos; i++ {
+		x, y, r := boxCell(i, bx, by, 44, 7)
+		c := fg
+		if tip == 1 && i == pos-1 {
+			c = 51
+		}
+		f.Set(x, y, Cell{R: r, FG: c})
+	}
+}
+
+// drawBootLetter draws one slab letter, optionally shifted (dx, dy) and
+// recolored (fg = 0 keeps the letter's own color).
+func drawBootLetter(f *Frame, w, off, li, dx, dy, fg int, bold bool) {
+	const logoW = 42
+	x0 := (w - logoW) / 2
+	if x0 < 0 {
+		x0 = 0
+	}
+	if fg == 0 {
+		fg = titleColors[li]
+	}
+	bevel := [5]rune{'█', '▓', '▓', '▓', '▒'}
+	letters := titleLetters[li]
+	for row := 0; row < 5; row++ {
+		for ci := 0; ci < 9; ci++ {
+			if letters[row][ci] != 'X' {
+				continue
+			}
+			f.Set(x0+li*11+ci+dx, off+2+row+dy, Cell{R: bevel[row], FG: fg, Bold: bold})
+		}
+	}
+}
+
+// drawBootSlab is the complete, settled slab (all four letters in color).
+func drawBootSlab(f *Frame, w, off int) {
+	for li := 0; li < 4; li++ {
+		drawBootLetter(f, w, off, li, 0, 0, 0, false)
+	}
+}
+
 // drawBootPen traces the TDEF slab with a light pen: the tip is white, the
 // recent trail cools white -> cyan -> the letter color, and untraced cells
-// flicker as faint digital noise.
+// flicker as faint digital noise. The slab's box stays drawn around it.
 func drawBootPen(f *Frame, w, off, t int) {
 	const logoW = 42
 	x0 := (w - logoW) / 2
 	if x0 < 0 {
 		x0 = 0
 	}
+	drawBootBox(f, w, off, 98, 0, 234)
 	bevel := [5]rune{'█', '▓', '▓', '▓', '▒'}
 	pos := bootPenIndex(t)
 	for i, s := range titlePenPath {
@@ -563,6 +713,369 @@ func drawBootPen(f *Frame, w, off, t int) {
 	// The pen tip.
 	s := titlePenPath[pos]
 	f.Set(x0+s.relX, off+2+s.row, Cell{R: '█', FG: 255, Bold: true})
+}
+
+// ---------------------------------------------------------------- weapon fan
+
+// shotTarget is where a ray from (mx,my) in unit direction (dx,dy) hits the
+// frame edge, inset two cells so the impact effects stay on screen.
+func shotTarget(w, h, mx, my int, dx, dy float64) (int, int) {
+	t := math.Inf(1)
+	if dx > 0 {
+		t = math.Min(t, float64(w-3-mx)/dx)
+	} else if dx < 0 {
+		t = math.Min(t, float64(mx-2)/-dx)
+	}
+	if dy > 0 {
+		t = math.Min(t, float64(h-3-my)/dy)
+	} else if dy < 0 {
+		t = math.Min(t, float64(my-2)/-dy)
+	}
+	if t != t || t == math.Inf(1) || t < 0 {
+		t = 0
+	}
+	return mx + int(math.Round(dx*t)), my + int(math.Round(dy*t))
+}
+
+// shotPos is the cell at fraction u (0..1) of the way from muzzle to target.
+func shotPos(mx, my, tx, ty int, u float64) (int, int) {
+	return mx + int(math.Round(float64(tx-mx)*u)), my + int(math.Round(float64(ty-my)*u))
+}
+
+// drawBootReticle draws the lock-on reticle at (x, y). shatter >= 0 means
+// the reticle is breaking into six radial fragments (frames since the hit).
+func drawBootReticle(f *Frame, x, y, shatter int) {
+	if shatter >= 0 {
+		c := 244
+		if shatter == 1 {
+			c = 236
+		}
+		if shatter == 2 {
+			c = 234
+		}
+		for i := 0; i < 6; i++ {
+			a := float64(i) * math.Pi / 3
+			for k := 1; k <= shatter+1; k++ {
+				fx := x + int(math.Round(math.Cos(a)*float64(k)))
+				fy := y + int(math.Round(math.Sin(a)*float64(k)))
+				f.Set(fx, fy, Cell{R: '·', FG: c})
+			}
+		}
+		return
+	}
+	f.Set(x, y, Cell{R: '+', FG: 244})
+	f.Set(x-1, y, Cell{R: '·', FG: 236})
+	f.Set(x+1, y, Cell{R: '·', FG: 236})
+	f.Set(x, y-1, Cell{R: '·', FG: 236})
+	f.Set(x, y+1, Cell{R: '·', FG: 236})
+}
+
+// drawBootWeapons is the fan: each letter, left to right, fires a different
+// game weapon at a lock-on reticle on the frame edge — T (Gunner, 9:45),
+// D (Cannon, 11:00), E (Sniper, 1:00), F (Tesla, 2:15). t is 0..129.
+func drawBootWeapons(f *Frame, w, h, off, t int) {
+	drawBootBox(f, w, off, 98, 0, 234)
+	drawBootSlab(f, w, off)
+	drawBootGunner(f, w, h, off, t)
+	drawBootCannon(f, w, h, off, t)
+	drawBootSniper(f, w, h, off, t)
+	drawBootTesla(f, w, h, off, t)
+	// Settle beat: the box flickers once before the flash.
+	if t == 126 || t == 127 {
+		drawBootBox(f, w, off, 98, 0, 240)
+	}
+}
+
+// drawBootGunner: T sprays five tracers at 9:45. The letter flinches and
+// flashes with every round.
+func drawBootGunner(f *Frame, w, h, off, t int) {
+	const li = 0
+	s := t
+	if s < 0 || s > 59 {
+		return
+	}
+	const logoW = 42
+	x0 := (w - logoW) / 2
+	if x0 < 0 {
+		x0 = 0
+	}
+	mx, my := x0, off+4
+	const dx, dy = -0.7071, 0.7071
+	tx, ty := shotTarget(w, h, mx, my, dx, dy)
+	fl := int(math.Hypot(float64(tx-mx), float64(ty-my))/1.5) + 1
+	last := 4*6 + fl
+	if s >= last+1 {
+		if s > last+3 {
+			return
+		}
+		drawBootReticle(f, tx, ty, s-last-1)
+		return
+	}
+	drawBootReticle(f, tx, ty, -1)
+	for r := 0; r < 5; r++ {
+		p := s - 6*r
+		if p < 0 {
+			continue
+		}
+		if p == 0 {
+			drawBootLetter(f, w, off, li, 1, 0, 255, true)
+			f.Set(mx, my, Cell{R: '+', FG: 255})
+			continue
+		}
+		if p <= fl {
+			x, y := shotPos(mx, my, tx, ty, float64(p-1)/float64(fl))
+			f.Set(x, y, Cell{R: '█', FG: 255})
+			if p >= 2 {
+				if x1, y1 := shotPos(mx, my, tx, ty, float64(p-2)/float64(fl)); x1 >= 0 {
+					f.Set(x1, y1, Cell{R: '·', FG: 46})
+				}
+			}
+			if p >= 3 {
+				if x2, y2 := shotPos(mx, my, tx, ty, float64(p-3)/float64(fl)); x2 >= 0 {
+					f.Set(x2, y2, Cell{R: '·', FG: 236})
+				}
+			}
+			continue
+		}
+		if p <= fl+2 {
+			if p == fl+1 {
+				f.Set(tx, ty, Cell{R: '*', FG: 255})
+			} else {
+				f.Set(tx, ty, Cell{R: '·', FG: 46})
+			}
+		}
+	}
+}
+
+// drawBootCannon: D recoils, then fires a chunky shell at 11:00 that ends
+// in an AOE burst.
+func drawBootCannon(f *Frame, w, h, off, t int) {
+	const li = 1
+	s := t - 30
+	if s < 0 || s > 60 {
+		return
+	}
+	const logoW = 42
+	x0 := (w - logoW) / 2
+	if x0 < 0 {
+		x0 = 0
+	}
+	mx, my := x0+15, off+2
+	const dx, dy = -0.5, -0.8660
+	tx, ty := shotTarget(w, h, mx, my, dx, dy)
+	fl := int(math.Hypot(float64(tx-mx), float64(ty-my))*2) + 1
+	if s < 6 {
+		// Recoil: the letter is shoved down-right while the muzzle gathers.
+		drawBootLetter(f, w, off, li, 1, 1, 220, false)
+		if s >= 3 {
+			f.Set(mx, my, Cell{R: '•', FG: 220})
+		}
+		return
+	}
+	p := s - 6
+	if p < fl {
+		drawBootReticle(f, tx, ty, -1)
+		x, y := shotPos(mx, my, tx, ty, float64(p)/float64(fl))
+		f.Set(x, y, Cell{R: '▓', FG: 220, Bold: true})
+		if p >= 2 {
+			if x1, y1 := shotPos(mx, my, tx, ty, float64(p-2)/float64(fl)); x1 >= 0 {
+				f.Set(x1, y1, Cell{R: '░', FG: 240})
+			}
+		}
+		if p >= 4 {
+			if x2, y2 := shotPos(mx, my, tx, ty, float64(p-4)/float64(fl)); x2 >= 0 {
+				f.Set(x2, y2, Cell{R: '·', FG: 236})
+			}
+		}
+		return
+	}
+	if p > fl+5 {
+		return
+	}
+	q := p - fl
+	if q <= 2 {
+		drawBootReticle(f, tx, ty, q)
+	}
+	switch {
+	case q == 0:
+		f.Set(tx, ty, Cell{R: '█', FG: 255, Bold: true})
+		f.Set(tx-2, ty, Cell{R: '·', FG: 220})
+		f.Set(tx+2, ty, Cell{R: '·', FG: 220})
+		f.Set(tx, ty-2, Cell{R: '·', FG: 220})
+		f.Set(tx, ty+2, Cell{R: '·', FG: 220})
+	case q == 1:
+		f.Set(tx, ty, Cell{R: '*', FG: 220, Bold: true})
+		for i := 0; i < 8; i++ {
+			a := float64(i) * math.Pi / 4
+			f.Set(tx+int(math.Round(math.Cos(a))), ty+int(math.Round(math.Sin(a))), Cell{R: '·', FG: 220})
+		}
+	case q == 2:
+		for i := 0; i < 8; i++ {
+			a := float64(i) * math.Pi / 4
+			f.Set(tx+int(math.Round(2*math.Cos(a))), ty+int(math.Round(2*math.Sin(a))), Cell{R: '·', FG: 220})
+		}
+		f.Set(tx, ty, Cell{R: '·', FG: 240})
+	case q == 3:
+		for i := 0; i < 8; i++ {
+			a := float64(i) * math.Pi / 4
+			f.Set(tx+int(math.Round(3*math.Cos(a))), ty+int(math.Round(3*math.Sin(a))), Cell{R: '·', FG: 240})
+		}
+	case q <= 5:
+		f.Set(tx, ty, Cell{R: '·', FG: 236})
+	}
+}
+
+// drawBootSniper: E charges for fourteen frames (its top row filling with a
+// ░▒▓█ ramp, the reticle locking on), then fires one piercing beam at 1:00.
+func drawBootSniper(f *Frame, w, h, off, t int) {
+	const li = 2
+	s := t - 65
+	if s < 0 || s > 24 {
+		return
+	}
+	const logoW = 42
+	x0 := (w - logoW) / 2
+	if x0 < 0 {
+		x0 = 0
+	}
+	mx, my := x0+26, off+2
+	const dx, dy = 0.5, -0.8660
+	tx, ty := shotTarget(w, h, mx, my, dx, dy)
+	if s < 14 {
+		fg := 203 + int(float64(s)/13*48)
+		drawBootLetter(f, w, off, li, 0, 0, fg, false)
+		for ci := 0; ci < 9; ci++ {
+			at := ci * 14 / 9
+			if s < at {
+				continue
+			}
+			r := '░'
+			switch age := s - at; {
+			case age >= 9:
+				r = '█'
+			case age >= 6:
+				r = '▓'
+			case age >= 3:
+				r = '▒'
+			}
+			f.Set(x0+li*11+ci, off+2, Cell{R: r, FG: 203})
+		}
+		drawBootReticle(f, tx, ty, -1)
+		return
+	}
+	p := s - 14
+	if p < 2 {
+		drawBootLetter(f, w, off, li, 0, 0, 255, true)
+		f.Set(mx, my, Cell{R: '█', FG: 255, Bold: true})
+		beamR, beamC := '█', 255
+		if p == 1 {
+			beamR, beamC = '▓', 203
+		}
+		for y := my; y >= ty; y-- {
+			x := mx + int(math.Round(float64(y-my)*dx/dy))
+			f.Set(x, y, Cell{R: beamR, FG: beamC})
+		}
+	} else if p < 4 {
+		for y := my; y >= ty; y-- {
+			x := mx + int(math.Round(float64(y-my)*dx/dy))
+			f.Set(x, y, Cell{R: '▓', FG: 240})
+		}
+	}
+	switch p {
+	case 0:
+		f.Set(tx-2, ty, Cell{R: '·', FG: 203})
+		f.Set(tx+2, ty, Cell{R: '·', FG: 203})
+	case 1:
+		f.Set(tx, ty, Cell{R: '·', FG: 203})
+	case 2, 3:
+		f.Set(tx, ty, Cell{R: '·', FG: 236})
+	case 4, 5:
+		f.Set(tx, ty, Cell{R: '·', FG: 234})
+	}
+	if p >= 0 && p <= 2 {
+		drawBootReticle(f, tx, ty, p)
+	}
+}
+
+// drawBootTesla: F charges, then chain lightning flickers toward the
+// target at 2:15 — the main arc re-rolls its jitter every frame, with two
+// branches forking off.
+func drawBootTesla(f *Frame, w, h, off, t int) {
+	const li = 3
+	s := t - 100
+	if s < 0 || s > 17 {
+		return
+	}
+	const logoW = 42
+	x0 := (w - logoW) / 2
+	if x0 < 0 {
+		x0 = 0
+	}
+	mx, my := x0+41, off+4
+	const dx, dy = 0.7071, 0.7071
+	tx, ty := shotTarget(w, h, mx, my, dx, dy)
+	if s < 12 {
+		if s%5 != 4 {
+			drawBootReticle(f, tx, ty, -1)
+		}
+	} else if s < 15 {
+		drawBootReticle(f, tx, ty, s-12)
+	}
+	if s < 4 {
+		fg := 171 + int(float64(s)/3*80)
+		drawBootLetter(f, w, off, li, 0, 0, fg, s == 3)
+		if s >= 1 {
+			for i := 0; i < 4; i++ {
+				n := titleHash(mx, my, s*7+i)
+				f.Set(mx+n%5-2, my+n%7-3, Cell{R: '·', FG: 203})
+			}
+		}
+		return
+	}
+	D := math.Hypot(float64(tx-mx), float64(ty-my))
+	N := int(D / 2)
+	if N < 4 {
+		N = 4
+	}
+	for k := 0; k <= N; k++ {
+		x, y := shotPos(mx, my, tx, ty, float64(k)/float64(N))
+		j := titleHash(x, y, s*13+k)%3 - 1 // perpendicular jitter, re-rolled
+		x, y = x-j, y+j
+		n := titleHash(k, s*31, w) % 5
+		r, c := '·', 171
+		switch {
+		case n < 2:
+			r, c = '█', 255
+		case n < 4:
+			r, c = '▒', 203
+		}
+		f.Set(x, y, Cell{R: r, FG: c})
+	}
+	// Two branches fork off at 35% and 65% of the main arc.
+	for bi := 0; bi < 2; bi++ {
+		bx, by := shotPos(mx, my, tx, ty, [2]float64{0.35, 0.65}[bi])
+		sgn := 1.0
+		if bi == 1 {
+			sgn = -1
+		}
+		vx, vy := sgn*-dy+0.5*dx, sgn*dx+0.5*dy
+		norm := math.Hypot(vx, vy)
+		vx, vy = vx/norm, vy/norm
+		for k := 1; k <= 7; k++ {
+			x := bx + int(math.Round(vx*1.3*float64(k)))
+			y := by + int(math.Round(vy*1.3*float64(k)))
+			c := 203
+			if k == 7 {
+				c = 244
+			}
+			f.Set(x, y, Cell{R: '·', FG: c})
+		}
+	}
+	if s == 12 || s == 13 {
+		f.Set(tx, ty, Cell{R: '*', FG: 255})
+	} else if s <= 15 {
+		f.Set(tx, ty, Cell{R: '·', FG: 203})
+	}
 }
 
 // drawBootFlash is the ignition: the whole frame glows as a dim grid while
@@ -628,6 +1141,7 @@ func drawBootUI(f *Frame, w, h, off, t, frame int, pal Colors) {
 			drawRoundedBox(f, 0, 0, w, h, pal.Path)
 			embedSegment(f, 0, 2, "TDEF", '┐', '┌', pal.Path, pal.Bright, true)
 			drawFooter(f, titleFooter(), lit, pal)
+			drawTitleSig(f)
 		}
 	}
 	// Group B: the empty battlefield.
@@ -686,13 +1200,26 @@ func drawTitleBattle(f *Frame, w, h, fr int, scores map[string]int, pal Colors) 
 	drawTitleDemo(f, w, h, off, fr, pal)
 }
 
+// titleSig is the signature, embedded in the bottom border's right section
+// — mirroring the TDEF embed in the top border, but muted.
+const titleSig = "by 0xbenc"
+
+// drawTitleSig draws the signature into the bottom border.
+func drawTitleSig(f *Frame) {
+	x := f.W - len(titleSig) - 2
+	for i, ch := range []rune(titleSig) {
+		f.Set(x+i, f.H-1, Cell{R: ch, FG: 238})
+	}
+}
+
 // drawTitleChrome is the title content shared by the standby and the
-// battle: logo, tagline, roster, best line.
+// battle: logo, tagline, roster, best line, signature.
 func drawTitleChrome(f *Frame, w, h, off int, scores map[string]int, pal Colors) {
 	drawTitleLogo(f, w, off, -1)
 	drawTitleTagline(f, w, off, len(titleTagline))
 	drawTitleRoster(f, w, h, off, pal)
 	drawTitleBest(f, w, off, scores)
+	drawTitleSig(f)
 }
 
 func drawTitleBest(f *Frame, w, off int, scores map[string]int) {
@@ -1246,6 +1773,7 @@ func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Co
 	}
 	if p >= 0.88 {
 		drawTitleBest(f, w, off, scores)
+		drawTitleSig(f)
 	}
 	if p >= 0.95 {
 		drawFooter(f, titleFooter(), (frame/15)%2 == 0, pal)
