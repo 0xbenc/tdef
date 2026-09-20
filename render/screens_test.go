@@ -99,13 +99,13 @@ func TestMenuRectsMatchRenderedRows(t *testing.T) {
 	}
 }
 
-// The menu block must sit centered between header and footer at any height.
+// The menu block must sit centered in the content band at any height.
 func TestMenuLayoutCentered(t *testing.T) {
 	for _, h := range []int{19, 24, 32, 50} {
-		header, items := menuLayout(h)
-		top, bottom := header+1, h-3
+		items := menuLayout(h)
+		top, bottom := screenOff(h)+1, screenOff(h)+17
 		above := items[0] - top
-		below := bottom - items[len(items)-1] - 1
+		below := bottom - items[len(items)-1]
 		if above < 0 || below < 0 {
 			t.Fatalf("h=%d: menu block outside region (above=%d below=%d)", h, above, below)
 		}
@@ -119,7 +119,7 @@ func TestRenderHelpFits(t *testing.T) {
 	for _, size := range [][2]int{{62, 19}, {80, 24}} {
 		f := RenderHelp(size[0], size[1], Palette())
 		text := f.Text()
-		for _, want := range []string{"help", "arrows / wasd", "1-7 pick", "esc back"} {
+		for _, want := range []string{"HELP", "arrows / wasd", "1-7 pick", "esc back"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("help missing %q:\n%s", want, text)
 			}
@@ -137,9 +137,13 @@ func TestRenderHighScoresEmpty(t *testing.T) {
 func TestRenderHighScoresSorted(t *testing.T) {
 	scores := map[string]int{"a": 10, "b": 30, "c": 20}
 	lines := strings.Split(RenderHighScores(62, 19, 0, scores, Palette()).Text(), "\n")
+	// Names sit in a fixed column (x0+5 of the 37-wide table), so match on
+	// that column rather than on the row prefix.
+	const w, tableW, nameCol = 62, 37, 6
+	x0 := (w - tableW) / 2
 	rowOf := func(name string) int {
 		for i, ln := range lines {
-			if strings.HasPrefix(strings.TrimSpace(ln), name) {
+			if r := []rune(ln); len(r) > x0+nameCol && string(r[x0+nameCol:x0+nameCol+len(name)]) == name {
 				return i
 			}
 		}
@@ -224,6 +228,85 @@ func TestRenderLevelSelectPreviewAt32Rows(t *testing.T) {
 	}
 	if strings.Contains(RenderLevelSelect(v, 62, 19, Palette()).Text(), "▶") {
 		t.Error("map preview leaked into the 19-row frame")
+	}
+}
+
+// Every pre-game screen is a full-window rounded box: corners, side rails,
+// the screen title embedded in the top border, and its footer group in the
+// bottom border.
+func TestScreenBoxFraming(t *testing.T) {
+	names := []string{"canyon", "garden"}
+	v := LSState{Levels: names, Cursor: 0, Seed: "42"}
+	screens := map[string]*Frame{
+		"title":     RenderTitle(62, 19, 0, nil, Palette()),
+		"menu":      RenderMenu(62, 19, 0, Palette()),
+		"help":      RenderHelp(62, 19, Palette()),
+		"hiscores":  RenderHighScores(62, 19, 0, map[string]int{"a": 1}, Palette()),
+		"select":    RenderLevelSelect(v, 62, 19, Palette()),
+		"title-80x": RenderTitle(80, 24, 0, nil, Palette()),
+	}
+	for name, f := range screens {
+		w, h := f.W, f.H
+		corners := []struct {
+			x, y int
+			r    rune
+		}{
+			{0, 0, '╭'}, {w - 1, 0, '╮'}, {0, h - 1, '╰'}, {w - 1, h - 1, '╯'},
+		}
+		for _, c := range corners {
+			if got := f.C[c.y*w+c.x].R; got != c.r {
+				t.Errorf("%s: corner (%d,%d) = %q, want %q", name, c.x, c.y, got, c.r)
+			}
+		}
+		for y := 1; y < h-1; y++ {
+			if got := f.C[y*w].R; got != '│' {
+				t.Errorf("%s: left rail row %d = %q, want │", name, y, got)
+			}
+			if got := f.C[y*w+w-1].R; got != '│' {
+				t.Errorf("%s: right rail row %d = %q, want │", name, y, got)
+			}
+		}
+		if !strings.Contains(f.Text(), "┐") || !strings.Contains(f.Text(), "┘") {
+			t.Errorf("%s: missing embedded title brackets\n%s", name, f.Text())
+		}
+	}
+}
+
+// The title's prompt lives in the bottom border (btop style) and blinks.
+func TestTitlePromptInBottomBorder(t *testing.T) {
+	f := RenderTitle(62, 19, 0, nil, Palette())
+	bottom := f.Text()
+	lines := strings.Split(bottom, "\n")
+	row := lines[18]
+	for _, want := range []string{"[enter] start", "q quit", "┘", "└"} {
+		if !strings.Contains(row, want) {
+			t.Errorf("bottom border row missing %q: %q", want, row)
+		}
+	}
+}
+
+// The level-select map preview appears in a [ PREVIEW ] sub-box exactly when
+// the frame has H*2+2 rows (scale 2) or H+2 rows (scale 1) below the chrome.
+func TestLevelSelectPreviewBoundary(t *testing.T) {
+	m, err := game.MazeFromSeed(7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := []string{"canyon", "garden", "hub", "winding"}
+	v := LSState{Levels: names, Cursor: len(names), Seed: "7", Preview: m}
+	// 80x29 leaves 14 rows below the chrome: one short of the 15 the
+	// scale-1 preview needs, so it degrades to the hint line.
+	small := RenderLevelSelect(v, 80, 29, Palette()).Text()
+	if strings.Contains(small, "PREVIEW") {
+		t.Errorf("80x29 should not fit the preview:\n%s", small)
+	}
+	if !strings.Contains(small, "preview needs more room") {
+		t.Errorf("80x29 missing the preview hint:\n%s", small)
+	}
+	// 80x30 leaves exactly 15: the scale-1 preview with its sub-box label.
+	big := RenderLevelSelect(v, 80, 30, Palette()).Text()
+	if !strings.Contains(big, "PREVIEW") || !strings.Contains(big, "▶") {
+		t.Errorf("80x30 should show the preview sub-box:\n%s", big)
 	}
 }
 

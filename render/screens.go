@@ -16,10 +16,19 @@ func (r Rect) Contains(x, y int) bool {
 	return x >= r.X && x < r.X+r.W && y >= r.Y && y < r.Y+r.H
 }
 
-// screenFrame returns a w×h frame filled with spaces and a top/bottom
-// border line. Menu screens are terminal-sized (unlike the playfield frame,
-// which is Layout-sized), so a resize is picked up on the next frame.
-func screenFrame(w, h int) *Frame {
+// fseg is one segment of a screen's footer group: a bold hotkey and its
+// label, e.g. ("↑↓", " move").
+type fseg struct {
+	key, text string
+	blink     bool
+}
+
+// screenBox returns a w×h frame wrapped in a full-window rounded border
+// (240), the screen title embedded in the top border (btop's ┐title┌
+// grammar) and a footer segment group centered in the bottom border
+// (┘group└). Menu screens are terminal-sized, so a resize is picked up on
+// the next frame.
+func screenBox(w, h int, title string, footer []fseg, lit bool, pal Colors) *Frame {
 	if w <= 0 {
 		w = 80
 	}
@@ -30,14 +39,53 @@ func screenFrame(w, h int) *Frame {
 	for i := range f.C {
 		f.C[i] = Cell{R: ' '}
 	}
-	for x := 0; x < w; x++ {
-		f.Set(x, 0, Cell{R: '═', FG: 235})
-		f.Set(x, h-1, Cell{R: '═', FG: 235})
-	}
+	drawRoundedBox(f, 0, 0, w, h, pal.Path)
+	embedSegment(f, 0, 2, title, '┐', '┌', pal.Path, pal.Bright, true)
+	drawFooter(f, footer, lit, pal)
 	return f
 }
 
-// screenOff is the top offset of the 19-row content card inside a taller
+// drawFooter centers the footer segment group in the bottom border:
+// ┘key text ─ key text└, keys in bold hotkey red, text dim, segments
+// joined by " ─ ". A blinking segment dims as a unit when !lit.
+func drawFooter(f *Frame, segs []fseg, lit bool, pal Colors) {
+	type run struct {
+		s  string
+		fg int
+		b  bool
+	}
+	var runs []run
+	for i, s := range segs {
+		if i > 0 {
+			runs = append(runs, run{" ─ ", pal.Path, false})
+		}
+		kfg, kbold := 167, true
+		tfg := pal.Dim
+		if s.blink && !lit {
+			kfg, kbold, tfg = pal.Dim, false, pal.Dim
+		}
+		runs = append(runs, run{s.key, kfg, kbold}, run{s.text, tfg, false})
+	}
+	total := 2 // brackets
+	for _, r := range runs {
+		total += len([]rune(r.s))
+	}
+	x := (f.W - total) / 2
+	if x < 1 {
+		x = 1
+	}
+	f.Set(x, f.H-1, Cell{R: '┘', FG: pal.Path})
+	x++
+	for _, r := range runs {
+		for _, ch := range r.s {
+			f.Set(x, f.H-1, Cell{R: ch, FG: r.fg, Bold: r.b})
+			x++
+		}
+	}
+	f.Set(x, f.H-1, Cell{R: '└', FG: pal.Path})
+}
+
+// screenOff is the top offset of the 19-row content band inside a taller
 // frame (0 at the minimum 62x19).
 func screenOff(h int) int {
 	off := (h - 19) / 2
@@ -51,8 +99,15 @@ func centerPut(f *Frame, y int, s string, fg int, bold bool) {
 	putString(f, (f.W-len([]rune(s)))/2, y, s, fg, 0, bold)
 }
 
+// drawSubBox draws a content-sized rounded sub-box with a btop-style label
+// (245 bold) embedded in its top border.
+func drawSubBox(f *Frame, x, y, bw, bh int, title string, pal Colors) {
+	drawRoundedBox(f, x, y, bw, bh, pal.Path)
+	embedSegment(f, y, x+1, title, '┐', '┌', pal.Path, pal.Dim, true)
+}
+
 // drawMapPreview renders map terrain plus the spawn/exit markers at layout
-// l. Shared by the playfield, the intro, and the level-select preview.
+// l. Shared by the playfield and the level-select preview.
 func drawMapPreview(f *Frame, m *game.Map, pal Colors, l Layout) {
 	for y := 0; y < m.H; y++ {
 		for x := 0; x < m.W; x++ {
@@ -100,10 +155,14 @@ func titleBest(scores map[string]int) (int, string) {
 // so the animation is deterministic and unit-testable. `frame` is the 30fps
 // tick counter.
 func RenderTitle(w, h, frame int, scores map[string]int, pal Colors) *Frame {
-	f := screenFrame(w, h)
+	lit := (frame/15)%2 == 0
+	f := screenBox(w, h, "TDEF", []fseg{
+		{key: "[enter]", text: " start", blink: true},
+		{key: "q", text: " quit"},
+	}, lit, pal)
 	off := screenOff(h)
-	// Card rows (19-row layout): 1-5 logo, 6 shadow, 7 tagline, 9-10 demo
-	// strip, 12-13 roster, 15 best, 16 prompt.
+	// Band rows (19-row layout): 2-6 logo, 7 shadow, 8 tagline, 9-12
+	// demo sub-box, 13-14 roster, 16 best.
 	row := func(y int) int { return off + y }
 	put := func(y int, s string, fg int, bold bool) {
 		if yy := row(y); yy > 0 && yy < h-1 {
@@ -121,7 +180,7 @@ func RenderTitle(w, h, frame int, scores map[string]int, pal Colors) *Frame {
 		lx := x0 + li*11
 		for ci, ch := range letters[4] {
 			if ch == 'X' {
-				f.Set(lx+ci+1, row(1+4)+1, Cell{R: '░', FG: 238})
+				f.Set(lx+ci+1, row(6)+1, Cell{R: '░', FG: 238})
 			}
 		}
 	}
@@ -133,35 +192,28 @@ func RenderTitle(w, h, frame int, scores map[string]int, pal Colors) *Frame {
 				if ch != 'X' {
 					continue
 				}
-				f.Set(lx+ci, row(1+ri), Cell{R: bevel[ri], FG: titleColors[li], Bold: true})
+				f.Set(lx+ci, row(2+ri), Cell{R: bevel[ri], FG: titleColors[li], Bold: true})
 			}
 		}
 	}
-	put(7, "— terminal tower defense —", 245, false)
-	drawTitleDemo(f, w, h, frame, row)
+	put(8, "— terminal tower defense —", 245, false)
+	drawTitleDemo(f, w, h, frame, row, pal)
 	drawTitleRoster(f, w, h, pal, row)
 	best, name := titleBest(scores)
 	if best > 0 {
-		put(15, fmt.Sprintf("★ best %d — %s", best, name), 220, false)
+		put(16, fmt.Sprintf("★ best %d — %s", best, name), 220, false)
 	} else {
-		put(15, " no scores yet ", 238, false)
-	}
-	// The prompt blinks once per second (30 ticks).
-	s := "[enter] start    q quit"
-	put(16, s, 245, false)
-	if (frame/15)%2 == 0 {
-		if yy := row(16); yy > 0 && yy < h-1 {
-			putString(f, (w-len(s))/2, yy, "[enter] start", 255, 0, true)
-		}
+		put(16, " no scores yet ", 238, false)
 	}
 	return f
 }
 
-// drawTitleDemo animates a miniature battle on card rows 9-10: an enemy
-// walks the path from the spawn toward E, the tower G beams it while it is
-// in range, and E flashes while the enemy "leaks". Two render ticks per
-// step (~67ms) keeps the motion readable at 30fps.
-func drawTitleDemo(f *Frame, w, h, frame int, row func(int) int) {
+// drawTitleDemo animates a miniature battle inside a full-width [ BATTLE ]
+// sub-box on band rows 9-12: an enemy walks the path from the spawn toward
+// E, the tower G beams it while it is in range, and E flashes while the
+// enemy "leaks". Two render ticks per step (~67ms) keeps the motion
+// readable at 30fps.
+func drawTitleDemo(f *Frame, w, h, frame int, row func(int) int, pal Colors) {
 	const towerX = 20
 	const towerRange = 8
 	walk := w - 7 // steps from x=3 to x=w-4
@@ -177,10 +229,11 @@ func drawTitleDemo(f *Frame, w, h, frame int, row func(int) int) {
 	} else {
 		ex, leak = w-4, true
 	}
-	y, ty := row(9), row(10)
-	if y <= 0 || y >= h-1 {
+	y, ty := row(10), row(11)
+	if row(9) <= 0 || row(12) >= h-1 {
 		return
 	}
+	drawSubBox(f, 1, row(9), w-2, 4, "BATTLE", pal)
 	for x := 2; x < w-2; x++ {
 		f.Set(x, y, Cell{R: '·', FG: 240})
 	}
@@ -234,10 +287,10 @@ func drawTitleRoster(f *Frame, w, h int, pal Colors, row func(int) int) {
 			f.Set(x0+labelW+stride*i, yy, Cell{R: g, FG: colors[i], Bold: true})
 		}
 	}
-	line(12, " towers  ",
+	line(13, " towers  ",
 		[]rune{'G', 'C', 'F', 'S', 'T', 'M', 'L'},
 		[]int{pal.Tower[0], pal.Tower[1], pal.Tower[2], pal.Tower[3], pal.Tower[4], pal.Tower[5], pal.Tower[6]})
-	line(13, " enemies  ",
+	line(14, " enemies  ",
 		[]rune{'o', 'r', 'g', 't', 's', 'B', 'w', 'D'},
 		[]int{pal.Enemy[0], pal.Enemy[1], pal.Enemy[2], pal.Enemy[3], pal.Enemy[4], pal.Enemy[5], pal.Enemy[6], pal.Enemy[7]})
 }
@@ -247,28 +300,28 @@ func drawTitleRoster(f *Frame, w, h int, pal Colors, row func(int) int) {
 // MenuItems is the main menu, in order.
 var MenuItems = []string{"Start", "Help", "High Scores", "Quit"}
 
-// menuLayout returns the header row and the item rows of the main menu. The
-// 4-item block (7 rows tall at 2-row stride) is centered between the header
-// and the footer so the menu sits in the middle of the frame at any height.
-func menuLayout(h int) (header int, items []int) {
+// menuLayout returns the item rows of the main menu. The 4-item block (7
+// rows tall at 2-row stride) is centered in the content band so the menu
+// sits in the middle of the frame at any height.
+func menuLayout(h int) []int {
 	off := screenOff(h)
-	header = off + 2
-	top, bottom := header+1, h-3
+	top, bottom := off+1, off+17
 	// Block height is 7 rows (4 items, 2-row stride); split the leftover
 	// rows as evenly as possible above and below it.
 	start := top + (bottom-top+1-7)/2
 	if start < top {
 		start = top
 	}
+	var items []int
 	for i := 0; i < len(MenuItems); i++ {
 		items = append(items, start+2*i)
 	}
-	return
+	return items
 }
 
 // MenuRects returns the hit-test rectangle for each main-menu item.
 func MenuRects(w, h int) []Rect {
-	_, items := menuLayout(h)
+	items := menuLayout(h)
 	maxW := 0
 	for _, it := range MenuItems {
 		if len(it) > maxW {
@@ -284,11 +337,12 @@ func MenuRects(w, h int) []Rect {
 }
 
 func RenderMenu(w, h, sel int, pal Colors) *Frame {
-	f := screenFrame(w, h)
-	header, items := menuLayout(h)
-	if header > 0 && header < h-1 {
-		centerPut(f, header, " main menu ", 245, false)
-	}
+	f := screenBox(w, h, "MAIN MENU", []fseg{
+		{key: "↑↓", text: " move"},
+		{key: "enter", text: " select"},
+		{key: "q", text: " quit"},
+	}, true, pal)
+	items := menuLayout(h)
 	for i, name := range MenuItems {
 		if i >= len(items) {
 			break
@@ -298,23 +352,19 @@ func RenderMenu(w, h, sel int, pal Colors) *Frame {
 			continue
 		}
 		if i == sel {
-			centerPut(f, y, " ▸ "+name, 255, true)
+			centerPut(f, y, " ▸ "+name, pal.Bright, true)
 		} else {
-			centerPut(f, y, "   "+name, 245, false)
+			centerPut(f, y, "   "+name, pal.Dim, false)
 		}
 	}
-	centerPut(f, h-2, " ↑↓ move · enter select · q quit ", 240, false)
 	return f
 }
 
 // ---------------------------------------------------------------- help
 
 func RenderHelp(w, h int, pal Colors) *Frame {
-	f := screenFrame(w, h)
+	f := screenBox(w, h, "HELP", []fseg{{key: "esc", text: " back"}}, true, pal)
 	off := screenOff(h)
-	if off+2 > 0 && off+2 < h-1 {
-		centerPut(f, off+2, " help ", 245, false)
-	}
 	rows := [][2]string{
 		{"move", "arrows / wasd"},
 		{"place", "1-7 pick · enter or click"},
@@ -327,17 +377,26 @@ func RenderHelp(w, h int, pal Colors) *Frame {
 		{"cancel", "esc"},
 		{"quit", "q"},
 	}
+	// Fixed-width two-column table: labels right-aligned in an 8-col field,
+	// values in one column, so the rows line up instead of ragged-centering.
+	tableW := 0
+	for _, r := range rows {
+		if n := len(fmt.Sprintf("%8s   %s", r[0], r[1])); n > tableW {
+			tableW = n
+		}
+	}
+	x0 := (w - tableW) / 2
+	if x0 < 1 {
+		x0 = 1
+	}
 	for i, r := range rows {
 		y := off + 4 + i
 		if y <= 0 || y >= h-1 {
 			continue
 		}
-		line := fmt.Sprintf("  %-12s  %s", r[0], r[1])
-		x0 := (w - len([]rune(line))) / 2
-		putString(f, x0, y, line, 245, 0, false)
-		putString(f, x0+2+12+2, y, r[1], 255, 0, false)
+		putString(f, x0+8-len([]rune(r[0])), y, r[0], pal.Dim, 0, false)
+		putString(f, x0+11, y, r[1], pal.Bright, 0, false)
 	}
-	centerPut(f, h-2, " esc back ", 240, false)
 	return f
 }
 
@@ -368,13 +427,18 @@ func SortScores(scores map[string]int) []ScoreEntry {
 // RenderHighScores draws the hiscore table. top is the scroll offset (first
 // visible entry); it is clamped here, so callers can pass a stale value.
 func RenderHighScores(w, h, top int, scores map[string]int, pal Colors) *Frame {
-	f := screenFrame(w, h)
+	f := screenBox(w, h, "HIGH SCORES", []fseg{
+		{key: "↑↓", text: " scroll"},
+		{key: "esc", text: " back"},
+	}, true, pal)
 	off := screenOff(h)
-	if off+2 > 0 && off+2 < h-1 {
-		centerPut(f, off+2, " high scores ", 245, false)
+	const tableW = 37 // len("  %3d %-20s %10d")
+	x0 := (w - tableW) / 2
+	if x0 < 1 {
+		x0 = 1
 	}
 	bodyTop := off + 4
-	bodyBottom := h - 4
+	bodyBottom := h - 3
 	visible := bodyBottom - bodyTop + 1
 	if visible < 1 {
 		visible = 1
@@ -386,25 +450,48 @@ func RenderHighScores(w, h, top int, scores map[string]int, pal Colors) *Frame {
 	if maxTop := len(entries) - visible; top > maxTop && maxTop >= 0 {
 		top = maxTop
 	}
+	if hdr := off + 2; hdr > 0 && hdr < h-1 {
+		putString(f, x0, hdr, fmt.Sprintf("  %3s %-20s %10s", " #", "NAME", "SCORE"), pal.Path, 0, false)
+		if top > 0 {
+			f.Set(x0+37, hdr, Cell{R: '▲', FG: pal.Path})
+		}
+		if top+visible < len(entries) {
+			f.Set(x0+39, hdr, Cell{R: '▼', FG: pal.Path})
+		}
+	}
 	if len(entries) == 0 {
 		if bodyTop > 0 && bodyTop < h-1 {
 			centerPut(f, bodyTop, " no scores yet ", 238, false)
 		}
+		return f
 	}
 	for i := 0; i < visible && top+i < len(entries); i++ {
 		e := entries[top+i]
+		y := bodyTop + i
+		if y > bodyBottom || y <= 0 || y >= h-1 {
+			break
+		}
 		name := e.Name
 		if r := []rune(name); len(r) > 20 {
 			name = string(r[:20])
 		}
-		line := fmt.Sprintf("  %-20s %10d", name, e.Score)
-		x0 := (w - len([]rune(line))) / 2
-		putString(f, x0, bodyTop+i, line, 245, 0, false)
-		// Redraw the score bright, starting after the name field and its
-		// separator space.
-		putString(f, x0+2+20+1, bodyTop+i, fmt.Sprintf("%10d", e.Score), 255, 0, false)
+		rankFG := pal.Path
+		switch top + i {
+		case 0:
+			rankFG = 220
+		case 1:
+			rankFG = 251
+		case 2:
+			rankFG = 180
+		}
+		nameFG := pal.Dim
+		if top+i < 3 {
+			nameFG = pal.Bright
+		}
+		putString(f, x0, y, fmt.Sprintf("  %3d", top+i+1), rankFG, 0, false)
+		putString(f, x0+6, y, name, nameFG, 0, false)
+		putString(f, x0+27, y, fmt.Sprintf("%10d", e.Score), pal.Bright, 0, false)
 	}
-	centerPut(f, h-2, " ↑↓ scroll · esc back ", 240, false)
 	return f
 }
 
@@ -435,14 +522,13 @@ type LSState struct {
 
 const lsMazeRow = "maze (procedural)"
 
-// lsLayout returns the header, first item row, seed row, difficulty row and
-// first preview row of the level-select screen. The list holds nLevels+1
-// rows (the maze row last) and the chrome below it is packed tight, so a
+// lsLayout returns the first item row, seed row, difficulty row and first
+// preview row of the level-select screen. The list holds nLevels+1 rows
+// (the maze row last) and the chrome below it is packed tight, so a
 // scale-1 map preview fits on a 32-row terminal.
-func lsLayout(h, nLevels int) (header, first, seed, diff, prev int) {
+func lsLayout(h, nLevels int) (first, seed, diff, prev int) {
 	off := screenOff(h)
-	header = off + 2
-	first = off + 3
+	first = off + 2
 	seed = first + nLevels + 1
 	diff = seed + 1
 	prev = diff + 1
@@ -463,16 +549,15 @@ func lsMaxRowWidth(names []string) int {
 // LSRects returns the hit-test rectangles for the level rows, the three
 // difficulty labels and the seed row.
 func LSRects(v LSState, w, h int) (rows []Rect, diffs [3]Rect, seedRect Rect) {
-	_, first, seed, diff, _ := lsLayout(h, len(v.Levels))
+	first, seed, diff, _ := lsLayout(h, len(v.Levels))
 	x := (w - (lsMaxRowWidth(v.Levels) + 3)) / 2
 	for i := 0; i <= len(v.Levels); i++ {
 		rows = append(rows, Rect{X: x, Y: first + i, W: lsMaxRowWidth(v.Levels) + 3, H: 1})
 	}
-	lineX, labels := diffLayout(w)
+	_, labels := diffLayout(w)
 	for i, l := range labels {
 		diffs[i] = Rect{X: l.X - 1, Y: diff, W: len(l.S) + 2, H: 1}
 	}
-	_ = lineX
 	body := v.Seed
 	if len(body) < len("(empty = random)") {
 		body = "(empty = random)"
@@ -482,8 +567,10 @@ func LSRects(v LSState, w, h int) (rows []Rect, diffs [3]Rect, seedRect Rect) {
 	return
 }
 
-// diffLayout returns where " difficulty: easy normal hard " is drawn: the
-// line start x and each label's start x and text.
+// diffLayout returns where " difficulty: [easy] [normal] [hard]" is drawn:
+// the line start x and each label's start x (first letter, after the
+// bracket) and text. The fixed width keeps the rectangles
+// selection-independent.
 func diffLayout(w int) (lineX int, labels [3]struct {
 	X int
 	S string
@@ -491,7 +578,7 @@ func diffLayout(w int) (lineX int, labels [3]struct {
 	names := [3]string{"easy", "normal", "hard"}
 	line := " difficulty:"
 	for _, n := range names {
-		line += " " + n + " "
+		line += " [" + n + "]"
 	}
 	lineX = (w - len(line)) / 2
 	x := lineX + len(" difficulty:")
@@ -499,19 +586,19 @@ func diffLayout(w int) (lineX int, labels [3]struct {
 		labels[i] = struct {
 			X int
 			S string
-		}{x + 1, n}
-		x += len(n) + 2
+		}{x + 2, n}
+		x += len(n) + 3
 	}
 	return
 }
 
 func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
-	f := screenFrame(w, h)
-	header, first, seed, diff, prev := lsLayout(h, len(v.Levels))
+	f := screenBox(w, h, "SELECT LEVEL", []fseg{
+		{key: "enter", text: " start"},
+		{key: "esc", text: " back"},
+	}, true, pal)
+	first, seed, diff, prev := lsLayout(h, len(v.Levels))
 	guard := func(y int) bool { return y > 0 && y < h-1 }
-	if guard(header) {
-		centerPut(f, header, " select level ", 245, false)
-	}
 	for i := 0; i <= len(v.Levels); i++ {
 		y := first + i
 		if !guard(y) {
@@ -522,9 +609,9 @@ func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
 			name = v.Levels[i]
 		}
 		if i == v.Cursor {
-			centerPut(f, y, " ▸ "+name, 255, true)
+			centerPut(f, y, " ▸ "+name, pal.Bright, true)
 		} else {
-			centerPut(f, y, "   "+name, 245, false)
+			centerPut(f, y, "   "+name, pal.Dim, false)
 		}
 	}
 	if guard(seed) {
@@ -532,53 +619,59 @@ func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
 			// One centered string, caret appended, so the caret never
 			// drifts from the placeholder on odd-width frames.
 			body := v.Seed
-			bodyFG := 255
+			bodyFG := pal.Bright
 			if body == "" {
-				body, bodyFG = "(empty = random)", 240
+				body, bodyFG = "(empty = random)", pal.Path
 			}
 			full := " seed: " + body
 			x0 := (w - len([]rune(full))) / 2
-			putString(f, x0, seed, " seed: ", 240, 0, false)
+			putString(f, x0, seed, " seed: ", pal.Path, 0, false)
 			putString(f, x0+len(" seed: "), seed, body, bodyFG, 0, false)
-			f.Set(x0+len([]rune(full)), seed, Cell{R: '▌', FG: 255})
+			f.Set(x0+len([]rune(full)), seed, Cell{R: '▌', FG: pal.Bright})
 		} else {
-			centerPut(f, seed, " seed: (empty = random)", 240, false)
+			centerPut(f, seed, " seed: (empty = random)", pal.Path, false)
 		}
 	}
 	if guard(diff) {
 		lineX, labels := diffLayout(w)
-		putString(f, lineX, diff, " difficulty:", 245, 0, false)
+		putString(f, lineX, diff, " difficulty:", pal.Dim, 0, false)
 		for i, l := range labels {
+			f.Set(l.X-1, diff, Cell{R: '[', FG: pal.Path})
+			fg, bold := pal.Dim, false
 			if i == v.Diff {
-				putString(f, l.X-1, diff, " "+l.S+" ", 255, 0, true)
-			} else {
-				putString(f, l.X-1, diff, " "+l.S+" ", 240, 0, false)
+				fg, bold = pal.Bright, true
 			}
+			putString(f, l.X, diff, l.S, fg, 0, bold)
+			f.Set(l.X+len([]rune(l.S)), diff, Cell{R: ']', FG: pal.Path})
 		}
 	}
 	if v.Err != "" && guard(diff+1) {
 		centerPut(f, diff+1, v.Err, 196, false)
 	}
-	// Map preview, only if the frame has room (13 rows for scale 1, 26 for
-	// scale 2) below the chrome and one row above the footer. An error
+	// Map preview in a content-sized [ PREVIEW ] sub-box, only if the
+	// frame has room (H*s+2 rows, W*s+2 cols) below the chrome. An error
 	// message claims the first preview row, so the preview shifts down.
 	if v.Preview != nil {
 		p := prev
 		if v.Err != "" {
 			p++
 		}
-		availH := (h - 3) - p
+		availH := (h - 2) - p + 1
 		scale := 0
-		if availH >= v.Preview.H*2 && w >= v.Preview.W*2+4 {
+		if availH >= v.Preview.H*2+2 && w >= v.Preview.W*2+4 {
 			scale = 2
-		} else if availH >= v.Preview.H && w >= v.Preview.W+4 {
+		} else if availH >= v.Preview.H+2 && w >= v.Preview.W+4 {
 			scale = 1
 		}
 		if scale > 0 {
-			l := Layout{Ox: (w - v.Preview.W*scale) / 2, Oy: p, Scale: scale, W: w, H: h}
+			bw, bh := v.Preview.W*scale+2, v.Preview.H*scale+2
+			bx := (w - bw) / 2
+			drawSubBox(f, bx, p, bw, bh, "PREVIEW", pal)
+			l := Layout{Ox: bx + 1, Oy: p + 1, Scale: scale, W: w, H: h}
 			drawMapPreview(f, v.Preview, pal, l)
+		} else if guard(p) {
+			centerPut(f, p, " (preview needs more room) ", 238, false)
 		}
 	}
-	centerPut(f, h-2, " enter start · esc back ", 240, false)
 	return f
 }
