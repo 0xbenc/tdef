@@ -225,3 +225,37 @@
     Escape while keeping the parser armed (TestBareEscapeThenArrow,
     TestEscapeThenArrowInWindow). Verified on a real pty: esc-back in
     the menu flow, resize storms, all clean under -race.
+- 2026-09-19 (title screen: scripted battle + shockwave reset, branch title-screen)
+  - The title is now one 545-frame (18s) deterministic loop — a pure
+    function of the frame counter, so it is unit-testable and the loop
+    point is exact (frame 544 renders byte-identical to frame 0;
+    TestTitleLoopSeam checks it at three sizes).
+  - 0-360: a scripted battle in the [ BATTLE ] box. Five different
+    towers (gunner/cannon/frost below the path, sniper/mortar above)
+    fire on fixed cooldowns at scripted enemy waves: wave 1 (minions)
+    is held completely, wave 2 (runners) mostly held — one leaks and
+    flashes the exit red — and wave 3's boss walks through the exit
+    while its minions are picked off. Beams, shells, splash rings,
+    death bursts, and a wave label in the box border (WAVE 1/2/3 ->
+    BREACH). An energy packet flows the path when no enemy is around,
+    so the standby screen is never static.
+  - 360-373: the exit overloads — a heat wash blooms out from E.
+  - 373-445: full-frame whiteout static, then a shockwave from the
+    exit (white front, hot flickering trail, re-sparks) eats the frame
+    and cools into a glowing grid; 445-475 the grid holds, then a
+    black beat with one ignition spark.
+  - 475-544: reboot — the border draws itself from the top-left (pen
+    tip glows), the TDEF slab drops in row by row with a white flash
+    on arrival, the tagline types on, then demo/roster/best/footer
+    return; the battle comes back at frame 0 state, closing the loop.
+  - Two reset effects were prototyped side by side: this shockwave
+    (radial detonation from the breach point) and a grid-surge
+    scanner wipe. The shockwave won on drama and narrative grounding
+    (the breach is what detonates the screen); the surge variant was
+    deleted after the comparison.
+  - Verification: gofmt/vet/test -race green; new tests cover the
+    phase sequence (TestTitlePhases), the blast leaving a complete
+    grid lattice (TestTitleBlastCoversFrame), the wave script
+    (TestTitleBattleScript: deaths, leak flash, tower rows), and the
+    seam; PTY end-to-end (BATTLE box -> BREACH at ~12s -> q) and all
+    seven flows pass on the fresh binary.
