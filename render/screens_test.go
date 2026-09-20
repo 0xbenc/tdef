@@ -35,14 +35,15 @@ func TestRenderTitleFitsFrame(t *testing.T) {
 	scores := map[string]int{"maze12345678901234567890": 9999999999}
 	for _, size := range [][2]int{{62, 19}, {80, 24}, {120, 40}} {
 		w, h := size[0], size[1]
-		// Cover one full demo cycle (2 ticks per step, walk+leak steps).
-		period := 2 * (w - 7 + 6)
-		for fr := 0; fr < period; fr++ {
+		// Cover one full title loop; the frame chrome only has to be
+		// intact during the battle, the effect segments own the whole
+		// frame.
+		for fr := 0; fr < titleCycle; fr++ {
 			f := RenderTitle(w, h, fr, scores, Palette())
 			if f.W != w || f.H != h {
 				t.Fatalf("w=%d h=%d frame %d: size = %dx%d", w, h, fr, f.W, f.H)
 			}
-			if rowWidth(f, 0) != w || rowWidth(f, h-1) != w {
+			if fr < titleOverloadEnd && (rowWidth(f, 0) != w || rowWidth(f, h-1) != w) {
 				t.Fatalf("w=%d h=%d frame %d: border row clipped", w, h, fr)
 			}
 		}
@@ -268,6 +269,133 @@ func TestScreenBoxFraming(t *testing.T) {
 		}
 		if !strings.Contains(f.Text(), "┐") || !strings.Contains(f.Text(), "┘") {
 			t.Errorf("%s: missing embedded title brackets\n%s", name, f.Text())
+		}
+	}
+}
+
+// The scripted loop must show each phase's signature content in order.
+func TestTitlePhases(t *testing.T) {
+	scores := map[string]int{"ada": 42}
+	text := func(fr int) string {
+		return RenderTitle(100, 30, fr, scores, Palette()).Text()
+	}
+	cases := []struct {
+		fr   int
+		want []string
+		abs  []string
+	}{
+		{100, []string{"BATTLE", "WAVE 1"}, nil},
+		{200, []string{"WAVE 2"}, nil},
+		{300, []string{"WAVE 3", "B"}, nil},
+		{365, []string{"BREACH"}, nil},
+		{374, nil, []string{"BATTLE", "TDEF", "·"}}, // static whiteout
+		{385, []string{"█"}, []string{"BATTLE"}},    // shockwave front
+		{450, nil, []string{"BATTLE", "█"}},         // cooled grid only
+		{500, nil, []string{"BATTLE", "[enter]"}},   // mid-reboot
+		{535, []string{"BATTLE", "WAVE 1"}, []string{"[enter] start"}},
+	}
+	for _, c := range cases {
+		got := text(c.fr)
+		for _, s := range c.want {
+			if !strings.Contains(got, s) {
+				t.Errorf("frame %d: missing %q", c.fr, s)
+			}
+		}
+		for _, s := range c.abs {
+			if strings.Contains(got, s) {
+				t.Errorf("frame %d: should not contain %q:\n%s", c.fr, s, got)
+			}
+		}
+	}
+	// The void is exactly one ignition spark at the center.
+	f := RenderTitle(100, 30, 468, scores, Palette())
+	n := 0
+	for _, c := range f.C {
+		if c.R != ' ' && c.R != 0 {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("void frame 468: %d non-space cells, want 1", n)
+	}
+	if c := f.C[15*100+50]; c.R != '·' || c.FG != 231 {
+		t.Fatalf("ignition spark = %+v, want ·/231 at the center", c)
+	}
+}
+
+// Frame titleCycle-1 must be exactly frame 0 so the loop is seamless.
+func TestTitleLoopSeam(t *testing.T) {
+	for _, size := range [][2]int{{62, 19}, {100, 30}, {137, 45}} {
+		scores := map[string]int{"ada": 42}
+		a := RenderTitle(size[0], size[1], titleCycle-1, scores, Palette())
+		b := RenderTitle(size[0], size[1], 0, scores, Palette())
+		if !reflect.DeepEqual(a, b) {
+			t.Errorf("w=%d h=%d: frame titleCycle-1 differs from frame 0", size[0], size[1])
+		}
+	}
+}
+
+// The last blast frame must be a full-frame grid: nothing but grid points
+// (·) on the 3x2 lattice and spaces.
+func TestTitleBlastCoversFrame(t *testing.T) {
+	f := RenderTitle(100, 30, titleBlastEnd-1, nil, Palette())
+	for y := 0; y < f.H; y++ {
+		for x := 0; x < f.W; x++ {
+			c := f.C[y*f.W+x]
+			if c.R != ' ' && c.R != '·' {
+				t.Fatalf("cell %d,%d = %q, want space or grid point", x, y, c.R)
+			}
+			if c.R == ' ' && x%3 == 0 && y%2 == 0 {
+				t.Fatalf("cell %d,%d: missing grid point", x, y)
+			}
+		}
+	}
+}
+
+// The battle script: waves arrive, die, and leak on schedule, and the five
+// towers sit on the right rows.
+func TestTitleBattleScript(t *testing.T) {
+	const w, h = 100, 30
+	off := screenOff(h)
+	pathY, topY, botY := off+demoPath, off+demoUpper, off+demoLower
+	pathRow := func(fr int) string {
+		f := RenderTitle(w, h, fr, nil, Palette())
+		var b strings.Builder
+		for x := 0; x < w; x++ {
+			b.WriteRune(f.C[pathY*w+x].R)
+		}
+		return b.String()
+	}
+	if got := pathRow(60); strings.Count(got, "o") < 3 {
+		t.Errorf("frame 60: want >=3 wave-1 minions on the path, got %q", got)
+	}
+	// The first minion dies at frame 55 and bursts at its death point.
+	f56 := RenderTitle(w, h, 56, nil, Palette())
+	if r := f56.C[pathY*w+demoX(w, 52.0/150)].R; r != '*' {
+		t.Errorf("frame 56: death burst rune = %q, want *", r)
+	}
+	if got := pathRow(150); !strings.Contains(got, "r") {
+		t.Errorf("frame 150: want a wave-2 runner on the path, got %q", got)
+	}
+	if got := pathRow(300); !strings.Contains(got, "B") || strings.Count(got, "o") < 3 {
+		t.Errorf("frame 300: want boss + 3 wave-3 minions, got %q", got)
+	}
+	// The leaked runner flashes the exit marker red.
+	fl := RenderTitle(w, h, 284, nil, Palette())
+	if c := fl.C[pathY*w+(w-3)]; c.BG != 167 {
+		t.Errorf("frame 284: exit cell BG = %d, want 167 (leak flash)", c.BG)
+	}
+	// Tower rows: sniper and mortar above, gunner/cannon/frost below.
+	f0 := RenderTitle(w, h, 0, nil, Palette())
+	for _, tw := range demoTowers {
+		tx := demoX(w, tw.u)
+		row := topY
+		if !tw.above {
+			row = botY
+		}
+		want := game.TowerSpecs[tw.kind].Short
+		if r := f0.C[row*w+tx].R; r != want {
+			t.Errorf("frame 0: tower %d at %d,%d = %q, want %q", tw.kind, tx, row, r, want)
 		}
 	}
 }

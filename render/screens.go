@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"math"
 	"sort"
 
 	"tdef/game"
@@ -150,131 +151,424 @@ func titleBest(scores map[string]int) (int, string) {
 	return best, name
 }
 
+const titleTagline = "— terminal tower defense —"
+
+// The title screen is one long, fully scripted loop — a pure function of the
+// frame counter (30fps), titleCycle frames ≈ 18s:
+//
+//	0-360    a three-wave battle in the demo box: the towers hold wave 1,
+//	         mostly hold wave 2 (one runner leaks), then wave 3's boss
+//	         breaks through the exit
+//	360-373  the exit overloads and glows
+//	373-445  a static whiteout, then a shockwave from the exit eats the
+//	         whole frame; the burn trail cools into a glowing grid
+//	445-465  a beat of the cooling grid
+//	465-475  a black beat with a single ignition spark
+//	475-545  reboot: the border draws itself, the logo drops in row by row,
+//	         the tagline types on, the demo returns to standby — frame
+//	         titleCycle-1 is exactly frame 0, so the loop is seamless.
+const (
+	titleOverloadEnd = 373
+	titleBlastEnd    = 445
+	titleGridEnd     = 465
+	titleVoidEnd     = 475
+	titleCycle       = 545 // must not be a multiple of 15 (footer blink seam)
+)
+
+// Demo box band rows: border, upper tower line, path, lower tower line,
+// border.
+const (
+	demoTop   = 9
+	demoUpper = 10
+	demoPath  = 11
+	demoLower = 12
+	demoRows  = 5
+)
+
+type demoTower struct {
+	kind   int     // index into game.TowerSpecs
+	u      float64 // position along the path, 0 (spawn) .. 1 (exit)
+	above  bool
+	cd     int // frames between shots
+	beam   int // frames the beam stays visible (instant towers)
+	shell  int // frames of shell flight (splash towers)
+	rangeU float64
+}
+
+// Five different towers: three below the path, two above.
+var demoTowers = []demoTower{
+	{kind: 0, u: 0.14, cd: 9, beam: 3, rangeU: 0.13},                 // Gunner: fast, short
+	{kind: 1, u: 0.36, cd: 30, shell: 9, rangeU: 0.11},               // Cannon: slow splash
+	{kind: 2, u: 0.56, cd: 18, beam: 4, rangeU: 0.11},                // Frost: steady
+	{kind: 3, u: 0.30, above: true, cd: 38, beam: 2, rangeU: 0.18},   // Sniper: long, rare
+	{kind: 5, u: 0.74, above: true, cd: 46, shell: 14, rangeU: 0.16}, // Mortar: big splash
+}
+
+type demoEnemy struct {
+	kind  int // index into game.EnemySpecs
+	spawn int
+	cross int // frames from spawn to exit
+	die   int // death frame; <0 = leaks through the exit
+}
+
+// The battle script: wave 1 (minions) is held completely, wave 2 (runners)
+// is held except one leak, and wave 3's boss walks through the exit at
+// frame 360 while its minions are picked off.
+var demoWaves = []demoEnemy{
+	{0, 3, 150, 55}, {0, 17, 150, 69}, {0, 31, 150, 83},
+	{0, 45, 150, 97}, {0, 59, 150, 111}, {0, 73, 150, 125},
+	{1, 140, 95, 188}, {1, 152, 95, 200}, {1, 164, 95, 212},
+	{1, 176, 95, 246}, {1, 188, 95, -1},
+	{5, 250, 110, -1}, {0, 250, 150, 302}, {0, 262, 150, 314}, {0, 274, 150, 326},
+}
+
+// demoX maps a 0..1 path position to a column: 2 (spawn) .. w-3 (exit).
+func demoX(w int, u float64) int { return 2 + int(u*float64(w-5)) }
+
 // RenderTitle draws the animated title screen. It is a pure function of
 // (w, h, frame, scores): the same frame index always yields the same frame,
 // so the animation is deterministic and unit-testable. `frame` is the 30fps
 // tick counter.
 func RenderTitle(w, h, frame int, scores map[string]int, pal Colors) *Frame {
-	lit := (frame/15)%2 == 0
-	f := screenBox(w, h, "TDEF", []fseg{
-		{key: "[enter]", text: " start", blink: true},
-		{key: "q", text: " quit"},
-	}, lit, pal)
+	fr := frame % titleCycle
+	switch {
+	case fr < titleOverloadEnd:
+		lit := (fr/15)%2 == 0
+		f := screenBox(w, h, "TDEF", []fseg{
+			{key: "[enter]", text: " start", blink: true},
+			{key: "q", text: " quit"},
+		}, lit, pal)
+		drawTitleBattle(f, w, h, fr, scores, pal)
+		if fr >= 360 {
+			drawTitleOverload(f, w, h, fr-360, pal)
+		}
+		return f
+	case fr < titleBlastEnd:
+		f := blankFrame(w, h)
+		t := fr - titleOverloadEnd
+		drawTitleStatic(f, w, h, t)
+		drawTitleShockwave(f, w, h, t)
+		return f
+	case fr < titleGridEnd:
+		f := blankFrame(w, h)
+		drawTitleGrid(f, w, h, fr-titleBlastEnd)
+		return f
+	case fr < titleVoidEnd:
+		f := blankFrame(w, h)
+		drawTitleSpark(f, w, h, fr-titleGridEnd)
+		return f
+	default:
+		f := blankFrame(w, h)
+		drawTitleReboot(f, w, h, fr-titleVoidEnd, scores, pal)
+		return f
+	}
+}
+
+// blankFrame returns an empty w×h frame (the base for the effect segments).
+func blankFrame(w, h int) *Frame {
+	f := &Frame{W: w, H: h, C: make([]Cell, w*h)}
+	for i := range f.C {
+		f.C[i] = Cell{R: ' '}
+	}
+	return f
+}
+
+// drawTitleBattle draws the title contents (logo, tagline, demo, roster,
+// best line) on top of a screenBox frame at battle frame fr.
+func drawTitleBattle(f *Frame, w, h, fr int, scores map[string]int, pal Colors) {
 	off := screenOff(h)
-	// Band rows (19-row layout): 2-6 logo, 7 shadow, 8 tagline, 9-12
-	// demo sub-box, 13-14 roster, 16 best.
-	row := func(y int) int { return off + y }
-	put := func(y int, s string, fg int, bold bool) {
-		if yy := row(y); yy > 0 && yy < h-1 {
-			centerPut(f, yy, s, fg, bold)
+	drawTitleLogo(f, w, off, -1)
+	drawTitleTagline(f, w, off, len(titleTagline))
+	drawTitleDemo(f, w, h, off, fr, pal)
+	drawTitleRoster(f, w, h, off, pal)
+	if yy := off + 17; yy > 0 && yy < h-1 {
+		best, name := titleBest(scores)
+		if best > 0 {
+			centerPut(f, yy, fmt.Sprintf("★ best %d — %s", best, name), 220, false)
+		} else {
+			centerPut(f, yy, " no scores yet ", 238, false)
 		}
 	}
+}
+
+// drawTitleLogo draws the beveled TDEF slab (band rows 2-6) and its drop
+// shadow (row 7). flashRow (0-4, or -1 for none) renders one logo row white
+// — the reboot uses it for the letter drop.
+func drawTitleLogo(f *Frame, w, off, flashRow int) {
+	drawTitleLogoShadow(f, w, off)
+	for i := 0; i < 5; i++ {
+		drawTitleLogoRow(f, w, off, i, i == flashRow)
+	}
+}
+
+func drawTitleLogoShadow(f *Frame, w, off int) {
 	const logoW = 42 // 4 letters * 9 + 3 gaps * 2
 	x0 := (w - logoW) / 2
 	if x0 < 0 {
 		x0 = 0
 	}
-	// Drop shadow under the logo's bottom row (drawn first, so the letters
-	// win any overlap).
 	for li, letters := range titleLetters {
 		lx := x0 + li*11
 		for ci, ch := range letters[4] {
 			if ch == 'X' {
-				f.Set(lx+ci+1, row(6)+1, Cell{R: '░', FG: 238})
+				f.Set(lx+ci+1, off+7, Cell{R: '░', FG: 238})
 			}
 		}
+	}
+}
+
+func drawTitleLogoRow(f *Frame, w, off, row int, flash bool) {
+	const logoW = 42
+	x0 := (w - logoW) / 2
+	if x0 < 0 {
+		x0 = 0
 	}
 	bevel := [5]rune{'█', '▓', '▓', '▓', '▒'}
 	for li, letters := range titleLetters {
 		lx := x0 + li*11
-		for ri, lrow := range letters {
-			for ci, ch := range lrow {
-				if ch != 'X' {
-					continue
-				}
-				f.Set(lx+ci, row(2+ri), Cell{R: bevel[ri], FG: titleColors[li], Bold: true})
+		fg := titleColors[li]
+		if flash {
+			fg = 255
+		}
+		for ci, ch := range letters[row] {
+			if ch == 'X' {
+				f.Set(lx+ci, off+2+row, Cell{R: bevel[row], FG: fg, Bold: true})
 			}
 		}
 	}
-	put(8, "— terminal tower defense —", 245, false)
-	drawTitleDemo(f, w, h, frame, row, pal)
-	drawTitleRoster(f, w, h, pal, row)
-	best, name := titleBest(scores)
-	if best > 0 {
-		put(16, fmt.Sprintf("★ best %d — %s", best, name), 220, false)
-	} else {
-		put(16, " no scores yet ", 238, false)
-	}
-	return f
 }
 
-// drawTitleDemo animates a miniature battle inside a full-width [ BATTLE ]
-// sub-box on band rows 9-12: an enemy walks the path from the spawn toward
-// E, the tower G beams it while it is in range, and E flashes while the
-// enemy "leaks". Two render ticks per step (~67ms) keeps the motion
-// readable at 30fps.
-func drawTitleDemo(f *Frame, w, h, frame int, row func(int) int, pal Colors) {
-	const towerX = 20
-	const towerRange = 8
-	walk := w - 7 // steps from x=3 to x=w-4
-	if walk < 10 {
-		walk = 10
-	}
-	const leakSteps = 6
-	cycle := walk + leakSteps
-	c := (frame / 2) % cycle
-	ex, leak := 3, false
-	if c < walk {
-		ex = 3 + c
-	} else {
-		ex, leak = w-4, true
-	}
-	y, ty := row(10), row(11)
-	if row(9) <= 0 || row(12) >= h-1 {
+// drawTitleTagline types the tagline on character by character (n = number
+// of characters shown).
+func drawTitleTagline(f *Frame, w, off, n int) {
+	if n <= 0 {
 		return
 	}
-	drawSubBox(f, 1, row(9), w-2, 4, "BATTLE", pal)
-	for x := 2; x < w-2; x++ {
-		f.Set(x, y, Cell{R: '·', FG: 240})
+	r := []rune(titleTagline)
+	if n > len(r) {
+		n = len(r)
 	}
-	f.Set(2, y, Cell{R: '▶', FG: 46, Bold: true})
-	if ty > 0 && ty < h-1 {
-		for x := towerX - 4; x <= towerX+4; x++ {
-			f.Set(x, ty, Cell{R: ' ', FG: 0, BG: 234})
+	centerPut(f, off+8, string(r[:n]), 245, false)
+}
+
+// drawTitleDemo animates the scripted battle inside a full-width
+// [ BATTLE ] sub-box on band rows 9-13: five towers (three below the path,
+// two above) fire on scripted cooldowns at scripted enemy waves. Everything
+// is a pure function of fr.
+func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
+	y0 := off + demoTop
+	if y0 <= 0 || y0+demoRows >= h-1 {
+		return
+	}
+	drawSubBox(f, 1, y0, w-2, demoRows, "BATTLE", pal)
+	waveText, waveFG := "WAVE 1", pal.Bright
+	switch {
+	case fr >= 360:
+		waveText, waveFG = "BREACH", 167
+	case fr >= 250:
+		waveText, waveFG = "WAVE 3", 167
+	case fr >= 140:
+		waveText, waveFG = "WAVE 2", pal.Bright
+	}
+	// The BATTLE label occupies x 2..9 (┐ + 6 + ┌); the wave segment
+	// follows at x 11.
+	embedSegment(f, y0, 11, waveText, '┐', '┌', pal.Path, waveFG, true)
+
+	pathY := off + demoPath
+	L := w - 5 // path spans columns 2..w-3
+	for x := 2; x <= w-3; x++ {
+		f.Set(x, pathY, Cell{R: '·', FG: 240})
+	}
+	// An energy packet flows toward the exit so the standby screen is never
+	// static.
+	pk := (fr * 2) % L
+	for i := -1; i <= 1; i++ {
+		if px := 2 + (pk+i+L)%L; px >= 2 && px <= w-3 {
+			f.Set(px, pathY, Cell{R: '·', FG: 251})
 		}
-		f.Set(towerX, ty, Cell{R: 'G', FG: 46, Bold: true, BG: 234})
 	}
-	inRange := !leak && ex >= towerX-towerRange && ex <= towerX+towerRange
-	if inRange {
-		lo, hi := ex, towerX
-		if lo > hi {
-			lo, hi = hi, lo
+	f.Set(2, pathY, Cell{R: '▶', FG: 46, Bold: true})
+
+	// Enemy states at this frame: alive (0) or in its death burst (1).
+	type est struct {
+		e  demoEnemy
+		u  float64
+		bf int // frames since death
+	}
+	var alive []est
+	leakFlash := false
+	for _, e := range demoWaves {
+		end := e.die
+		if e.die < 0 {
+			end = e.spawn + e.cross
 		}
-		for x := lo + 1; x < hi; x++ {
-			f.Set(x, y, Cell{R: '+', FG: 255})
+		switch {
+		case fr < e.spawn || fr >= end+6:
+			continue
+		case fr < end:
+			alive = append(alive, est{e: e, u: float64(fr-e.spawn) / float64(e.cross)})
+		default:
+			if e.die < 0 {
+				if fr-end < 8 {
+					leakFlash = true
+				}
+				continue
+			}
+			alive = append(alive, est{
+				e:  e,
+				u:  float64(e.die-e.spawn) / float64(e.cross),
+				bf: fr - end,
+			})
 		}
 	}
-	efg, ebold := 213, false
-	if inRange {
-		efg, ebold = 231, true
+	for _, s := range alive {
+		x := demoX(w, s.u)
+		if s.bf > 0 { // death burst
+			switch {
+			case s.bf == 1:
+				f.Set(x, pathY, Cell{R: '*', FG: 255, Bold: true})
+			case s.bf <= 3:
+				f.Set(x, pathY, Cell{R: '*', FG: pal.Enemy[s.e.kind], Bold: true})
+				f.Set(x-1, pathY, Cell{R: '·', FG: 244})
+				f.Set(x+1, pathY, Cell{R: '·', FG: 244})
+			default:
+				f.Set(x, pathY, Cell{R: '·', FG: 244})
+			}
+			continue
+		}
+		f.Set(x, pathY, Cell{R: game.EnemySpecs[s.e.kind].Short, FG: pal.Enemy[s.e.kind], Bold: s.e.kind == 5})
 	}
-	f.Set(ex, y, Cell{R: 'o', FG: efg, Bold: ebold})
-	if leak {
-		f.Set(w-3, y, Cell{R: 'E', FG: 231, BG: 196, Bold: true})
+
+	// Towers: glyph, then the visual for the most recent shot (beam, shell,
+	// or splash ring).
+	for _, tw := range demoTowers {
+		tx := demoX(w, tw.u)
+		ty := off + demoLower
+		if tw.above {
+			ty = off + demoUpper
+		}
+		shot := (fr / tw.cd) * tw.cd
+		age := fr - shot
+		tgt, has := demoTarget(shot, tw)
+		g := game.TowerSpecs[tw.kind].Short
+		if has && age < 2 { // recoil flash
+			f.Set(tx, ty, Cell{R: g, FG: 255, Bold: true})
+		} else {
+			f.Set(tx, ty, Cell{R: g, FG: pal.Tower[tw.kind], Bold: true})
+		}
+		if !has {
+			continue
+		}
+		// The target keeps walking (or sits at its death point), so the
+		// shot tracks its current position.
+		end := tgt.die
+		if tgt.die < 0 {
+			end = tgt.spawn + tgt.cross
+		}
+		tfr := fr
+		if tfr > end {
+			tfr = end
+		}
+		exx := demoX(w, float64(tfr-tgt.spawn)/float64(tgt.cross))
+		if tw.beam > 0 && age < tw.beam {
+			drawDemoBeam(f, tx, ty, exx, pathY, pal.Beam[tw.kind])
+		} else if tw.shell > 0 {
+			if age < tw.shell {
+				k := float64(age) / float64(tw.shell)
+				sx := int(float64(tx) + (float64(exx)-float64(tx))*k)
+				sy := ty
+				if k >= 0.5 {
+					sy = pathY
+				}
+				f.Set(sx, sy, Cell{R: '·', FG: pal.Beam[tw.kind], Bold: true})
+			} else if age < tw.shell+10 {
+				drawDemoRing(f, exx, pathY, 0.6+float64(age-tw.shell)*0.22, pal.Beam[tw.kind], age-tw.shell)
+			}
+		}
+	}
+
+	// The exit marker last, so anything reaching it sits under it.
+	if leakFlash && fr%2 == 0 {
+		f.Set(w-3, pathY, Cell{R: 'E', FG: 255, BG: 167, Bold: true})
 	} else {
-		f.Set(w-3, y, Cell{R: 'E', FG: 196, Bold: true})
+		f.Set(w-3, pathY, Cell{R: 'E', FG: 196, Bold: true})
+	}
+}
+
+// demoTarget returns the enemy furthest along the path that is within tw's
+// range at frame fr (the shot frame), or ok=false.
+func demoTarget(fr int, tw demoTower) (demoEnemy, bool) {
+	var best demoEnemy
+	bu, ok := 0.0, false
+	for _, e := range demoWaves {
+		end := e.die
+		if e.die < 0 {
+			end = e.spawn + e.cross
+		}
+		if fr < e.spawn || fr >= end {
+			continue
+		}
+		u := float64(fr-e.spawn) / float64(e.cross)
+		if d := u - tw.u; d < -tw.rangeU || d > tw.rangeU {
+			continue
+		}
+		if !ok || u > bu {
+			best, bu, ok = e, u, true
+		}
+	}
+	return best, ok
+}
+
+// drawDemoBeam draws a tower's shot as a line of '+' from (x0,y0) to
+// (x1,y1); towers sit one row off the path, so the line spans two rows.
+func drawDemoBeam(f *Frame, x0, y0, x1, y1, fg int) {
+	steps := x1 - x0
+	if steps < 0 {
+		steps = -steps
+	}
+	for i := 1; i < steps; i++ {
+		x := x0 + (x1-x0)*i/steps
+		y := y0
+		if i*2 >= steps {
+			y = y1
+		}
+		f.Set(x, y, Cell{R: '+', FG: fg})
+	}
+}
+
+// drawDemoRing draws a landed shell's splash ring: an expanding circle in
+// the terminal's 1:2 aspect metric.
+func drawDemoRing(f *Frame, cx, cy int, r float64, fg, age int) {
+	col := fg
+	if age > 4 {
+		col = 51
+	}
+	dx := int(r/0.55) + 2
+	for x := cx - dx; x <= cx+dx; x++ {
+		if x < 0 || x >= f.W {
+			continue
+		}
+		for y := cy - int(r) - 2; y <= cy+int(r)+2; y++ {
+			if y < 0 || y >= f.H {
+				continue
+			}
+			d := math.Hypot(float64(x-cx)*0.55, float64(y-cy))
+			if math.Abs(d-r) < 0.6 {
+				f.Set(x, y, Cell{R: '·', FG: col})
+			}
+		}
 	}
 }
 
 // drawTitleRoster lists the tower and enemy glyphs in their colors, so the
 // title doubles as a legend.
-func drawTitleRoster(f *Frame, w, h int, pal Colors, row func(int) int) {
+func drawTitleRoster(f *Frame, w, h, off int, pal Colors) {
 	// Both lines share one grid (label column 9 wide, glyphs 4 apart,
 	// anchored to the 8-glyph enemy line) so the columns line up.
 	const labelW, stride, maxGlyphs = 9, 4, 8
 	widest := labelW + maxGlyphs*stride
 	line := func(y int, label string, glyphs []rune, colors []int) {
-		yy := row(y)
+		yy := off + y
 		if yy <= 0 || yy >= h-1 {
 			return
 		}
@@ -287,12 +581,245 @@ func drawTitleRoster(f *Frame, w, h int, pal Colors, row func(int) int) {
 			f.Set(x0+labelW+stride*i, yy, Cell{R: g, FG: colors[i], Bold: true})
 		}
 	}
-	line(13, " towers  ",
+	line(14, " towers  ",
 		[]rune{'G', 'C', 'F', 'S', 'T', 'M', 'L'},
 		[]int{pal.Tower[0], pal.Tower[1], pal.Tower[2], pal.Tower[3], pal.Tower[4], pal.Tower[5], pal.Tower[6]})
-	line(14, " enemies  ",
+	line(15, " enemies  ",
 		[]rune{'o', 'r', 'g', 't', 's', 'B', 'w', 'D'},
 		[]int{pal.Enemy[0], pal.Enemy[1], pal.Enemy[2], pal.Enemy[3], pal.Enemy[4], pal.Enemy[5], pal.Enemy[6], pal.Enemy[7]})
+}
+
+// ---------------------------------------------------------------- effects
+
+// titleHash is a cheap deterministic per-cell/per-frame hash for effect
+// flicker.
+func titleHash(x, y, t int) int {
+	n := x*73856093 ^ y*19349663 ^ t*83492791
+	if n < 0 {
+		n = -n
+	}
+	return n
+}
+
+// drawTitleOverload blooms the exit after the boss breaks through: a red
+// heat wash that expands out from E with a bright front, swallowing the
+// frame contents near the exit.
+func drawTitleOverload(f *Frame, w, h, t int, pal Colors) {
+	off := screenOff(h)
+	ox, oy := w-3, off+demoPath
+	rr := 1.0 + float64(t)*1.1
+	dx := int(rr/0.55) + 2
+	for x := ox - dx; x <= ox+dx; x++ {
+		if x < 1 || x >= w-1 {
+			continue
+		}
+		for y := oy - int(rr) - 2; y <= oy+int(rr)+2; y++ {
+			if y < 1 || y >= h-1 {
+				continue
+			}
+			d := math.Hypot(float64(x-ox)*0.55, float64(y-oy))
+			if math.Abs(d-rr) < 0.8 {
+				f.Set(x, y, Cell{R: '█', FG: 255})
+			} else if d < rr {
+				f.Set(x, y, Cell{R: ' ', FG: 0, BG: 124 + (12-t)*6})
+			}
+		}
+	}
+	f.Set(ox, oy, Cell{R: 'E', FG: 255, Bold: true})
+}
+
+// drawTitleStatic paints the whiteout: a field of flickering static that
+// the shockwave carves through.
+func drawTitleStatic(f *Frame, w, h, t int) {
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			n := titleHash(x, y, t)
+			r, c := '░', 234
+			switch {
+			case n%37 == 0:
+				r, c = '█', 255
+			case n%13 == 0:
+				r, c = '▒', 245
+			case n%5 == 0:
+				c = 238
+			}
+			f.Set(x, y, Cell{R: r, FG: c})
+		}
+	}
+}
+
+// drawTitleShockwave consumes the static with an expanding shockwave from
+// the exit: a white-cyan front, a hot flickering trail with re-sparks, then
+// a cool-down that leaves the glowing grid the reboot builds on.
+func drawTitleShockwave(f *Frame, w, h, t int) {
+	off := screenOff(h)
+	ox, oy := w-3, off+demoPath
+	r := math.Max(0, float64(t-2)) * 2.6
+	if r <= 0 {
+		return
+	}
+	for x := 0; x < w; x++ {
+		for y := 0; y < h; y++ {
+			d := math.Hypot(float64(x-ox)*0.55, float64(y-oy))
+			if d > r {
+				continue
+			}
+			age := r - d
+			n := titleHash(x, y, t)
+			switch {
+			case d < 1.5 && age < 40: // the origin keeps pulsing
+				f.Set(x, y, Cell{R: '*', FG: 255, Bold: true})
+			case age < 1.2:
+				f.Set(x, y, Cell{R: '█', FG: 255, Bold: true})
+			case age < 3:
+				f.Set(x, y, Cell{R: '█', FG: 51})
+			case age < 6:
+				f.Set(x, y, Cell{R: '▓', FG: 117})
+			case age < 12:
+				c := 33
+				if n%3 == 0 {
+					c = 39
+				}
+				f.Set(x, y, Cell{R: '▒', FG: c})
+			default:
+				if n%89 == 0 && age < 28 {
+					f.Set(x, y, Cell{R: '·', FG: 231})
+					continue
+				}
+				if x%3 == 0 && y%2 == 0 {
+					f.Set(x, y, Cell{R: '·', FG: 24})
+				} else {
+					f.Set(x, y, Cell{R: ' '})
+				}
+			}
+		}
+	}
+}
+
+// drawTitleGrid holds a beat of the cooling grid left by the shockwave.
+func drawTitleGrid(f *Frame, w, h, t int) {
+	c := 24
+	if t < 6 {
+		c = 33
+	}
+	if t%3 == 0 {
+		c += 4
+	}
+	for y := 0; y < h; y += 2 {
+		for x := 0; x < w; x += 3 {
+			f.Set(x, y, Cell{R: '·', FG: c})
+		}
+	}
+}
+
+// drawTitleSpark is the ignition spark at the center of the black beat.
+func drawTitleSpark(f *Frame, w, h, t int) {
+	x, y := w/2, h/2
+	switch {
+	case t >= 3 && t < 6:
+		f.Set(x, y, Cell{R: '·', FG: 231})
+	case t >= 6 && t < 9:
+		f.Set(x, y, Cell{R: '*', FG: 255, Bold: true})
+	}
+}
+
+// perimCell returns the (x, y, glyph) of the i-th cell of the frame
+// perimeter, walked from the top-left clockwise: top row, right column,
+// bottom row, left column.
+func perimCell(i, w, h int) (int, int, rune) {
+	if i < w {
+		g := '─'
+		if i == 0 {
+			g = '╭'
+		} else if i == w-1 {
+			g = '╮'
+		}
+		return i, 0, g
+	}
+	i -= w
+	if i < h-2 {
+		return w - 1, i + 1, '│'
+	}
+	i -= h - 2
+	if i < w {
+		x := w - 1 - i
+		g := '─'
+		if x == w-1 {
+			g = '╯'
+		} else if x == 0 {
+			g = '╰'
+		}
+		return x, h - 1, g
+	}
+	i -= w
+	return 0, h - 2 - i, '│'
+}
+
+// drawTitleReboot draws the screen back into existence: the explosion's
+// grid fades, the border draws itself from the top-left, the logo drops in
+// row by row (each row flashing white on arrival), the tagline types on,
+// and the demo returns to standby. At the last frame the screen is exactly
+// the battle's frame 0, closing the loop seamlessly.
+func drawTitleReboot(f *Frame, w, h, t int, scores map[string]int, pal Colors) {
+	const dur = titleCycle - titleVoidEnd
+	p := float64(t) / float64(dur)
+	off := screenOff(h)
+	if p < 0.2 { // the residual blast grid cools out first
+		for y := 0; y < h; y += 2 {
+			for x := 0; x < w; x += 3 {
+				f.Set(x, y, Cell{R: '·', FG: 24})
+			}
+		}
+	}
+	// The border pen: top row, right column, bottom row, left column.
+	P := 2*w + 2*h - 4
+	pen := int(p / 0.55 * float64(P))
+	if pen > P {
+		pen = P
+	}
+	for i := 0; i < pen; i++ {
+		x, y, r := perimCell(i, w, h)
+		fg := 240
+		if i == pen-1 && pen < P {
+			fg = 51 // the pen tip glows while it draws
+		}
+		f.Set(x, y, Cell{R: r, FG: fg})
+	}
+	if p >= 0.58 {
+		embedSegment(f, 0, 2, "TDEF", '┐', '┌', 240, pal.Bright, true)
+	}
+	pPrev := float64(t-1) / float64(dur)
+	for i := 0; i < 5; i++ {
+		th := 0.30 + 0.05*float64(i)
+		if p < th {
+			continue
+		}
+		drawTitleLogoRow(f, w, off, i, t > 0 && pPrev < th)
+	}
+	if p >= 0.55 {
+		drawTitleLogoShadow(f, w, off)
+	}
+	drawTitleTagline(f, w, off, int((p-0.58)/0.14*float64(len(titleTagline))))
+	if p >= 0.72 {
+		drawTitleDemo(f, w, h, off, 0, pal)
+	}
+	if p >= 0.80 {
+		drawTitleRoster(f, w, h, off, pal)
+	}
+	if p >= 0.88 {
+		best, name := titleBest(scores)
+		if best > 0 {
+			centerPut(f, off+17, fmt.Sprintf("★ best %d — %s", best, name), 220, false)
+		} else {
+			centerPut(f, off+17, " no scores yet ", 238, false)
+		}
+	}
+	if p >= 0.95 {
+		drawFooter(f, []fseg{
+			{key: "[enter]", text: " start"},
+			{key: "q", text: " quit"},
+		}, true, pal)
+	}
 }
 
 // ---------------------------------------------------------------- menu
