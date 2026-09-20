@@ -279,3 +279,53 @@
   - Loop is now 1685 frames (~56s, was 545/18s). The ambient path packet
     slows to one cell per frame. Phase/seam/blast/script tests retimed;
     seam, blast coverage, -race suite, and a PTY run to WAVE 3 all green.
+- 2026-09-20 (title boot cinematic + weapon fan + signature, branch title-screen)
+  - The title opened straight into the battle; it now has a one-shot
+    cinematic on every visit. RenderTitle gained a `boot` parameter
+    (frames since this title visit started; tui/app.go stamps
+    titleBootAt on screen entry), so the whole screen is a pure
+    function of (w, h, frame, boot, scores, pal) and the boot replays
+    each time you return to the title.
+  - Boot v1 (124f, ~4s): ignition point + three expanding rings on
+    black (0-14); a light pen traces the TDEF slab out of digital
+    noise, white tip with a cooling trail, each letter flashing white
+    as its trace completes (15-75); the slab ignites white over a dim
+    grid (76-79); the tagline decodes left to right with a caret
+    (80-93); chrome fades in in three waves — border/footer, empty
+    battlefield, roster/best (94-123).
+  - The attract loop was restructured around a 15s idle gate: 450f of
+    standby (full UI, empty battlefield — the demo no longer starts
+    mid-breach) then 120f of "BATTLE"/"WAVE 1" decoding on with the
+    five towers powering up left to right, then the unchanged 1685f
+    battle script. The reboot now ends exactly on the standby frame,
+    so the loop (2255f) is seamless.
+  - Boot v2 (273f, ~9s), per the user: the ignition takes twice as
+    long and the second half is a weapon fan where each letter fires
+    a different weapon, left to right, at a lock-on reticle on the
+    frame border, in the letter's own color:
+      - 15-19  rings freeze and settle dim; a crosshair zaps out
+      - 20-29  the cross collapses into the slab's bounding box, which
+               draws itself (10 cells/frame) over a scan flicker
+      - 95-224 T Gunner (5 tracer shots, letter recoil), D Cannon
+               (6f recoil + slow shell + AOE starburst), E Sniper
+               (14f charge — the letter's top row fills with a ramp —
+               then a 3f full-length beam), F Tesla (hash-jittered
+               chain arc, two branch strikes, sparks)
+      - each shot locks a reticle (cross + 4 dots) at ray ∩ frame
+               edge and shatters it into 6 fragments on impact; a
+               settle beat flickers the box before the flash
+      - 225+ flash, subtitle, chrome fade (as in v1)
+  - The signature "by 0xbenc" is embedded in the bottom border's right
+    section (FG 238, mirroring the TDEF embed in the top border) on the
+    standby, the battle, the boot fade-in and the reboot; it never
+    collides with the centered footer.
+  - Verification: gofmt/vet/test -race green; TestTitleBootSequence
+    covers every phase checkpoint plus the boot->standby seam,
+    TestTitleStandbyEmpty, TestTitleSigInBottomBorder, TestTitleIdleGate
+    (chrome up at 449, battle text at 451, seam 450 vs 2705); PTY: all
+    seven original flows + a new title_idle_battle flow (waits for the
+    idle gate to fire the battle), all passing on the fresh binary.
+    Harness notes: the PTY marker moved from "TDEF" (now only visible
+    during the boot) to "by 0xbenc" (first full-chrome frame), and the
+    ptydrv smoke now waits for the in-game "winding" HUD line because
+    the title intro no longer says "press any key to start".
