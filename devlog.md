@@ -259,3 +259,23 @@
     (TestTitleBattleScript: deaths, leak flash, tower rows), and the
     seam; PTY end-to-end (BATTLE box -> BREACH at ~12s -> q) and all
     seven flows pass on the fresh binary.
+- 2026-09-19 (title battle retimed to a true 1x opening, branch title-screen)
+  - The demo read as a sped-up highlight reel: a minion crossed the path at
+    3x 1x-gameplay speed and the towers fired 1.5-2.6x faster than their
+    real RoT. Checked against game/balance.go: at scale 2 (a ~100-wide
+    terminal) a minion crawls 6.4 screen cells/s; the old demo ran 19.
+  - Fix: wave 1 minions now cross in 445 frames — the true 1x scale-2
+    speed — spawned 1.5s apart, so the ~19s opening feels like the real
+    game. Tower cooldowns are the real level-1 RoT in frames (Gunner 23,
+    Cannon 55, Frost 33, Sniper 86, Mortar 67; was 9/30/18/38/46).
+  - The relative speeds were also backwards: in-game the Runner (2.6) is
+    slower than the Minion (3.2), but the demo had the runner zipping by.
+    Waves 2-3 are compressed (runners 300f cross, boss 600f — slower than
+    a minion so it still reads as the slow threat) and the boss breaches
+    at frame 1500.
+  - A true 1x boss walk is ~1 minute (0.8 cells/s), so the boss is
+    necessarily compressed; the "1x" promise applies to the opening, which
+    is what most viewers will see before pressing enter.
+  - Loop is now 1685 frames (~56s, was 545/18s). The ambient path packet
+    slows to one cell per frame. Phase/seam/blast/script tests retimed;
+    seam, blast coverage, -race suite, and a PTY run to WAVE 3 all green.
