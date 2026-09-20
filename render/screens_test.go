@@ -284,15 +284,15 @@ func TestTitlePhases(t *testing.T) {
 		want []string
 		abs  []string
 	}{
-		{100, []string{"BATTLE", "WAVE 1"}, nil},
-		{200, []string{"WAVE 2"}, nil},
-		{300, []string{"WAVE 3", "B"}, nil},
-		{365, []string{"BREACH"}, nil},
-		{374, nil, []string{"BATTLE", "TDEF", "·"}}, // static whiteout
-		{385, []string{"█"}, []string{"BATTLE"}},    // shockwave front
-		{450, nil, []string{"BATTLE", "█"}},         // cooled grid only
-		{500, nil, []string{"BATTLE", "[enter]"}},   // mid-reboot
-		{535, []string{"BATTLE", "WAVE 1"}, []string{"[enter] start"}},
+		{200, []string{"BATTLE", "WAVE 1"}, nil},
+		{600, []string{"WAVE 2"}, nil},
+		{1100, []string{"WAVE 3", "B"}, nil},
+		{1505, []string{"BREACH"}, nil},
+		{1514, nil, []string{"BATTLE", "TDEF", "·"}}, // static whiteout
+		{1525, []string{"█"}, []string{"BATTLE"}},    // shockwave front
+		{1590, nil, []string{"BATTLE", "█"}},         // cooled grid only
+		{1640, nil, []string{"BATTLE", "[enter]"}},   // mid-reboot
+		{1675, []string{"BATTLE", "WAVE 1"}, []string{"[enter] start"}},
 	}
 	for _, c := range cases {
 		got := text(c.fr)
@@ -308,7 +308,7 @@ func TestTitlePhases(t *testing.T) {
 		}
 	}
 	// The void is exactly one ignition spark at the center.
-	f := RenderTitle(100, 30, 468, scores, Palette())
+	f := RenderTitle(100, 30, 1608, scores, Palette())
 	n := 0
 	for _, c := range f.C {
 		if c.R != ' ' && c.R != 0 {
@@ -316,7 +316,7 @@ func TestTitlePhases(t *testing.T) {
 		}
 	}
 	if n != 1 {
-		t.Fatalf("void frame 468: %d non-space cells, want 1", n)
+		t.Fatalf("void frame 1608: %d non-space cells, want 1", n)
 	}
 	if c := f.C[15*100+50]; c.R != '·' || c.FG != 231 {
 		t.Fatalf("ignition spark = %+v, want ·/231 at the center", c)
@@ -366,24 +366,25 @@ func TestTitleBattleScript(t *testing.T) {
 		}
 		return b.String()
 	}
-	if got := pathRow(60); strings.Count(got, "o") < 3 {
-		t.Errorf("frame 60: want >=3 wave-1 minions on the path, got %q", got)
+	if got := pathRow(180); strings.Count(got, "o") < 3 {
+		t.Errorf("frame 180: want >=3 wave-1 minions on the path, got %q", got)
 	}
-	// The first minion dies at frame 55 and bursts at its death point.
-	f56 := RenderTitle(w, h, 56, nil, Palette())
-	if r := f56.C[pathY*w+demoX(w, 52.0/150)].R; r != '*' {
-		t.Errorf("frame 56: death burst rune = %q, want *", r)
+	// The first minion dies at frame 370 and bursts at its death point
+	// (u = 340/445, inside the mortar's range).
+	f371 := RenderTitle(w, h, 371, nil, Palette())
+	if r := f371.C[pathY*w+demoX(w, 340.0/445)].R; r != '*' {
+		t.Errorf("frame 371: death burst rune = %q, want *", r)
 	}
-	if got := pathRow(150); !strings.Contains(got, "r") {
-		t.Errorf("frame 150: want a wave-2 runner on the path, got %q", got)
+	if got := pathRow(600); !strings.Contains(got, "r") {
+		t.Errorf("frame 600: want a wave-2 runner on the path, got %q", got)
 	}
-	if got := pathRow(300); !strings.Contains(got, "B") || strings.Count(got, "o") < 3 {
-		t.Errorf("frame 300: want boss + 3 wave-3 minions, got %q", got)
+	if got := pathRow(1120); !strings.Contains(got, "B") || strings.Count(got, "o") < 3 {
+		t.Errorf("frame 1120: want boss + 3 wave-3 minions, got %q", got)
 	}
-	// The leaked runner flashes the exit marker red.
-	fl := RenderTitle(w, h, 284, nil, Palette())
+	// The leaked runner (exits at frame 855) flashes the exit marker red.
+	fl := RenderTitle(w, h, 856, nil, Palette())
 	if c := fl.C[pathY*w+(w-3)]; c.BG != 167 {
-		t.Errorf("frame 284: exit cell BG = %d, want 167 (leak flash)", c.BG)
+		t.Errorf("frame 856: exit cell BG = %d, want 167 (leak flash)", c.BG)
 	}
 	// Tower rows: sniper and mortar above, gunner/cannon/frost below.
 	f0 := RenderTitle(w, h, 0, nil, Palette())

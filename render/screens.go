@@ -154,25 +154,28 @@ func titleBest(scores map[string]int) (int, string) {
 const titleTagline = "— terminal tower defense —"
 
 // The title screen is one long, fully scripted loop — a pure function of the
-// frame counter (30fps), titleCycle frames ≈ 18s:
+// frame counter (30fps), titleCycle frames ≈ 56s:
 //
-//	0-360    a three-wave battle in the demo box: the towers hold wave 1,
-//	         mostly hold wave 2 (one runner leaks), then wave 3's boss
-//	         breaks through the exit
-//	360-373  the exit overloads and glows
-//	373-445  a static whiteout, then a shockwave from the exit eats the
+//	0-1500    a three-wave battle in the demo box. Wave 1 (minions) plays at
+//	         true 1× gameplay speed so the opening feels like the real game;
+//	         waves 2-3 are compressed to keep the loop short. The towers hold
+//	         wave 1, mostly hold wave 2 (one runner leaks), then wave 3's
+//	         boss — the slowest thing on the board — breaks through the exit.
+//	         Tower fire-rates match the real 1× RoT.
+//	1500-1513 the exit overloads and glows
+//	1513-1585 a static whiteout, then a shockwave from the exit eats the
 //	         whole frame; the burn trail cools into a glowing grid
-//	445-465  a beat of the cooling grid
-//	465-475  a black beat with a single ignition spark
-//	475-545  reboot: the border draws itself, the logo drops in row by row,
+//	1585-1605 a beat of the cooling grid
+//	1605-1615 a black beat with a single ignition spark
+//	1615-1685 reboot: the border draws itself, the logo drops in row by row,
 //	         the tagline types on, the demo returns to standby — frame
 //	         titleCycle-1 is exactly frame 0, so the loop is seamless.
 const (
-	titleOverloadEnd = 373
-	titleBlastEnd    = 445
-	titleGridEnd     = 465
-	titleVoidEnd     = 475
-	titleCycle       = 545 // must not be a multiple of 15 (footer blink seam)
+	titleOverloadEnd = 1513
+	titleBlastEnd    = 1585
+	titleGridEnd     = 1605
+	titleVoidEnd     = 1615
+	titleCycle       = 1685 // must not be a multiple of 15 (footer blink seam)
 )
 
 // Demo box band rows: border, upper tower line, path, lower tower line,
@@ -195,13 +198,15 @@ type demoTower struct {
 	rangeU float64
 }
 
-// Five different towers: three below the path, two above.
+// Five different towers: three below the path, two above. The cooldowns are
+// the real level-1 RoT converted to frames (30/RoT), so the shooting reads
+// as 1× gameplay.
 var demoTowers = []demoTower{
-	{kind: 0, u: 0.14, cd: 9, beam: 3, rangeU: 0.13},                 // Gunner: fast, short
-	{kind: 1, u: 0.36, cd: 30, shell: 9, rangeU: 0.11},               // Cannon: slow splash
-	{kind: 2, u: 0.56, cd: 18, beam: 4, rangeU: 0.11},                // Frost: steady
-	{kind: 3, u: 0.30, above: true, cd: 38, beam: 2, rangeU: 0.18},   // Sniper: long, rare
-	{kind: 5, u: 0.74, above: true, cd: 46, shell: 14, rangeU: 0.16}, // Mortar: big splash
+	{kind: 0, u: 0.14, cd: 23, beam: 3, rangeU: 0.13},                // Gunner: fast, short
+	{kind: 1, u: 0.36, cd: 55, shell: 9, rangeU: 0.11},               // Cannon: slow splash
+	{kind: 2, u: 0.56, cd: 33, beam: 4, rangeU: 0.11},                // Frost: steady
+	{kind: 3, u: 0.30, above: true, cd: 86, beam: 2, rangeU: 0.18},   // Sniper: long, rare
+	{kind: 5, u: 0.74, above: true, cd: 67, shell: 14, rangeU: 0.16}, // Mortar: big splash
 }
 
 type demoEnemy struct {
@@ -211,15 +216,19 @@ type demoEnemy struct {
 	die   int // death frame; <0 = leaks through the exit
 }
 
-// The battle script: wave 1 (minions) is held completely, wave 2 (runners)
-// is held except one leak, and wave 3's boss walks through the exit at
-// frame 360 while its minions are picked off.
+// The battle script. Wave 1 minions cross in 445 frames — the true 1×
+// scale-2 speed (6.4 cells/s over the 95-cell path) — and are held
+// completely. Wave 2 runners are compressed (300 frames) and one leaks.
+// Wave 3's boss is the slowest thing on the board (600 frames, slower than
+// a minion) and walks through the exit at frame 1500 while its minions are
+// picked off. Held enemies die at u≈0.75-0.76, inside the mortar's range —
+// the last line of defence.
 var demoWaves = []demoEnemy{
-	{0, 3, 150, 55}, {0, 17, 150, 69}, {0, 31, 150, 83},
-	{0, 45, 150, 97}, {0, 59, 150, 111}, {0, 73, 150, 125},
-	{1, 140, 95, 188}, {1, 152, 95, 200}, {1, 164, 95, 212},
-	{1, 176, 95, 246}, {1, 188, 95, -1},
-	{5, 250, 110, -1}, {0, 250, 150, 302}, {0, 262, 150, 314}, {0, 274, 150, 326},
+	{0, 30, 445, 370}, {0, 75, 445, 415}, {0, 120, 445, 460},
+	{0, 165, 445, 505}, {0, 210, 445, 550}, {0, 255, 445, 595},
+	{1, 480, 300, 705}, {1, 505, 300, 730}, {1, 530, 300, 755},
+	{1, 555, 300, -1},
+	{5, 900, 600, -1}, {0, 950, 445, 1290}, {0, 1010, 445, 1350}, {0, 1070, 445, 1410},
 }
 
 // demoX maps a 0..1 path position to a column: 2 (spawn) .. w-3 (exit).
@@ -239,8 +248,8 @@ func RenderTitle(w, h, frame int, scores map[string]int, pal Colors) *Frame {
 			{key: "q", text: " quit"},
 		}, lit, pal)
 		drawTitleBattle(f, w, h, fr, scores, pal)
-		if fr >= 360 {
-			drawTitleOverload(f, w, h, fr-360, pal)
+		if fr >= titleOverloadEnd-13 {
+			drawTitleOverload(f, w, h, fr-titleOverloadEnd+13, pal)
 		}
 		return f
 	case fr < titleBlastEnd:
@@ -363,11 +372,11 @@ func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
 	drawSubBox(f, 1, y0, w-2, demoRows, "BATTLE", pal)
 	waveText, waveFG := "WAVE 1", pal.Bright
 	switch {
-	case fr >= 360:
+	case fr >= titleOverloadEnd-13: // the boss reaches the exit
 		waveText, waveFG = "BREACH", 167
-	case fr >= 250:
+	case fr >= 900:
 		waveText, waveFG = "WAVE 3", 167
-	case fr >= 140:
+	case fr >= 480:
 		waveText, waveFG = "WAVE 2", pal.Bright
 	}
 	// The BATTLE label occupies x 2..9 (┐ + 6 + ┌); the wave segment
@@ -380,8 +389,8 @@ func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
 		f.Set(x, pathY, Cell{R: '·', FG: 240})
 	}
 	// An energy packet flows toward the exit so the standby screen is never
-	// static.
-	pk := (fr * 2) % L
+	// static. One cell per frame — ambient, not gameplay-speed.
+	pk := fr % L
 	for i := -1; i <= 1; i++ {
 		if px := 2 + (pk+i+L)%L; px >= 2 && px <= w-3 {
 			f.Set(px, pathY, Cell{R: '·', FG: 251})
