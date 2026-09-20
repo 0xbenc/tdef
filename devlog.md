@@ -216,3 +216,12 @@
     dumps are byte-identical in any environment.
   - Below 62x19 the game forces a pause and draws a too-small notice;
     growing back resumes on the next frame.
+  - PTY verification found the bare-ESC deadline never armed: pty file
+    descriptors do not support SetReadDeadline (the error was ignored),
+    so a lone ESC left the parser waiting for a CSI until the next
+    keypress — an arrow typed within the 50ms window was misparsed and
+    lost. Replaced with a mutex-guarded time.AfterFunc fallback, and a
+    second ESC inside the window now settles the first as a definite
+    Escape while keeping the parser armed (TestBareEscapeThenArrow,
+    TestEscapeThenArrowInWindow). Verified on a real pty: esc-back in
+    the menu flow, resize storms, all clean under -race.
