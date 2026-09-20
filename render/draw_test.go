@@ -319,6 +319,189 @@ func TestHUDLinesFitFrame(t *testing.T) {
 	check(g, &UI{Speed: 4, Paused: true, Message: "leak! -6 lives", Scale: 1})
 }
 
+func TestGameLayoutCentering(t *testing.T) {
+	cases := []struct {
+		tw, th, s, ox, oy int
+	}{
+		{62, 19, 1, 8, 2},
+		{80, 24, 1, 17, 4},
+		{92, 32, 2, 1, 2},
+		{137, 45, 3, 1, 2},
+		{200, 70, 4, 10, 8},
+		{30, 10, 1, 1, 2}, // clamped origins
+	}
+	for _, c := range cases {
+		l := GameLayout(45, 13, c.tw, c.th)
+		if l.Scale != c.s || l.Ox != c.ox || l.Oy != c.oy {
+			t.Errorf("GameLayout(45,13,%d,%d) = s%d at (%d,%d), want s%d at (%d,%d)",
+				c.tw, c.th, l.Scale, l.Ox, l.Oy, c.s, c.ox, c.oy)
+		}
+		if l.W != c.tw || l.H != c.th {
+			t.Errorf("frame size = %dx%d, want %dx%d", l.W, l.H, c.tw, c.th)
+		}
+		if got := l.MenuTop(); got != c.th-4 {
+			t.Errorf("MenuTop() = %d, want %d", got, c.th-4)
+		}
+	}
+}
+
+func TestComputeScaleSteps(t *testing.T) {
+	cases := []struct {
+		tw, th, want int
+	}{
+		{62, 19, 1},   // minimum frame: exactly 1x
+		{92, 32, 2},   // 2x threshold
+		{137, 45, 3},  // 3x threshold
+		{182, 58, 4},  // 4x threshold
+		{91, 32, 1},   // one column short of 2x
+		{92, 31, 1},   // one row short of 2x
+		{136, 45, 2},  // one column short of 3x
+		{400, 100, 4}, // capped at 4x
+		{30, 10, 1},   // tiny -> 1x
+		{0, 0, 1},     // unknown size -> 1x
+	}
+	for _, c := range cases {
+		if got := ComputeScale(45, 13, c.tw, c.th); got != c.want {
+			t.Errorf("ComputeScale(45,13,%d,%d) = %d, want %d", c.tw, c.th, got, c.want)
+		}
+	}
+}
+
+func TestTowerSlotDistribution(t *testing.T) {
+	slots := TowerSlots(62, 19)
+	if len(slots) != 7 {
+		t.Fatalf("slots = %d, want 7", len(slots))
+	}
+	wantRow0 := []int{1, 16, 31, 46}
+	wantRow1 := []int{1, 21, 41}
+	for i, x := range wantRow0 {
+		if slots[i].Y != 15 || slots[i].X != x {
+			t.Errorf("slot %d = (%d,%d), want (%d,15)", i, slots[i].X, slots[i].Y, x)
+		}
+	}
+	for i, x := range wantRow1 {
+		if slots[4+i].Y != 16 || slots[4+i].X != x {
+			t.Errorf("slot %d = (%d,%d), want (%d,16)", 4+i, slots[4+i].X, slots[4+i].Y, x)
+		}
+	}
+	// At every width from the minimum up, no label overruns its cell:
+	// the next slot starts at least one column after the label ends.
+	for _, tw := range []int{62, 63, 80, 120} {
+		s := TowerSlots(tw, 20)
+		rows := map[int][]MenuSlot{}
+		for _, sl := range s {
+			rows[sl.Y] = append(rows[sl.Y], sl)
+		}
+		for _, row := range rows {
+			cell := (tw - 2) / len(row)
+			for i, sl := range row {
+				if want := 1 + i*cell; sl.X != want {
+					t.Errorf("tw=%d slot %d X=%d, want %d", tw, i, sl.X, want)
+				}
+				if sl.W > cell {
+					t.Errorf("tw=%d slot %d label %d cols > cell %d", tw, i, sl.W, cell)
+				}
+			}
+		}
+	}
+}
+
+func TestHeaderSegmentsAt62(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &game.State{
+		Map: m, Status: game.StatusRunning, Wave: 5, WaveActive: true,
+		Combo: 7, Gold: 9999, Lives: 14, Score: 3120,
+	}
+	ui := &UI{Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "winding"}
+	check := func(tw, th int, present, absent []string) {
+		f := RenderAt(g, ui, Palette(), tw, th)
+		var b strings.Builder
+		for x := 0; x < f.W; x++ {
+			b.WriteRune(f.C[x].R)
+		}
+		for _, s := range present {
+			if !strings.Contains(b.String(), s) {
+				t.Errorf("tw=%d header missing %q: %q", tw, s, b.String())
+			}
+		}
+		for _, s := range absent {
+			if strings.Contains(b.String(), s) {
+				t.Errorf("tw=%d header should drop %q: %q", tw, s, b.String())
+			}
+		}
+	}
+	// At 62 the level·diff segment is elided (first in the drop order).
+	check(62, 19, []string{"tdef", "wave 5/20", "⛁"}, []string{"winding", "normal"})
+	// At 80 everything fits.
+	check(80, 24, []string{"tdef", "winding", "normal", "wave 5/20", "⛁"}, nil)
+	if f := RenderAt(g, ui, Palette(), 62, 19); f.C[0].R != '╭' || f.C[f.W-1].R != '╮' {
+		t.Errorf("top border corners missing: %q %q", f.C[0].R, f.C[f.W-1].R)
+	}
+}
+
+// Every header combination must keep row 0 exactly full-width (the border
+// is never broken) and row 1 inside the frame.
+func TestHeaderNoOverflow(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	msgs := []string{"", "leak! -6 lives", "wave 18 cleared +93g", "Faster ones are coming. " + "and faster still, faster."}
+	for _, tw := range []int{62, 63, 70, 80, 120} {
+		for _, paused := range []bool{false, true} {
+			for _, msg := range msgs {
+				g := &game.State{
+					Map: m, Status: game.StatusRunning, Wave: 19,
+					NextWaveAt: 9.5, Time: 5.0, WaveActive: false,
+					Gold: 9999, Lives: 15, Score: 999999,
+				}
+				ui := &UI{Speed: 4, Paused: paused, Message: msg, Level: "winding"}
+				f := RenderAt(g, ui, Palette(), tw, 24)
+				if w := rowWidth(f, 0); w != tw {
+					t.Errorf("wave-active off paused=%v msg=%q: header row %d cols, want %d", paused, msg, w, tw)
+				}
+				if w := rowWidth(f, 1); w > tw {
+					t.Errorf("paused=%v msg=%q: message row %d cols > %d", paused, msg, w, tw)
+				}
+				g.WaveActive = true
+				g.Combo = 123
+				f = RenderAt(g, ui, Palette(), tw, 24)
+				if w := rowWidth(f, 0); w != tw {
+					t.Errorf("wave-active paused=%v msg=%q: header row %d cols, want %d", paused, msg, w, tw)
+				}
+				if w := rowWidth(f, 1); w > tw {
+					t.Errorf("wave-active paused=%v msg=%q: message row %d cols > %d", paused, msg, w, tw)
+				}
+			}
+		}
+	}
+}
+
+func TestRenderAtSmoke(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := game.NewState(m)
+	ui := &UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "winding"}
+	f := RenderAt(g, ui, Palette(), 80, 24)
+	if f.W != 80 || f.H != 24 {
+		t.Fatalf("frame = %dx%d, want 80x24", f.W, f.H)
+	}
+	text := f.Text()
+	for _, want := range []string{"tdef", "1 Gunner 50", "⏎|place", "winding", "normal"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("frame missing %q", want)
+		}
+	}
+	if f.C[0].R != '╭' || f.C[f.W-1].R != '╮' || f.C[(f.H-1)*f.W].R != '╰' || f.C[f.H*f.W-1].R != '╯' {
+		t.Errorf("rounded corners missing")
+	}
+}
+
 func TestANSIPositionsRowsWithCUP(t *testing.T) {
 	f := &Frame{W: 4, H: 3, C: make([]Cell, 12)}
 	f.Put(0, 0, 'a', 220, 0)
