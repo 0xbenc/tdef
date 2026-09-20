@@ -175,3 +175,44 @@
     maze1234 game; hiscores with a real table) all exit 0; bench
     identical to baseline (canyon/garden/hub/winding 100%, maze 62%,
     ALL 66%).
+  - 2026-09-19 (terminal-sized frame + btop screens, branch title-screen)
+  - In-game frame now fills the whole terminal: one rounded box edge to
+    edge, playfield centered at the largest integer scale (1-4) that
+    fits. The scale formula is unchanged (min((tw-2)/mW,(th-6)/mH)) but
+    is now recomputed every frame, so a live resize re-scales and
+    re-centers on the next draw instead of waiting for a restart.
+  - UI moved into the frame chrome. Top border carries embedded
+    segments (btop grammar: ┐title┌ flush at x+2, bold title, border
+    color on the brackets): brand, level·diff, wave, pause, stats. Drop
+    rule when the frame is narrow: level·diff, then brand, then pause —
+    wave and stats never drop, so 62 cols always keep the essentials.
+    Row 1 below the border is the message row (placement hints,
+    telegraphs, break previews). Bottom border: the seven tower slots
+    (4+3, cost-colored, selected highlighted with btop's selected-bg
+    95), a context hint line, and the selected tower's stats.
+  - Box-drawing helpers live in render/frame.go (drawRoundedBox,
+    embedSegment, centerEmbed, truncateRunes); the ┐title┌/┘title└
+    grammar and palette were verified against the btop++ source
+    (btop_draw.cpp / btop_theme.cpp) rather than guessed.
+  - Game layout is computed once per frame by render.GameLayout — the
+    single source of truth shared by the renderer and the mouse
+    hit-testing, so they cannot drift. Old ComputeLayout/MenuSlots/
+    drawHUD/UI.Scale deleted at the cutover.
+  - Game-over restyled to a 46x12 rounded box: VICTORY/DEFEAT title in
+    the border, two-column stats, NEW BEST callout, restart/quit hint
+    in the footer.
+  - The five pre-game screens share the same framing: full-window
+    rounded box, screen title embedded in the top border, footer
+    segment group (┘key text ─ key text└, hotkeys bold red) centered in
+    the bottom border, content in a 19-row band centered at any height.
+    Title's prompt moved to the footer; help is a fixed two-column
+    table; hiscores is an aligned table (gold/silver/bronze rank
+    colors, scroll arrows); level select gets bracketed difficulty
+    labels and a content-sized [ PREVIEW ] sub-box for the map (scale
+    2 when it fits, 1 below that, hint line below that — boundary
+    tested at 80x29 vs 80x30).
+  - capture -scale 1-4 pins the render to the virtual terminal size
+    that yields the scale (62x19 / 92x32 / 137x45 / 182x58); frame
+    dumps are byte-identical in any environment.
+  - Below 62x19 the game forces a pause and draws a too-small notice;
+    growing back resumes on the next frame.

@@ -113,10 +113,14 @@ from a seed; the generator biases toward long, snake-like chokepoints.
 
 ## Rendering
 
-The playfield auto-scales to your terminal at startup (1×–4×), so a big
-window shows a bigger board. If the window is shrunk below the board, an
-"enlarge your terminal" notice is shown instead of a clipped frame (the
-game pauses while it is up; `p` resumes). When
+The whole terminal is the frame: one rounded box edge to edge, with the
+playfield centered inside at the largest integer scale (1×–4×) that fits.
+Resize the window any time and the board re-scales and re-centers on the
+next frame. The UI lives in the frame chrome — status segments (level,
+wave, gold, lives, score) embedded in the top border, and the seven tower
+slots, a context hint, and the selected tower's stats embedded in the
+bottom border. Minimum size is 62×19 (a 1× board); below that the game
+forces a pause and asks you to enlarge the terminal (`p` resumes). When
 a game ends, a stats box summarizes the run (waves, kills, leaks, towers,
 score, best combo, time) and your best score for that map.
 
@@ -128,13 +132,17 @@ The engine is deterministic, so it can be driven without a terminal:
 ./tdef bench -n 40 -maze 60   # run autoplay (greedy AI) games, report stats
 ./tdef headless -level garden # simulate one game, print result
 ./tdef capture -level canyon -text -out /tmp/frames   # dump frames
+./tdef capture -level canyon -scale 2 -text           # 92x32 virtual terminal
 ./tdef maps                   # list built-in maps
 ```
 
 `bench` plays many games with a simple greedy AI and reports win rate,
 average wave reached, leaks, and towers built per map — used to tune the
 per-map HP multipliers and economy so that a competent player can win
-while a passive one loses.
+while a passive one loses. `capture -scale 1-4` pins the render to the
+virtual terminal size that yields that scale (62×19, 92×32, 137×45,
+182×58), so frame dumps are byte-identical regardless of the environment
+the dump runs in.
 
 High scores are stored per-map in `~/.tdef-hiscores.json`.
 
