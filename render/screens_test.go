@@ -9,7 +9,7 @@ import (
 )
 
 // titleAt renders the title at attract-battle internal frame fr
-// (0 = the IDLE START SCREEN text starts to decode), with the visit clock
+// (0 = the THE SIEGE text starts to decode), with the visit clock
 // set so the boot cinematic and idle wait are already behind us.
 func titleAt(w, h, frame, fr int, scores map[string]int) *Frame {
 	boot := titleBootLen + titleIdleWait + titleBattleLead + fr
@@ -83,9 +83,9 @@ func TestRenderTitleFitsFrame(t *testing.T) {
 				t.Errorf("w=%d h=%d: standby missing %q:\n%s", w, h, want, text)
 			}
 		}
-		// The standby battlefield must be empty: no IDLE START SCREEN/WAVE
+		// The standby battlefield must be empty: no THE SIEGE/WAVE
 		// text.
-		for _, absent := range []string{"IDLE START SCREEN", "WAVE"} {
+		for _, absent := range []string{"THE SIEGE", "WAVE"} {
 			if strings.Contains(text, absent) {
 				t.Errorf("w=%d h=%d: standby shows %q:\n%s", w, h, absent, text)
 			}
@@ -149,7 +149,10 @@ func TestRenderHelpFits(t *testing.T) {
 	for _, size := range [][2]int{{62, 19}, {80, 24}} {
 		f := RenderHelp(size[0], size[1], Palette())
 		text := f.Text()
-		for _, want := range []string{"HELP", "arrows / wasd", "1-7 pick", "esc back"} {
+		for _, want := range []string{
+			"GRAK'S LEDGER", "how to hold the lair against twenty expeditions",
+			"arrows / wasd", "1-7 pick", "esc back",
+		} {
 			if !strings.Contains(text, want) {
 				t.Errorf("help missing %q:\n%s", want, text)
 			}
@@ -207,16 +210,20 @@ func TestRenderLevelSelectFits(t *testing.T) {
 		t.Fatal(err)
 	}
 	v := LSState{Levels: names, Cursor: 1, Diff: 1, Preview: m}
+	displays := make([]string, 0, len(names))
+	for _, n := range names {
+		displays = append(displays, levelDisplayName(n))
+	}
 	for _, size := range [][2]int{{62, 19}, {80, 24}, {120, 40}} {
 		f := RenderLevelSelect(v, size[0], size[1], Palette())
 		text := f.Text()
-		for _, want := range append([]string{lsMazeRow, "easy", "normal", "hard", "enter start"}, names...) {
+		for _, want := range append([]string{lsMazeRow, "easy", "normal", "hard", "enter start"}, displays...) {
 			if !strings.Contains(text, want) {
 				t.Errorf("%dx%d: level select missing %q", size[0], size[1], want)
 			}
 		}
-		if !strings.Contains(text, " ▸ garden") {
-			t.Errorf("selection marker not on 'garden':\n%s", text)
+		if !strings.Contains(text, " ▸ the Sunken Garden") {
+			t.Errorf("selection marker not on 'the Sunken Garden':\n%s", text)
 		}
 	}
 }
@@ -314,15 +321,15 @@ func TestTitlePhases(t *testing.T) {
 		want []string
 		abs  []string
 	}{
-		{200, []string{"IDLE START SCREEN", "WAVE 1"}, nil},
+		{200, []string{"THE SIEGE", "WAVE 1"}, nil},
 		{600, []string{"WAVE 2"}, nil},
 		{1100, []string{"WAVE 3", "B"}, nil},
 		{1505, []string{"BREACH"}, nil},
-		{1514, nil, []string{"IDLE START SCREEN", "TDEF", "·"}},                  // static whiteout
-		{1525, []string{"█"}, []string{"IDLE START SCREEN"}},                     // shockwave front
-		{1590, nil, []string{"IDLE START SCREEN", "█"}},                          // cooled grid only
-		{1640, nil, []string{"IDLE START SCREEN", "[enter]"}},                    // mid-reboot
-		{1683, []string{"[enter] start"}, []string{"IDLE START SCREEN", "WAVE"}}, // rebooted into the standby
+		{1514, nil, []string{"THE SIEGE", "TDEF", "·"}},                  // static whiteout
+		{1525, []string{"█"}, []string{"THE SIEGE"}},                     // shockwave front
+		{1590, nil, []string{"THE SIEGE", "█"}},                          // cooled grid only
+		{1640, nil, []string{"THE SIEGE", "[enter]"}},                    // mid-reboot
+		{1683, []string{"[enter] start"}, []string{"THE SIEGE", "WAVE"}}, // rebooted into the standby
 	}
 	for _, c := range cases {
 		got := text(c.fr)
@@ -604,7 +611,7 @@ func TestTitleBootSequence(t *testing.T) {
 	}
 }
 
-// The standby battlefield is empty: no IDLE START SCREEN/WAVE text, no
+// The standby battlefield is empty: no THE SIEGE/WAVE text, no
 // towers, no enemies — just the path, its ambient packet, and the
 // spawn/exit markers.
 func TestTitleStandbyEmpty(t *testing.T) {
@@ -612,7 +619,7 @@ func TestTitleStandbyEmpty(t *testing.T) {
 	off := screenOff(h)
 	f := titleStandbyAt(w, h, 0, 100, nil)
 	text := f.Text()
-	for _, absent := range []string{"IDLE START SCREEN", "WAVE"} {
+	for _, absent := range []string{"THE SIEGE", "WAVE"} {
 		if strings.Contains(text, absent) {
 			t.Errorf("standby shows %q:\n%s", absent, text)
 		}
@@ -671,20 +678,20 @@ func TestTitleSigInBottomBorder(t *testing.T) {
 	}
 }
 
-// The attract loop: 15s (450 frames) of standby, then the IDLE START
-// SCREEN/WAVE decode and tower power-up, then the battle script; it repeats.
+// The attract loop: 15s (450 frames) of standby, then the THE SIEGE/WAVE
+// decode and tower power-up, then the battle script; it repeats.
 func TestTitleIdleGate(t *testing.T) {
 	const w, h = 100, 30
 	text := func(boot int) string {
 		return RenderTitle(w, h, boot, boot, nil, Palette()).Text()
 	}
 	// The frame before the 15s deadline: still idle.
-	if got := text(titleBootLen + titleIdleWait - 1); strings.Contains(got, "IDLE START SCREEN") {
+	if got := text(titleBootLen + titleIdleWait - 1); strings.Contains(got, "THE SIEGE") {
 		t.Fatalf("1 frame before the idle deadline the battle text is up:\n%s", got)
 	}
 	// Past the deadline: the label has decoded, WAVE 1 is still arriving.
-	at := titleBootLen + titleIdleWait + 36
-	if got := text(at); !strings.Contains(got, "IDLE START SCREEN") || strings.Contains(got, "WAVE 1") {
+	at := titleBootLen + titleIdleWait + 26
+	if got := text(at); !strings.Contains(got, "THE SIEGE") || strings.Contains(got, "WAVE 1") {
 		t.Fatalf("past the deadline want the label up and WAVE 1 decoding:\n%s", text(at))
 	}
 	// 2s past: WAVE 1 is on.
@@ -742,7 +749,7 @@ func TestLSRectsMatchRenderedRows(t *testing.T) {
 	for i, r := range rows {
 		label := lsMazeRow
 		if i < len(names) {
-			label = names[i]
+			label = levelDisplayName(names[i])
 		}
 		if !strings.Contains(lines[r.Y], label) {
 			t.Errorf("row %d rect at %d misses %q: %q", i, r.Y, label, lines[r.Y])

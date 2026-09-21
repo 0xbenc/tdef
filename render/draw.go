@@ -23,7 +23,7 @@ type UI struct {
 	Help      bool
 	Message   string
 
-	Level string // level name for the header, e.g. "winding" or "maze1234"
+	Level string // level id for the header, e.g. "winding" or "maze1234"
 
 	BestScore int
 	NewBest   bool
@@ -261,8 +261,8 @@ type MenuSlot struct {
 	W    int // rendered label width ("k Name cost")
 }
 
-// towerInfo is the menu line for the selected tower. It must fit within
-// FrameW (62) at 1x scale, so keep it short (TestTowerInfoFitsFrame).
+// towerInfo is the menu line for the selected tower. drawMenu elides it
+// with fitMsg when it outgrows the bottom border (TestTowerInfoFitsFrame).
 func towerInfo(t *game.Tower, upCost, refund int) string {
 	if t.Level >= 3 {
 		return fmt.Sprintf(" ▸ %s Lv%d (max)  %s [t]  sell +%d", t.Spec().Name, t.Level, t.TargetMode.Name(), refund)
@@ -278,6 +278,24 @@ func diffName(d game.Difficulty) string {
 		return "hard"
 	}
 	return "normal"
+}
+
+// levelDisplayName maps a level id to the name shown in the header and on
+// the level-select screen; unknown ids pass through unchanged.
+func levelDisplayName(id string) string {
+	switch {
+	case id == "hub":
+		return "the Rotunda"
+	case id == "winding":
+		return "the Long Halls"
+	case id == "garden":
+		return "the Sunken Garden"
+	case id == "canyon":
+		return "the Rift"
+	case strings.HasPrefix(id, "maze"):
+		return "the Unmapped Depths"
+	}
+	return id
 }
 
 // drawGameOver renders the end-of-game box: a 46×12 rounded box centered in
@@ -317,6 +335,11 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 		bold = true
 	}
 	putString(f, bx+(bw-len([]rune(bestLine)))/2, by+7, bestLine, 220, bg, bold)
+	lore := "The lair is held. Malgrath endures."
+	if g.Status != game.StatusVictory {
+		lore = "Malgrath has fallen. The lair is clean."
+	}
+	putString(f, bx+(bw-len([]rune(lore)))/2, by+8, lore, 244, bg, false)
 	x := bx + (bw-len("r restart | q quit"))/2
 	for _, part := range []struct {
 		s  string
@@ -358,9 +381,9 @@ func putString(f *Frame, x, y int, s string, fg, bg int, bold bool) {
 
 // TowerSlots distributes the seven tower menu slots across a tw×th frame:
 // four on row th-4, three on row th-3. cell = (tw-2)/n and X = 1+i·cell, so
-// the slots span the interior; the longest label ("4 Sniper 150", 12 cols)
-// fits every cell at the minimum width 62. The renderer and the click
-// handler share this function.
+// the slots span the interior; the longest label ("5 Lightning Mage 200",
+// 18 cols) fits every cell at the minimum width 62. The renderer and the
+// click handler share this function.
 func TowerSlots(tw, th int) []MenuSlot {
 	kinds := []game.TowerKind{
 		game.TowerGunner, game.TowerCannon, game.TowerFrost, game.TowerSniper,
@@ -424,7 +447,7 @@ func headerSegments(g *game.State, ui *UI, pal Colors) []headerSeg {
 	}
 	if ui.Level != "" {
 		segs = append(segs, headerSeg{
-			runs: []headerRun{{ui.Level + " · " + diffName(g.Diff), pal.Path, false}},
+			runs: []headerRun{{levelDisplayName(ui.Level) + " · " + diffName(g.Diff), pal.Path, false}},
 			drop: 0,
 		})
 	}
@@ -547,7 +570,7 @@ func drawHeader(f *Frame, g *game.State, ui *UI, pal Colors) {
 	case active && msg != "":
 		fg, bold := pal.Bright, false
 		switch {
-		case strings.HasPrefix(msg, "leak!"):
+		case strings.Contains(msg, "breach"):
 			fg, bold = 167, true
 		case strings.Contains(msg, "-> Lv"):
 			fg, bold = 48, true

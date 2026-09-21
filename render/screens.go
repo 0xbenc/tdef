@@ -172,8 +172,8 @@ const titleTagline = "— terminal tower defense —"
 //	boot 251+    the attract loop, every titleAttractCycle frames:
 //
 //	15s idle     standby: full UI, empty battlefield — no towers, no
-//	             enemies, no IDLE START SCREEN/WAVE text
-//	then 120f    "┐IDLE START SCREEN┌" and "┐WAVE 1┌" decode on, the five
+//	             enemies, no THE SIEGE/WAVE text
+//	then 120f    "┐THE SIEGE┌" and "┐WAVE 1┌" decode on, the five
 //	             towers power up left to right
 //	then 1685f   the battle script: wave 1 (minions) plays at true 1×
 //	             gameplay speed; waves 2-3 are compressed. The towers hold
@@ -198,7 +198,7 @@ const (
 const (
 	// The attract loop: 15s of inactivity, then the battle sequence.
 	titleIdleWait     = 450 // 15s at 30fps
-	titleBattleLead   = 120 // IDLE START SCREEN/WAVE text + tower power-up before wave 1
+	titleBattleLead   = 120 // THE SIEGE/WAVE text + tower power-up before wave 1
 	titleBattleLen    = titleBattleLead + titleCycle
 	titleAttractCycle = titleIdleWait + titleBattleLen
 )
@@ -353,7 +353,7 @@ func titleFooter() []fseg {
 }
 
 // drawTitleStandby is the idle title: full UI, empty battlefield — no
-// towers, no enemies, no IDLE START SCREEN/WAVE text, just the path and its
+// towers, no enemies, no THE SIEGE/WAVE text, just the path and its
 // ambient energy packet.
 func drawTitleStandby(w, h, frame int, scores map[string]int, pal Colors) *Frame {
 	lit := (frame/15)%2 == 0
@@ -364,7 +364,7 @@ func drawTitleStandby(w, h, frame int, scores map[string]int, pal Colors) *Frame
 	return f
 }
 
-// drawTitleBattleSeq runs the attract battle: the IDLE START SCREEN/WAVE
+// drawTitleBattleSeq runs the attract battle: the THE SIEGE/WAVE
 // text decodes on, the towers power up, then the battle script plays
 // (internal frame fr = local - titleBattleLead).
 func drawTitleBattleSeq(w, h, frame, local int, scores map[string]int, pal Colors) *Frame {
@@ -405,7 +405,7 @@ func drawTitleBattleSeq(w, h, frame, local int, scores map[string]int, pal Color
 	}
 }
 
-// drawTitleBattleIntro reveals "┐IDLE START SCREEN┌" and "┐WAVE 1┌"
+// drawTitleBattleIntro reveals "┐THE SIEGE┌" and "┐WAVE 1┌"
 // character by character (each flashing white on arrival), then powers the
 // five towers up left to right. At local == titleBattleLead the box matches
 // battle frame 0 exactly.
@@ -435,8 +435,8 @@ func drawTitleBattleIntro(f *Frame, w, h, off, t int, pal Colors) {
 			f.Set(x+i, y0, c)
 		}
 	}
-	seg(2, "┐IDLE START SCREEN┌", pal.Dim, 0)
-	seg(20, "┐WAVE 1┌", pal.Bright, 34)
+	seg(2, "┐THE SIEGE┌", pal.Dim, 0)
+	seg(14, "┐WAVE 1┌", pal.Bright, 18)
 
 	const towerStart, towerDur = 32, 17
 	// Left to right along the path.
@@ -1366,7 +1366,7 @@ func drawTitleBest(f *Frame, w, off int, scores map[string]int) {
 }
 
 // drawTitleEmptyBox is the idle battlefield: the sub-box and its path with
-// the ambient energy packet — no IDLE START SCREEN/WAVE text, no towers, no
+// the ambient energy packet — no THE SIEGE/WAVE text, no towers, no
 // enemies.
 func drawTitleEmptyBox(f *Frame, w, h, off, frame int, pal Colors) {
 	y0 := off + demoTop
@@ -1450,7 +1450,7 @@ func drawTitleTagline(f *Frame, w, off, n int) {
 }
 
 // drawTitleDemo animates the scripted battle inside a full-width
-// [ IDLE START SCREEN ] sub-box on band rows 9-13: five towers (three below
+// [ THE SIEGE ] sub-box on band rows 9-13: five towers (three below
 // the path, two above) fire on scripted cooldowns at scripted enemy waves.
 // Everything is a pure function of fr.
 func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
@@ -1458,7 +1458,7 @@ func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
 	if y0 <= 0 || y0+demoRows >= h-1 {
 		return
 	}
-	drawSubBox(f, 1, y0, w-2, demoRows, "IDLE START SCREEN", pal)
+	drawSubBox(f, 1, y0, w-2, demoRows, "THE SIEGE", pal)
 	waveText, waveFG := "WAVE 1", pal.Bright
 	switch {
 	case fr >= titleOverloadEnd-13: // the boss reaches the exit
@@ -1468,9 +1468,9 @@ func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
 	case fr >= 480:
 		waveText, waveFG = "WAVE 2", pal.Bright
 	}
-	// The IDLE START SCREEN label occupies x 2..18 (┐ + 15 + ┌); the wave
-	// segment follows at x 20.
-	embedSegment(f, y0, 20, waveText, '┐', '┌', pal.Path, waveFG, true)
+	// The THE SIEGE label occupies x 2..12 (┐ + 9 + ┌); the wave
+	// segment follows at x 14.
+	embedSegment(f, y0, 14, waveText, '┐', '┌', pal.Path, waveFG, true)
 
 	pathY := off + demoPath
 	L := w - 5 // path spans columns 2..w-3
@@ -1981,7 +1981,7 @@ func RenderMenu(w, h, sel int, pal Colors) *Frame {
 // ---------------------------------------------------------------- help
 
 func RenderHelp(w, h int, pal Colors) *Frame {
-	f := screenBox(w, h, "HELP", []fseg{{key: "esc", text: " back"}}, true, pal)
+	f := screenBox(w, h, "GRAK'S LEDGER", []fseg{{key: "esc", text: " back"}}, true, pal)
 	off := screenOff(h)
 	rows := [][2]string{
 		{"move", "arrows / wasd"},
@@ -2006,6 +2006,9 @@ func RenderHelp(w, h int, pal Colors) *Frame {
 	x0 := (w - tableW) / 2
 	if x0 < 1 {
 		x0 = 1
+	}
+	if y := off + 3; y > 0 && y < h-1 {
+		centerPut(f, y, "how to hold the lair against twenty expeditions", pal.Dim, false)
 	}
 	for i, r := range rows {
 		y := off + 4 + i
@@ -2127,8 +2130,8 @@ func DiffName(i int) string {
 }
 
 // LSState is the level-select view state. Cursor ranges 0..len(Levels);
-// len(Levels) is the "maze (procedural)" row. Seed is raw typed text; the
-// empty string means "random" at start time.
+// len(Levels) is the maze row. Seed is raw typed text; the empty string
+// means "random" at start time.
 type LSState struct {
 	Levels  []string
 	Cursor  int
@@ -2138,7 +2141,7 @@ type LSState struct {
 	Preview *game.Map
 }
 
-const lsMazeRow = "maze (procedural)"
+const lsMazeRow = "the Unmapped Depths"
 
 // lsLayout returns the first item row, seed row, difficulty row and first
 // preview row of the level-select screen. The list holds nLevels+1 rows
@@ -2157,8 +2160,8 @@ func lsLayout(h, nLevels int) (first, seed, diff, prev int) {
 func lsMaxRowWidth(names []string) int {
 	maxW := len(lsMazeRow)
 	for _, n := range names {
-		if len(n) > maxW {
-			maxW = len(n)
+		if w := len(levelDisplayName(n)); w > maxW {
+			maxW = w
 		}
 	}
 	return maxW
@@ -2224,7 +2227,7 @@ func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
 		}
 		name := lsMazeRow
 		if i < len(v.Levels) {
-			name = v.Levels[i]
+			name = levelDisplayName(v.Levels[i])
 		}
 		if i == v.Cursor {
 			centerPut(f, y, " ▸ "+name, pal.Bright, true)

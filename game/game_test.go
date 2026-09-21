@@ -419,8 +419,8 @@ func TestBossLeakLifeCost(t *testing.T) {
 }
 
 func TestWaveThemeAndTelegraph(t *testing.T) {
-	if WaveTheme(1) != "warmup" {
-		t.Errorf("WaveTheme(1) = %q, want warmup", WaveTheme(1))
+	if WaveTheme(1) != "scouts" {
+		t.Errorf("WaveTheme(1) = %q, want scouts", WaveTheme(1))
 	}
 	if WaveTelegraph(3) == "" || WaveTelegraph(15) == "" || WaveTelegraph(20) == "" {
 		t.Error("expected telegraphs on waves 3, 15, 20")

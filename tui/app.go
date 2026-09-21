@@ -212,12 +212,12 @@ func (a *App) stepGame(real float64) {
 		}
 		if a.g.Lives < prevLives {
 			n := prevLives - a.g.Lives
-			plural := "life"
-			if n > 1 {
-				plural = "lives"
-			}
 			a.term.Write([]byte("\a"))
-			a.msg("leak! -" + strconv.Itoa(n) + " " + plural)
+			if n == 6 {
+				a.msg("the Player breached! -6 ♥")
+			} else {
+				a.msg("breach! -" + strconv.Itoa(n) + " ♥")
+			}
 		}
 		if prevWaveActive && !a.g.WaveActive && a.g.Wave < game.MaxWaves {
 			next := a.g.Wave + 1

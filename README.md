@@ -1,8 +1,9 @@
 # tdef
 
-A tower defense game that runs entirely in your terminal. Enemies walk a
+A tower defense game that runs entirely in your terminal. Heroes walk a
 fixed path; you place towers on the grass to stop them before they reach
-the exit. Survive all 20 waves.
+the heart. You are Grak, the Last Monster, holding the dying Dragon
+Malgrath's lair against the guild's twenty expeditions. Survive all 20.
 
 Built in Go with **zero external dependencies** — the engine, renderer,
 and terminal driver are all standard library. The engine is fully
@@ -34,7 +35,7 @@ Requires a real TTY (raw mode, alternate screen, mouse).
 
 | key | action |
 |-----|--------|
-| `1`-`7` | select tower (Gunner, Cannon, Frost, Sniper, Tesla, Mortar, Flak) |
+| `1`-`7` | select tower (Orc Gunner, Cannonier, Frost Mage, Ranger, Lightning Mage, Trebuchet, Gnoll Slingers) |
 | arrows / `wasd` | move cursor |
 | `enter` / click | place tower on grass |
 | `u` | upgrade the selected tower (on a tower) |
@@ -57,13 +58,15 @@ the menu, then click the map; scroll wheel cycles speed (1x/2x/4x, like
 
 | # | tower | cost | role |
 |---|-------|------|------|
-| 1 | Gunner | 50 | cheap, fast, single-target |
-| 2 | Cannon | 100 | slow, splash damage |
-| 3 | Frost | 75 | slows enemies in range |
-| 4 | Sniper | 150 | long range, high single damage |
-| 5 | Tesla | 200 | chains lightning to nearby enemies |
-| 6 | Mortar | 250 | very slow, huge splash, long range — crowd nuker |
-| 7 | Flak | 80 | very fast, short range — shreds fast enemies |
+| 1 | Orc Gunner | 50 | cheap, fast, single-target |
+| 2 | Cannonier | 100 | slow, splash damage |
+| 3 | Frost Mage | 75 | slows enemies in range |
+| 4 | Ranger | 150 | long range, high single damage |
+| 5 | Lightning Mage | 200 | chains lightning to nearby enemies |
+| 6 | Trebuchet | 250 | very slow, huge splash, long range — crowd nuker |
+| 7 | Gnoll Slingers | 80 | very fast, short range — shreds fast enemies |
+
+The towers are the last monster kin you command (see LORE.md).
 
 Each tower has 3 levels; upgrading increases damage/range.
 
@@ -74,24 +77,26 @@ stragglers. The current mode shows in the tower info line.
 
 ## Enemies & waves
 
-Eight enemy types, introduced one at a time across 20 hand-shaped waves
-(Bloons TD 3 style — a new type debuts in a legible near-solo wave, then
-gets mixed in):
+Eight enemy types — the guild's heroes — introduced one at a time across 20
+hand-shaped expeditions (Bloons TD 3 style — a new type debuts in a legible
+near-solo wave, then gets mixed in):
 
 | type | role | debuts |
 |------|------|--------|
-| Minion | basic | wave 1 |
-| Runner | fast | wave 3 |
-| Grunt | tough | wave 6 |
-| Wisp | very fast, weak | wave 11 |
-| Splitter | splits into two Minions | wave 12 |
-| Tank | very tough, slow | wave 13 |
-| Shield | armored (−40% damage) | wave 14 |
-| Boss | high HP; leaking one costs 6 lives | wave 15, 18, 20 (two) |
+| Squire | basic | wave 1 |
+| Rogue | fast | wave 3 |
+| Mercenary | tough | wave 6 |
+| Wizard | very fast, weak | wave 11 |
+| Necromancer | on death, two Squires rise | wave 12 |
+| Paladin | very tough, slow | wave 13 |
+| Centurion | warded (−40% damage) | wave 14 |
+| The Player | high HP; leaking one costs 6 lives | wave 15, 18, 20 (two) |
 
-Each wave has a theme (`warmup`, `runner`, `gauntlet`, `boss`, `finale`, …)
+Each wave has a theme (`scouts`, `raid`, `column`, `assault`, `the coven`,
+`the risen`, `the vanguard`, `the wall`, `the player`, `siege`, `the end`)
 shown in the HUD, and a one-line **telegraph** warns you before a
-mechanically new wave (e.g. "Beware the Boss — leaking it costs 6 lives").
+mechanically new wave (e.g. "The Player has set out. If they reach the
+heart, it ends.").
 Early waves are light with breather dips at each introduction; the last
 five waves (W16–W20) are a back-loaded climax. Enemy HP and speed scale
 with the wave number; the boss gets stronger each time it appears.
@@ -105,11 +110,15 @@ source. Clearing a wave pays a bonus that grows with the wave number.
 
 ## Maps
 
-Four hand-crafted 45×13 maps form a difficulty ladder — `hub` (easiest,
-open central pocket), `winding`, `garden`, `canyon` (tightest). Each has
-a different path layout and buildable pockets, so the right tower
-placement differs per map. `-maze` generates a random-but-solvable maze
-from a seed; the generator biases toward long, snake-like chokepoints.
+The floors of the lair. Four hand-crafted 45×13 maps form a difficulty
+ladder — `hub` (the Rotunda, easiest, open central pocket), `winding`
+(the Long Halls), `garden` (the Sunken Garden), `canyon` (the Rift,
+tightest). Each has a different path layout and buildable pockets, so the
+right tower placement differs per map. `-maze` generates a random-but-
+solvable maze from a seed (the Unmapped Depths in-game); the generator
+biases toward long, snake-like chokepoints. The CLI level ids stay the
+short forms; the display names are presentation only (hiscore keys use
+the ids).
 
 ## Rendering
 

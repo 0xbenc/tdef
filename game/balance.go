@@ -21,41 +21,41 @@ type TowerSpec struct {
 
 var TowerSpecs = [TowerCount]TowerSpec{
 	{
-		Name: "Gunner", Short: 'G',
+		Name: "Orc Gunner", Short: 'G',
 		Cost: [3]int{50, 45, 70}, Dmg: [3]float64{9, 14, 22},
 		Range: [3]float64{3.0, 3.4, 3.8}, RoT: [3]float64{1.3, 1.5, 1.8},
 	},
 	{
-		Name: "Cannon", Short: 'C',
+		Name: "Cannonier", Short: 'C',
 		Cost: [3]int{100, 90, 140}, Dmg: [3]float64{24, 40, 64},
 		Range: [3]float64{2.8, 3.2, 3.6}, RoT: [3]float64{0.55, 0.6, 0.65},
 		Splash: 1.3,
 	},
 	{
-		Name: "Frost", Short: 'F',
+		Name: "Frost Mage", Short: 'F',
 		Cost: [3]int{75, 65, 100}, Dmg: [3]float64{5, 8, 12},
 		Range: [3]float64{2.6, 2.9, 3.2}, RoT: [3]float64{0.9, 1.0, 1.1},
 		SlowPct: 0.45, SlowDur: 1.6,
 	},
 	{
-		Name: "Sniper", Short: 'S',
+		Name: "Ranger", Short: 'S',
 		Cost: [3]int{150, 130, 200}, Dmg: [3]float64{70, 120, 190},
 		Range: [3]float64{6.0, 6.6, 7.2}, RoT: [3]float64{0.35, 0.4, 0.45},
 	},
 	{
-		Name: "Tesla", Short: 'T',
+		Name: "Lightning Mage", Short: 'T',
 		Cost: [3]int{200, 160, 240}, Dmg: [3]float64{30, 48, 75},
 		Range: [3]float64{3.2, 3.5, 3.9}, RoT: [3]float64{0.8, 0.9, 1.0},
 		Chain: [3]int{2, 3, 4},
 	},
 	{
-		Name: "Mortar", Short: 'M',
+		Name: "Trebuchet", Short: 'M',
 		Cost: [3]int{250, 220, 320}, Dmg: [3]float64{70, 105, 160},
 		Range: [3]float64{5.0, 5.5, 6.0}, RoT: [3]float64{0.45, 0.5, 0.55},
 		Splash: 2.2,
 	},
 	{
-		Name: "Flak", Short: 'L',
+		Name: "Gnoll Slingers", Short: 'L',
 		Cost: [3]int{80, 70, 110}, Dmg: [3]float64{6, 9, 14},
 		Range: [3]float64{2.2, 2.5, 2.8}, RoT: [3]float64{3.0, 3.5, 4.0},
 	},
@@ -77,14 +77,14 @@ type EnemySpec struct {
 }
 
 var EnemySpecs = [EnemyCount]EnemySpec{
-	{Name: "Minion", Short: 'o', HP: 16, Speed: 3.2, Bounty: 2},
-	{Name: "Runner", Short: 'r', HP: 34, Speed: 2.6, Bounty: 5},
-	{Name: "Grunt", Short: 'g', HP: 65, Speed: 1.6, Bounty: 8},
-	{Name: "Tank", Short: 't', HP: 240, Speed: 1.05, Bounty: 20},
-	{Name: "Splitter", Short: 's', HP: 110, Speed: 1.4, Bounty: 12, SplitN: 2, SplitHP: 0.5},
-	{Name: "Boss", Short: 'B', HP: 1600, Speed: 0.8, Bounty: 140, Lives: 6},
-	{Name: "Wisp", Short: 'w', HP: 9, Speed: 2.3, Bounty: 3},
-	{Name: "Shield", Short: 'D', HP: 180, Speed: 1.15, Bounty: 24, Armor: 0.4},
+	{Name: "Squire", Short: 'o', HP: 16, Speed: 3.2, Bounty: 2},
+	{Name: "Rogue", Short: 'r', HP: 34, Speed: 2.6, Bounty: 5},
+	{Name: "Mercenary", Short: 'g', HP: 65, Speed: 1.6, Bounty: 8},
+	{Name: "Paladin", Short: 't', HP: 240, Speed: 1.05, Bounty: 20},
+	{Name: "Necromancer", Short: 's', HP: 110, Speed: 1.4, Bounty: 12, SplitN: 2, SplitHP: 0.5},
+	{Name: "The Player", Short: 'B', HP: 1600, Speed: 0.8, Bounty: 140, Lives: 6},
+	{Name: "Wizard", Short: 'w', HP: 9, Speed: 2.3, Bounty: 3},
+	{Name: "Centurion", Short: 'D', HP: 180, Speed: 1.15, Bounty: 24, Armor: 0.4},
 }
 
 const (
@@ -188,26 +188,26 @@ type WaveDef struct {
 // Index 1..MaxWaves; index 0 is unused.
 var waves = [...]WaveDef{
 	{}, // 0 unused
-	{Theme: "warmup", Groups: []spawnGroup{{EnemyMinion, 14, 1.0}}},
-	{Theme: "warmup", Groups: []spawnGroup{{EnemyMinion, 30, 0.8}}},
-	{Theme: "runner", Groups: []spawnGroup{{EnemyMinion, 15, 0.8}, {EnemyRunner, 8, 0.8}}},
-	{Theme: "runner", Groups: []spawnGroup{{EnemyMinion, 10, 0.7}, {EnemyRunner, 24, 0.7}}},
-	{Theme: "mixed", Groups: []spawnGroup{{EnemyMinion, 22, 0.6}, {EnemyRunner, 28, 0.6}}},
-	{Theme: "grunt", Groups: []spawnGroup{{EnemyMinion, 13, 0.7}, {EnemyGrunt, 15, 0.7}}},
-	{Theme: "runner", Groups: []spawnGroup{{EnemyRunner, 50, 0.35}}},
-	{Theme: "mixed", Groups: []spawnGroup{{EnemyMinion, 27, 0.5}, {EnemyRunner, 30, 0.5}}},
-	{Theme: "mixed", Groups: []spawnGroup{{EnemyRunner, 32, 0.5}, {EnemyGrunt, 15, 0.5}}},
-	{Theme: "grunt", Groups: []spawnGroup{{EnemyGrunt, 32, 0.7}}},
-	{Theme: "wisp", Groups: []spawnGroup{{EnemyGrunt, 12, 0.5}, {EnemyWisp, 11, 0.5}}},
-	{Theme: "splitter", Groups: []spawnGroup{{EnemySplitter, 10, 0.8}}},
-	{Theme: "tank", Groups: []spawnGroup{{EnemyTank, 5, 0.8}, {EnemyRunner, 20, 0.8}}},
-	{Theme: "shield", Groups: []spawnGroup{{EnemyGrunt, 12, 0.6}, {EnemyShield, 3, 0.6}}},
-	{Theme: "boss", Groups: []spawnGroup{{EnemyMinion, 8, 1.5}}, Bosses: 1},
-	{Theme: "mixed", Groups: []spawnGroup{{EnemyRunner, 8, 0.5}, {EnemyGrunt, 28, 0.5}, {EnemySplitter, 16, 0.5}, {EnemyShield, 2, 0.5}}},
-	{Theme: "gauntlet", Groups: []spawnGroup{{EnemyRunner, 16, 0.4}, {EnemyGrunt, 38, 0.4}, {EnemySplitter, 6, 0.4}, {EnemyShield, 3, 0.4}, {EnemyTank, 3, 0.4}}},
-	{Theme: "boss", Groups: []spawnGroup{{EnemyGrunt, 30, 0.7}, {EnemyTank, 10, 0.7}, {EnemyShield, 8, 0.7}}, Bosses: 1},
-	{Theme: "gauntlet", Groups: []spawnGroup{{EnemyRunner, 34, 0.3}, {EnemyGrunt, 46, 0.3}, {EnemySplitter, 20, 0.3}, {EnemyShield, 8, 0.3}, {EnemyTank, 6, 0.3}, {EnemyWisp, 12, 0.3}}},
-	{Theme: "finale", Groups: []spawnGroup{{EnemyTank, 12, 1.0}, {EnemyWisp, 24, 1.0}, {EnemySplitter, 15, 1.0}, {EnemyShield, 7, 1.0}}, Bosses: 2},
+	{Theme: "scouts", Groups: []spawnGroup{{EnemyMinion, 14, 1.0}}},
+	{Theme: "scouts", Groups: []spawnGroup{{EnemyMinion, 30, 0.8}}},
+	{Theme: "raid", Groups: []spawnGroup{{EnemyMinion, 15, 0.8}, {EnemyRunner, 8, 0.8}}},
+	{Theme: "raid", Groups: []spawnGroup{{EnemyMinion, 10, 0.7}, {EnemyRunner, 24, 0.7}}},
+	{Theme: "column", Groups: []spawnGroup{{EnemyMinion, 22, 0.6}, {EnemyRunner, 28, 0.6}}},
+	{Theme: "assault", Groups: []spawnGroup{{EnemyMinion, 13, 0.7}, {EnemyGrunt, 15, 0.7}}},
+	{Theme: "raid", Groups: []spawnGroup{{EnemyRunner, 50, 0.35}}},
+	{Theme: "column", Groups: []spawnGroup{{EnemyMinion, 27, 0.5}, {EnemyRunner, 30, 0.5}}},
+	{Theme: "column", Groups: []spawnGroup{{EnemyRunner, 32, 0.5}, {EnemyGrunt, 15, 0.5}}},
+	{Theme: "assault", Groups: []spawnGroup{{EnemyGrunt, 32, 0.7}}},
+	{Theme: "the coven", Groups: []spawnGroup{{EnemyGrunt, 12, 0.5}, {EnemyWisp, 11, 0.5}}},
+	{Theme: "the risen", Groups: []spawnGroup{{EnemySplitter, 10, 0.8}}},
+	{Theme: "the vanguard", Groups: []spawnGroup{{EnemyTank, 5, 0.8}, {EnemyRunner, 20, 0.8}}},
+	{Theme: "the wall", Groups: []spawnGroup{{EnemyGrunt, 12, 0.6}, {EnemyShield, 3, 0.6}}},
+	{Theme: "the player", Groups: []spawnGroup{{EnemyMinion, 8, 1.5}}, Bosses: 1},
+	{Theme: "column", Groups: []spawnGroup{{EnemyRunner, 8, 0.5}, {EnemyGrunt, 28, 0.5}, {EnemySplitter, 16, 0.5}, {EnemyShield, 2, 0.5}}},
+	{Theme: "siege", Groups: []spawnGroup{{EnemyRunner, 16, 0.4}, {EnemyGrunt, 38, 0.4}, {EnemySplitter, 6, 0.4}, {EnemyShield, 3, 0.4}, {EnemyTank, 3, 0.4}}},
+	{Theme: "the player", Groups: []spawnGroup{{EnemyGrunt, 30, 0.7}, {EnemyTank, 10, 0.7}, {EnemyShield, 8, 0.7}}, Bosses: 1},
+	{Theme: "siege", Groups: []spawnGroup{{EnemyRunner, 34, 0.3}, {EnemyGrunt, 46, 0.3}, {EnemySplitter, 20, 0.3}, {EnemyShield, 8, 0.3}, {EnemyTank, 6, 0.3}, {EnemyWisp, 12, 0.3}}},
+	{Theme: "the end", Groups: []spawnGroup{{EnemyTank, 12, 1.0}, {EnemyWisp, 24, 1.0}, {EnemySplitter, 15, 1.0}, {EnemyShield, 7, 1.0}}, Bosses: 2},
 }
 
 func BuildWave(wave int) []SpawnEntry {
@@ -234,7 +234,7 @@ func BuildWave(wave int) []SpawnEntry {
 	return entries
 }
 
-// WaveTheme returns the one-word theme label for a wave (for the HUD).
+// WaveTheme returns the theme label for a wave (for the HUD).
 func WaveTheme(wave int) string {
 	if wave < 1 || wave > MaxWaves {
 		return ""
@@ -248,25 +248,25 @@ func WaveTheme(wave int) string {
 func WaveTelegraph(wave int) string {
 	switch wave {
 	case 3:
-		return "Faster ones are coming."
+		return "The guild has sent rogues."
 	case 6:
-		return "Some of these hit harder."
+		return "Mercenaries — and they hit harder."
 	case 7:
-		return "A fast wave — anti-speed towers shine."
+		return "A swift raid. Loose arrows fly true."
 	case 11:
-		return "Warning: very fast wisps."
+		return "Wizards — fast and frail, but deadly."
 	case 12:
-		return "Something is about to split."
+		return "A necromancer walks among them. They rise when he falls."
 	case 13:
-		return "Slow, heavy tanks approaching."
+		return "A paladin leads the vanguard."
 	case 14:
-		return "Armored shields cut damage by 40%."
+		return "Centurions — warded, they shrug off your blows."
 	case 15:
-		return "Beware the Boss — leaking it costs 6 lives."
+		return "The Player has set out. If they reach the heart, it ends."
 	case 18:
-		return "A stronger Boss. If it leaks, it's over."
+		return "The Player returns, stronger."
 	case 20:
-		return "The final wave. Two Bosses. Good luck."
+		return "The final expedition. Two Players. Hold the lair."
 	}
 	return ""
 }

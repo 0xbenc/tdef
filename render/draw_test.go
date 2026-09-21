@@ -89,23 +89,33 @@ func TestFormatTime(t *testing.T) {
 }
 
 func TestDrawGameOver(t *testing.T) {
-	l := GameLayout(45, 13, 62, 19)
-	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
-	g := &game.State{
-		Status:     game.StatusVictory,
-		Wave:       20,
-		TotalKills: 100,
-		TotalLeaks: 3,
-		Score:      500,
-		MaxCombo:   5,
-		Time:       150,
-		Towers:     []*game.Tower{{}, {}},
+	cases := []struct {
+		title  string
+		status game.GameStatus
+		lore   string
+	}{
+		{"VICTORY", game.StatusVictory, "The lair is held. Malgrath endures."},
+		{"DEFEAT", game.StatusDefeat, "Malgrath has fallen. The lair is clean."},
 	}
-	drawGameOver(f, g, &UI{BestScore: 900}, Palette())
-	text := f.Text()
-	for _, want := range []string{"VICTORY", "20/20", "100", "2m30s"} {
-		if !strings.Contains(text, want) {
-			t.Errorf("game-over missing %q:\n%s", want, text)
+	for _, c := range cases {
+		l := GameLayout(45, 13, 62, 19)
+		f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
+		g := &game.State{
+			Status:     c.status,
+			Wave:       20,
+			TotalKills: 100,
+			TotalLeaks: 3,
+			Score:      500,
+			MaxCombo:   5,
+			Time:       150,
+			Towers:     []*game.Tower{{}, {}},
+		}
+		drawGameOver(f, g, &UI{BestScore: 900}, Palette())
+		text := f.Text()
+		for _, want := range []string{c.title, "20/20", "100", "2m30s", c.lore} {
+			if !strings.Contains(text, want) {
+				t.Errorf("%s game-over missing %q:\n%s", c.title, want, text)
+			}
 		}
 	}
 }
@@ -147,7 +157,10 @@ func TestTowerInfoFitsFrame(t *testing.T) {
 			}
 			for mode := game.TargetMode(0); mode < game.TargetModeCount; mode++ {
 				tw := &game.Tower{Kind: k, Level: level, TargetMode: mode}
-				line := towerInfo(tw, upCost, refund)
+				line := strings.TrimPrefix(towerInfo(tw, upCost, refund), " ")
+				if n := len([]rune(line)); n > FrameW-6 {
+					line = fitMsg(line, FrameW-8)
+				}
 				if n := len([]rune(line)); n > FrameW {
 					t.Errorf("%s lv%d %s: %d runes, want <= %d: %q",
 						game.TowerSpecs[k].Name, level, mode.Name(), n, FrameW, line)
@@ -340,7 +353,7 @@ func TestHeaderSegmentsAt62(t *testing.T) {
 		Map: m, Status: game.StatusRunning, Wave: 5, WaveActive: true,
 		Combo: 7, Gold: 9999, Lives: 14, Score: 3120,
 	}
-	ui := &UI{Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "winding"}
+	ui := &UI{Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "canyon"}
 	check := func(tw, th int, present, absent []string) {
 		f := Render(g, ui, Palette(), tw, th)
 		var b strings.Builder
@@ -359,9 +372,9 @@ func TestHeaderSegmentsAt62(t *testing.T) {
 		}
 	}
 	// At 62 the level·diff segment is elided (first in the drop order).
-	check(62, 19, []string{"tdef", "wave 5/20", "⛁"}, []string{"winding", "normal"})
+	check(62, 19, []string{"tdef", "wave 5/20", "⛁"}, []string{"the Rift", "normal"})
 	// At 80 everything fits.
-	check(80, 24, []string{"tdef", "winding", "normal", "wave 5/20", "⛁"}, nil)
+	check(80, 24, []string{"tdef", "the Rift", "normal", "wave 5/20", "⛁"}, nil)
 	if f := Render(g, ui, Palette(), 62, 19); f.C[0].R != '╭' || f.C[f.W-1].R != '╮' {
 		t.Errorf("top border corners missing: %q %q", f.C[0].R, f.C[f.W-1].R)
 	}
@@ -374,7 +387,7 @@ func TestHeaderNoOverflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	msgs := []string{"", "leak! -6 lives", "wave 18 cleared +93g", "Faster ones are coming. " + "and faster still, faster."}
+	msgs := []string{"", "the Player breached! -6 ♥", "wave 18 cleared +93g", "Faster ones are coming. " + "and faster still, faster."}
 	for _, tw := range []int{62, 63, 70, 80, 120} {
 		for _, paused := range []bool{false, true} {
 			for _, msg := range msgs {
@@ -411,13 +424,13 @@ func TestRenderSmoke(t *testing.T) {
 		t.Fatal(err)
 	}
 	g := game.NewState(m)
-	ui := &UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "winding"}
+	ui := &UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "canyon"}
 	f := Render(g, ui, Palette(), 80, 24)
 	if f.W != 80 || f.H != 24 {
 		t.Fatalf("frame = %dx%d, want 80x24", f.W, f.H)
 	}
 	text := f.Text()
-	for _, want := range []string{"tdef", "1 Gunner 50", "⏎|place", "winding", "normal"} {
+	for _, want := range []string{"tdef", "1 Orc Gunner 50", "⏎|place", "the Rift", "normal"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("frame missing %q", want)
 		}

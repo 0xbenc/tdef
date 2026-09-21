@@ -329,3 +329,30 @@
     during the boot) to "by 0xbenc" (first full-chrome frame), and the
     ptydrv smoke now waits for the in-game "winding" HUD line because
     the title intro no longer says "press any key to start".
+
+2026-09-21
+- Lore skin pass per LORE.md ("The Last Monster" / Malgrath): names and copy
+  only, zero gameplay/stat changes. Done as two parallel subagents
+  (game/ package; render/ + tui/).
+- Towers: Orc Gunner, Cannonier, Frost Mage, Ranger, Lightning Mage,
+  Trebuchet, Gnoll Slingers (TowerSpecs.Name; the UI flows from there).
+- Enemies: Squire, Rogue, Mercenary, Wizard, Necromancer, Paladin,
+  Centurion, The Player (EnemySpecs.Name; Short glyphs unchanged).
+- Wave themes reskinned: scouts/raid/column/assault/the coven/the risen/
+  the vanguard/the wall/the player/siege/the end; 10 new telegraphs in
+  guild-rumor voice ("The Player has set out. If they reach the heart,
+  it ends.").
+- UI: title demo label IDLE START SCREEN -> THE SIEGE (wave segment
+  x20->14, WAVE 1 decode t34->18); help -> GRAK'S LEDGER + subtitle line;
+  game-over/victory lore lines in the stats box ("Malgrath has fallen.
+  The lair is clean." / "The lair is held. Malgrath endures."); leak
+  toast -> "breach! -N ♥" / "the Player breached! -6 ♥" (header red-bold
+  style hook leak! -> breach).
+- Level display names: the Rotunda / the Long Halls / the Sunken Garden /
+  the Rift / the Unmapped Depths (header + level select only; CLI level
+  ids and hiscore keys stay the short forms).
+- Slot widths re-verified at 62 cols: row 0 max "1 Orc Gunner 50" = 15 =
+  cell 15, row 1 max "5 Lightning Mage 200" = 18 <= cell 20. Header
+  elision boundaries shift with the longer names (existing drop logic).
+- Tests updated across game/render/tui; gofmt/vet/test -race green;
+  README + LORE.md updated.
