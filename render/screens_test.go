@@ -9,8 +9,8 @@ import (
 )
 
 // titleAt renders the title at attract-battle internal frame fr
-// (0 = the BATTLE text starts to decode), with the visit clock set so the
-// boot cinematic and idle wait are already behind us.
+// (0 = the IDLE START SCREEN text starts to decode), with the visit clock
+// set so the boot cinematic and idle wait are already behind us.
 func titleAt(w, h, frame, fr int, scores map[string]int) *Frame {
 	boot := titleBootLen + titleIdleWait + titleBattleLead + fr
 	return RenderTitle(w, h, frame, boot, scores, Palette())
@@ -83,8 +83,9 @@ func TestRenderTitleFitsFrame(t *testing.T) {
 				t.Errorf("w=%d h=%d: standby missing %q:\n%s", w, h, want, text)
 			}
 		}
-		// The standby battlefield must be empty: no BATTLE/WAVE text.
-		for _, absent := range []string{"BATTLE", "WAVE"} {
+		// The standby battlefield must be empty: no IDLE START SCREEN/WAVE
+		// text.
+		for _, absent := range []string{"IDLE START SCREEN", "WAVE"} {
 			if strings.Contains(text, absent) {
 				t.Errorf("w=%d h=%d: standby shows %q:\n%s", w, h, absent, text)
 			}
@@ -313,15 +314,15 @@ func TestTitlePhases(t *testing.T) {
 		want []string
 		abs  []string
 	}{
-		{200, []string{"BATTLE", "WAVE 1"}, nil},
+		{200, []string{"IDLE START SCREEN", "WAVE 1"}, nil},
 		{600, []string{"WAVE 2"}, nil},
 		{1100, []string{"WAVE 3", "B"}, nil},
 		{1505, []string{"BREACH"}, nil},
-		{1514, nil, []string{"BATTLE", "TDEF", "·"}},                  // static whiteout
-		{1525, []string{"█"}, []string{"BATTLE"}},                     // shockwave front
-		{1590, nil, []string{"BATTLE", "█"}},                          // cooled grid only
-		{1640, nil, []string{"BATTLE", "[enter]"}},                    // mid-reboot
-		{1683, []string{"[enter] start"}, []string{"BATTLE", "WAVE"}}, // rebooted into the standby
+		{1514, nil, []string{"IDLE START SCREEN", "TDEF", "·"}},                  // static whiteout
+		{1525, []string{"█"}, []string{"IDLE START SCREEN"}},                     // shockwave front
+		{1590, nil, []string{"IDLE START SCREEN", "█"}},                          // cooled grid only
+		{1640, nil, []string{"IDLE START SCREEN", "[enter]"}},                    // mid-reboot
+		{1683, []string{"[enter] start"}, []string{"IDLE START SCREEN", "WAVE"}}, // rebooted into the standby
 	}
 	for _, c := range cases {
 		got := text(c.fr)
@@ -444,10 +445,9 @@ func TestTitlePromptInBottomBorder(t *testing.T) {
 	}
 }
 
-// The boot cinematic plays in order — black, ignition, ring settle,
-// crosshair zap, box self-draw, light-pen trace, the weapon fan, white
-// flash, subtitle decode, chrome fade-in — and its last frame is exactly
-// the standby.
+// The boot cinematic plays in order — black beat, box self-draw, light-pen
+// trace, the weapon fan, white flash, subtitle decode, chrome fade-in — and
+// its last frame is exactly the standby.
 func TestTitleBootSequence(t *testing.T) {
 	const w, h = 100, 30
 	off := screenOff(h)
@@ -459,31 +459,22 @@ func TestTitleBootSequence(t *testing.T) {
 			t.Fatalf("boot 0 cell %d = %q, want black", i, c.R)
 		}
 	}
-	// Boot 6: the ignition point at the center.
-	f6 := RenderTitle(w, h, 6, 6, nil, Palette())
-	if c := f6.C[(h/2)*w+w/2]; c.R != '·' || c.FG != 231 {
-		t.Fatalf("boot 6 ignition = %+v, want ·/231 at center", c)
+	// Boot 3: the slab box is mid self-draw — corner landed, tip lit.
+	f3 := RenderTitle(w, h, 3, 3, nil, Palette())
+	if c := f3.C[(off+1)*w+x0-1]; c.R != '╭' || c.FG != 234 {
+		t.Fatalf("boot 3 box corner = %+v, want ╭/234", c)
 	}
-	// Boot 16: the rings have settled dim, the center point cools.
-	f16 := RenderTitle(w, h, 16, 16, nil, Palette())
-	if c := f16.C[(h/2)*w+w/2]; c.R != '·' || c.FG != 236 {
-		t.Fatalf("boot 16 settled point = %+v, want ·/236", c)
+	if c := f3.C[(off+1)*w+x0+40]; c.R != '─' || c.FG != 51 {
+		t.Fatalf("boot 3 box tip = %+v, want ─/51", c)
 	}
-	// Boot 19: the crosshair zaps out across the whole frame.
-	f19 := RenderTitle(w, h, 19, 19, nil, Palette())
-	if c := f19.C[(h/2)*w+0]; c.R != '·' || c.FG != 234 {
-		t.Fatalf("boot 19 cross left = %+v, want ·/234", c)
+	// Boot 7: the box is complete — last corner landed, tip back on the
+	// left edge, one cell left of the pen's first slab cell.
+	f7 := RenderTitle(w, h, 7, 7, nil, Palette())
+	if c := f7.C[(off+7)*w+x0+42]; c.R != '╯' || c.FG != 234 {
+		t.Fatalf("boot 7 box corner = %+v, want ╯/234", c)
 	}
-	if c := f19.C[0*w+w/2]; c.R != '·' || c.FG != 234 {
-		t.Fatalf("boot 19 cross top = %+v, want ·/234", c)
-	}
-	// Boot 25: the slab box is mid self-draw — corner landed, tip white.
-	f25 := RenderTitle(w, h, 25, 25, nil, Palette())
-	if c := f25.C[(off+1)*w+x0-1]; c.R != '╭' || c.FG != 234 {
-		t.Fatalf("boot 25 box corner = %+v, want ╭/234", c)
-	}
-	if c := f25.C[(off+7)*w+x0+34]; c.FG != 51 {
-		t.Fatalf("boot 25 box tip = %+v, want 51", c)
+	if c := f7.C[(off+2)*w+x0-1]; c.R != '│' || c.FG != 51 {
+		t.Fatalf("boot 7 box tip = %+v, want │/51", c)
 	}
 	// Boot 40: the pen is mid-trace — the tip is white, untraced cells
 	// flicker as dim noise, the box stays drawn.
@@ -496,110 +487,111 @@ func TestTitleBootSequence(t *testing.T) {
 	if c := f40.C[(off+2+ghost.row)*w+x0+ghost.relX]; (c.R != '·' && c.R != '+' && c.R != '░') || c.FG < 236 || c.FG > 238 {
 		t.Fatalf("boot 40 untraced cell = %+v, want dim noise", c)
 	}
-	// Boot 94: the pen has finished — the whole slab is locked in color.
-	f94 := RenderTitle(w, h, 94, 94, nil, Palette())
-	if c := f94.C[(off+2)*w+x0]; c.R != '█' || c.FG != titleColors[0] {
-		t.Fatalf("boot 94 T cell = %+v, want █/46", c)
+	// Boot 72: the pen has finished — the whole slab is locked in color.
+	f72 := RenderTitle(w, h, 72, 72, nil, Palette())
+	if c := f72.C[(off+2)*w+x0]; c.R != '█' || c.FG != titleColors[0] {
+		t.Fatalf("boot 72 T cell = %+v, want █/46", c)
 	}
-	if c := f94.C[(off+6)*w+x0+3]; c.R != '▒' || c.FG != titleColors[0] {
-		t.Fatalf("boot 94 T bottom cell = %+v, want ▒/46", c)
+	if c := f72.C[(off+6)*w+x0+3]; c.R != '▒' || c.FG != titleColors[0] {
+		t.Fatalf("boot 72 T bottom cell = %+v, want ▒/46", c)
 	}
-	// Boot 100: T's Gunner tracer is in flight, reticle locked at the target.
-	f100 := RenderTitle(w, h, 100, 100, nil, Palette())
-	if c := f100.C[13*w+25]; c.R != '█' || c.FG != 255 {
-		t.Fatalf("boot 100 tracer = %+v, want █/255", c)
+	// Boot 78: T's Gunner tracer is in flight, reticle locked at the target.
+	f78 := RenderTitle(w, h, 78, 78, nil, Palette())
+	if c := f78.C[13*w+25]; c.R != '█' || c.FG != 255 {
+		t.Fatalf("boot 78 tracer = %+v, want █/255", c)
 	}
-	if c := f100.C[27*w+11]; c.R != '+' || c.FG != 244 {
-		t.Fatalf("boot 100 reticle = %+v, want +/244", c)
+	if c := f78.C[27*w+11]; c.R != '+' || c.FG != 244 {
+		t.Fatalf("boot 78 reticle = %+v, want +/244", c)
 	}
-	// Boot 145: the Cannon shell has burst at the target.
-	f145 := RenderTitle(w, h, 145, 145, nil, Palette())
-	if c := f145.C[2*w+41]; c.R != '·' || c.FG != 240 {
-		t.Fatalf("boot 145 burst core = %+v, want ·/240", c)
+	// Boot 123: the Cannon shell has burst at the target.
+	f123 := RenderTitle(w, h, 123, 123, nil, Palette())
+	if c := f123.C[2*w+41]; c.R != '·' || c.FG != 240 {
+		t.Fatalf("boot 123 burst core = %+v, want ·/240", c)
 	}
-	if c := f145.C[2*w+39]; c.R != '·' || c.FG != 220 {
-		t.Fatalf("boot 145 burst ring = %+v, want ·/220", c)
+	if c := f123.C[2*w+39]; c.R != '·' || c.FG != 220 {
+		t.Fatalf("boot 123 burst ring = %+v, want ·/220", c)
 	}
-	// Boot 174: E's Sniper beam is lit full length.
-	f174 := RenderTitle(w, h, 174, 174, nil, Palette())
-	if c := f174.C[5*w+56]; c.R != '█' || c.FG != 255 {
-		t.Fatalf("boot 174 beam = %+v, want █/255", c)
+	// Boot 152: E's Sniper beam is lit full length.
+	f152 := RenderTitle(w, h, 152, 152, nil, Palette())
+	if c := f152.C[5*w+56]; c.R != '█' || c.FG != 255 {
+		t.Fatalf("boot 152 beam = %+v, want █/255", c)
 	}
-	// Boot 205: F's Tesla chain is live — letter settled, frame busy.
-	f205 := RenderTitle(w, h, 205, 205, nil, Palette())
-	if c := f205.C[7*w+62]; c.R != '█' || c.FG != 171 {
-		t.Fatalf("boot 205 F letter = %+v, want █/171", c)
+	// Boot 183: F's Tesla chain is live — letter settled, frame busy.
+	f183 := RenderTitle(w, h, 183, 183, nil, Palette())
+	if c := f183.C[7*w+62]; c.R != '█' || c.FG != 171 {
+		t.Fatalf("boot 183 F letter = %+v, want █/171", c)
 	}
 	n := 0
-	for _, c := range f205.C {
+	for _, c := range f183.C {
 		if c.R != ' ' {
 			n++
 		}
 	}
 	if n < 200 {
-		t.Fatalf("boot 205: %d non-blank cells, want the arc + slab + box", n)
+		t.Fatalf("boot 183: %d non-blank cells, want the arc + slab + box", n)
 	}
-	// Boot 226: the whole slab burns white over the grid.
-	f226 := RenderTitle(w, h, 226, 226, nil, Palette())
+	// Boot 204: the whole slab burns white over the grid.
+	f204 := RenderTitle(w, h, 204, 204, nil, Palette())
 	for _, s := range titlePenPath {
-		if c := f226.C[(off+2+s.row)*w+x0+s.relX]; c.FG != 255 || !c.Bold {
-			t.Fatalf("boot 226 slab cell (letter %d) = %+v, want white", s.li, c)
+		if c := f204.C[(off+2+s.row)*w+x0+s.relX]; c.FG != 255 || !c.Bold {
+			t.Fatalf("boot 204 slab cell (letter %d) = %+v, want white", s.li, c)
 		}
 	}
-	if c := f226.C[0]; c.R != '·' || c.FG != 234 {
-		t.Fatalf("boot 226 grid = %+v, want ·/234", c)
+	if c := f204.C[0]; c.R != '·' || c.FG != 234 {
+		t.Fatalf("boot 204 grid = %+v, want ·/234", c)
 	}
-	// Boot 235: the subtitle decodes left to right with a caret.
-	f235 := RenderTitle(w, h, 235, 235, nil, Palette())
+	// Boot 213: the subtitle decodes left to right with a caret.
+	f213 := RenderTitle(w, h, 213, 213, nil, Palette())
 	tag := []rune(titleTagline)
 	sx, sy := (w-len(tag))/2, off+8
-	if c := f235.C[sy*w+sx+11]; c.FG != 255 || !c.Bold {
-		t.Fatalf("boot 235 subtitle head = %+v, want white bold", c)
+	if c := f213.C[sy*w+sx+11]; c.FG != 255 || !c.Bold {
+		t.Fatalf("boot 213 subtitle head = %+v, want white bold", c)
 	}
-	if c := f235.C[sy*w+sx+12]; c.R != '█' || c.FG != 251 {
-		t.Fatalf("boot 235 caret = %+v, want █/251", c)
+	if c := f213.C[sy*w+sx+12]; c.R != '█' || c.FG != 251 {
+		t.Fatalf("boot 213 caret = %+v, want █/251", c)
 	}
-	// Boot 245: the chrome fades in — border and footer still ghosted,
+	// Boot 223: the chrome fades in — border and footer still ghosted,
 	// the signature not yet up. (x=20 is clear of the TDEF title.)
-	f245 := RenderTitle(w, h, 245, 245, nil, Palette())
-	if c := f245.C[0*w+20]; c.FG != 234 {
-		t.Fatalf("boot 245 border = %+v, want ghost 234", c)
+	f223 := RenderTitle(w, h, 223, 223, nil, Palette())
+	if c := f223.C[0*w+20]; c.FG != 234 {
+		t.Fatalf("boot 223 border = %+v, want ghost 234", c)
 	}
-	if c := f245.C[(h-1)*w+40]; c.R != '·' || c.FG != 234 {
-		t.Fatalf("boot 245 footer = %+v, want ghost", c)
+	if c := f223.C[(h-1)*w+40]; c.R != '·' || c.FG != 234 {
+		t.Fatalf("boot 223 footer = %+v, want ghost", c)
 	}
-	if c := f245.C[(h-1)*w+(w-11)]; c.R != '─' {
-		t.Fatalf("boot 245 sig slot = %+v, want border dash", c)
+	if c := f223.C[(h-1)*w+(w-11)]; c.R != '─' {
+		t.Fatalf("boot 223 sig slot = %+v, want border dash", c)
 	}
-	// Boot 259: border and battlefield have landed, roster still ghosting,
+	// Boot 237: border and battlefield have landed, roster still ghosting,
 	// the signature embedded in the bottom border.
-	f259 := RenderTitle(w, h, 259, 259, nil, Palette())
-	if c := f259.C[0*w+20]; c.FG != 240 {
-		t.Fatalf("boot 259 border = %+v, want 240", c)
+	f237 := RenderTitle(w, h, 237, 237, nil, Palette())
+	if c := f237.C[0*w+20]; c.FG != 240 {
+		t.Fatalf("boot 237 border = %+v, want 240", c)
 	}
-	if c := f259.C[(off+14)*w+40]; c.R != '·' || c.FG != 234 {
-		t.Fatalf("boot 259 roster = %+v, want ghost", c)
+	if c := f237.C[(off+14)*w+40]; c.R != '·' || c.FG != 234 {
+		t.Fatalf("boot 237 roster = %+v, want ghost", c)
 	}
-	if c := f259.C[(h-1)*w+(w-11)]; c.R != 'b' || c.FG != 238 {
-		t.Fatalf("boot 259 sig start = %+v, want b/238", c)
+	if c := f237.C[(h-1)*w+(w-11)]; c.R != 'b' || c.FG != 238 {
+		t.Fatalf("boot 237 sig start = %+v, want b/238", c)
 	}
-	if c := f259.C[(h-1)*w+(w-3)]; c.R != 'c' || c.FG != 238 {
-		t.Fatalf("boot 259 sig end = %+v, want c/238", c)
+	if c := f237.C[(h-1)*w+(w-3)]; c.R != 'c' || c.FG != 238 {
+		t.Fatalf("boot 237 sig end = %+v, want c/238", c)
 	}
-	// Boot 272 (the last boot frame) == the standby at the same clock.
-	if a, b := RenderTitle(w, h, 272, 272, nil, Palette()), RenderTitle(w, h, 272, 273, nil, Palette()); !reflect.DeepEqual(a, b) {
+	// Boot 250 (the last boot frame) == the standby at the same clock.
+	if a, b := RenderTitle(w, h, 250, 250, nil, Palette()), RenderTitle(w, h, 250, 251, nil, Palette()); !reflect.DeepEqual(a, b) {
 		t.Fatal("the boot's last frame differs from the standby")
 	}
 }
 
-// The standby battlefield is empty: no BATTLE/WAVE text, no towers, no
-// enemies — just the path, its ambient packet, and the spawn/exit markers.
+// The standby battlefield is empty: no IDLE START SCREEN/WAVE text, no
+// towers, no enemies — just the path, its ambient packet, and the
+// spawn/exit markers.
 func TestTitleStandbyEmpty(t *testing.T) {
 	const w, h = 100, 30
 	off := screenOff(h)
 	f := titleStandbyAt(w, h, 0, 100, nil)
 	text := f.Text()
-	for _, absent := range []string{"BATTLE", "WAVE"} {
+	for _, absent := range []string{"IDLE START SCREEN", "WAVE"} {
 		if strings.Contains(text, absent) {
 			t.Errorf("standby shows %q:\n%s", absent, text)
 		}
@@ -658,21 +650,21 @@ func TestTitleSigInBottomBorder(t *testing.T) {
 	}
 }
 
-// The attract loop: 15s (450 frames) of standby, then the BATTLE/WAVE
-// decode and tower power-up, then the battle script; it repeats.
+// The attract loop: 15s (450 frames) of standby, then the IDLE START
+// SCREEN/WAVE decode and tower power-up, then the battle script; it repeats.
 func TestTitleIdleGate(t *testing.T) {
 	const w, h = 100, 30
 	text := func(boot int) string {
 		return RenderTitle(w, h, boot, boot, nil, Palette()).Text()
 	}
 	// The frame before the 15s deadline: still idle.
-	if got := text(titleBootLen + titleIdleWait - 1); strings.Contains(got, "BATTLE") {
+	if got := text(titleBootLen + titleIdleWait - 1); strings.Contains(got, "IDLE START SCREEN") {
 		t.Fatalf("1 frame before the idle deadline the battle text is up:\n%s", got)
 	}
-	// 1s past: BATTLE has decoded, WAVE 1 is still arriving.
-	at := titleBootLen + titleIdleWait + 20
-	if got := text(at); !strings.Contains(got, "BATTLE") || strings.Contains(got, "WAVE 1") {
-		t.Fatalf("1s past the deadline want BATTLE up and WAVE 1 decoding:\n%s", text(at))
+	// Past the deadline: the label has decoded, WAVE 1 is still arriving.
+	at := titleBootLen + titleIdleWait + 36
+	if got := text(at); !strings.Contains(got, "IDLE START SCREEN") || strings.Contains(got, "WAVE 1") {
+		t.Fatalf("past the deadline want the label up and WAVE 1 decoding:\n%s", text(at))
 	}
 	// 2s past: WAVE 1 is on.
 	at += 20

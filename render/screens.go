@@ -157,23 +157,22 @@ const titleTagline = "— terminal tower defense —"
 // (frame, boot): `frame` is the 30fps tick counter (ambient timing) and
 // `boot` is frames since this visit to the title started.
 //
-//	boot 0-272   the cinematic (~9s): an ignition pulse on black (point +
-//	             rings, then the rings settle, a crosshair zaps out and the
-//	             slab's bounding box draws itself with a scan flicker); a
-//	             light pen traces the TDEF slab out of digital noise (each
-//	             letter flashing white as it locks in); then each letter,
-//	             left to right, fires a different weapon at a lock-on
-//	             reticle on the frame edge — Gunner tracer spray, Cannon
-//	             shell + AOE burst, Sniper charge + piercing beam, Tesla
-//	             chain lightning; the slab ignites white, the subtitle
-//	             decodes, then the frame chrome and an empty battlefield
-//	             fade in
-//	boot 273+    the attract loop, every titleAttractCycle frames:
+//	boot 0-250   the cinematic (~8s): a black beat, then the slab's
+//	             bounding box draws itself with a scan flicker (the light
+//	             pen's curtain-up); a light pen traces the TDEF slab out of
+//	             digital noise (each letter flashing white as it locks in);
+//	             then each letter, left to right, fires a different weapon
+//	             at a lock-on reticle on the frame edge — Gunner tracer
+//	             spray, Cannon shell + AOE burst, Sniper charge + piercing
+//	             beam, Tesla chain lightning; the slab ignites white, the
+//	             subtitle decodes, then the frame chrome and an empty
+//	             battlefield fade in
+//	boot 251+    the attract loop, every titleAttractCycle frames:
 //
 //	15s idle     standby: full UI, empty battlefield — no towers, no
-//	             enemies, no BATTLE/WAVE text
-//	then 120f    "┐BATTLE┌" and "┐WAVE 1┌" decode on, the five towers
-//	             power up left to right
+//	             enemies, no IDLE START SCREEN/WAVE text
+//	then 120f    "┐IDLE START SCREEN┌" and "┐WAVE 1┌" decode on, the five
+//	             towers power up left to right
 //	then 1685f   the battle script: wave 1 (minions) plays at true 1×
 //	             gameplay speed; waves 2-3 are compressed. The towers hold
 //	             wave 1, mostly hold wave 2 (one runner leaks), then wave 3's
@@ -185,19 +184,19 @@ const titleTagline = "— terminal tower defense —"
 //	             (1605-1615); the screen reboots (1615-1684) back to the
 //	             standby state, where the 15s clock starts again.
 const (
-	titleBootPulseEnd   = 30  // 0-29:     ignition: point + rings (0-14), ring settle + crosshair zap (15-19), slab box self-draws with scan flicker (20-29)
-	titleBootPenEnd     = 95  // 30-94:    the light pen traces the TDEF slab
-	titleBootWeaponsEnd = 225 // 95-224:   the letters fire: Gunner, Cannon, Sniper, Tesla
-	titleBootFlashStart = 225 // 225-228:  the slab ignites white
-	titleBootFlashEnd   = 229 //
-	titleBootSubEnd     = 243 // 229-242:  the subtitle decodes
-	titleBootLen        = 273 // 243-272:  the rest of the UI fades in
+	titleBootIntroEnd   = 8   // 0-7:      the slab box self-draws with scan flicker; the pen tip lands
+	titleBootPenEnd     = 73  // 8-72:     the light pen traces the TDEF slab
+	titleBootWeaponsEnd = 203 // 73-202:   the letters fire: Gunner, Cannon, Sniper, Tesla
+	titleBootFlashStart = 203 // 203-206:  the slab ignites white
+	titleBootFlashEnd   = 207 //
+	titleBootSubEnd     = 221 // 207-220:  the subtitle decodes
+	titleBootLen        = 251 // 221-250:  the rest of the UI fades in
 )
 
 const (
 	// The attract loop: 15s of inactivity, then the battle sequence.
 	titleIdleWait     = 450 // 15s at 30fps
-	titleBattleLead   = 120 // BATTLE/WAVE text + tower power-up before wave 1
+	titleBattleLead   = 120 // IDLE START SCREEN/WAVE text + tower power-up before wave 1
 	titleBattleLen    = titleBattleLead + titleCycle
 	titleAttractCycle = titleIdleWait + titleBattleLen
 )
@@ -305,7 +304,7 @@ var titleLetterDone = func() [4]int {
 		for row := range letters {
 			for _, ch := range letters[row] {
 				if ch == 'X' {
-					d[li] = titleBootPulseEnd + (n+1)/2
+					d[li] = titleBootIntroEnd + (n+1)/2
 					n++
 				}
 			}
@@ -315,9 +314,9 @@ var titleLetterDone = func() [4]int {
 }()
 
 // bootPenIndex is the pen's path position at boot frame t: two cells per
-// frame from titleBootPulseEnd.
+// frame from titleBootIntroEnd.
 func bootPenIndex(t int) int {
-	pos := 2 * (t - titleBootPulseEnd)
+	pos := 2 * (t - titleBootIntroEnd)
 	if pos > len(titlePenPath)-1 {
 		pos = len(titlePenPath) - 1
 	}
@@ -352,8 +351,8 @@ func titleFooter() []fseg {
 }
 
 // drawTitleStandby is the idle title: full UI, empty battlefield — no
-// towers, no enemies, no BATTLE/WAVE text, just the path and its ambient
-// energy packet.
+// towers, no enemies, no IDLE START SCREEN/WAVE text, just the path and its
+// ambient energy packet.
 func drawTitleStandby(w, h, frame int, scores map[string]int, pal Colors) *Frame {
 	lit := (frame/15)%2 == 0
 	f := screenBox(w, h, "TDEF", titleFooter(), lit, pal)
@@ -363,9 +362,9 @@ func drawTitleStandby(w, h, frame int, scores map[string]int, pal Colors) *Frame
 	return f
 }
 
-// drawTitleBattleSeq runs the attract battle: the BATTLE/WAVE text decodes
-// on, the towers power up, then the battle script plays (internal frame
-// fr = local - titleBattleLead).
+// drawTitleBattleSeq runs the attract battle: the IDLE START SCREEN/WAVE
+// text decodes on, the towers power up, then the battle script plays
+// (internal frame fr = local - titleBattleLead).
 func drawTitleBattleSeq(w, h, frame, local int, scores map[string]int, pal Colors) *Frame {
 	if local < titleBattleLead {
 		f := drawTitleStandby(w, h, frame, scores, pal)
@@ -404,10 +403,10 @@ func drawTitleBattleSeq(w, h, frame, local int, scores map[string]int, pal Color
 	}
 }
 
-// drawTitleBootIntro reveals "┐BATTLE┌" and "┐WAVE 1┌" character by
-// character (each flashing white on arrival), then powers the five towers
-// up left to right. At local == titleBattleLead the box matches battle
-// frame 0 exactly.
+// drawTitleBattleIntro reveals "┐IDLE START SCREEN┌" and "┐WAVE 1┌"
+// character by character (each flashing white on arrival), then powers the
+// five towers up left to right. At local == titleBattleLead the box matches
+// battle frame 0 exactly.
 func drawTitleBattleIntro(f *Frame, w, h, off, t int, pal Colors) {
 	y0 := off + demoTop
 	if y0 <= 0 || y0+demoRows >= h-1 {
@@ -434,8 +433,8 @@ func drawTitleBattleIntro(f *Frame, w, h, off, t int, pal Colors) {
 			f.Set(x+i, y0, c)
 		}
 	}
-	seg(2, "┐BATTLE┌", pal.Dim, 0)
-	seg(11, "┐WAVE 1┌", pal.Bright, 16)
+	seg(2, "┐IDLE START SCREEN┌", pal.Dim, 0)
+	seg(20, "┐WAVE 1┌", pal.Bright, 34)
 
 	const towerStart, towerDur = 32, 17
 	// Left to right along the path.
@@ -465,13 +464,13 @@ func drawTitleBattleIntro(f *Frame, w, h, off, t int, pal Colors) {
 
 // ---------------------------------------------------------------- boot (cont.)
 
-// drawTitleBoot plays the one-shot cinematic: pulse, pen, the weapon fan,
+// drawTitleBoot plays the one-shot cinematic: intro, pen, the weapon fan,
 // flash, subtitle, UI fade-in.
 func drawTitleBoot(f *Frame, w, h, t, frame int, pal Colors) {
 	off := screenOff(h)
 	switch {
-	case t < titleBootPulseEnd:
-		drawBootPulse(f, w, h, off, t)
+	case t < titleBootIntroEnd:
+		drawBootIntro(f, w, off, t)
 	case t < titleBootPenEnd:
 		drawBootPen(f, w, off, t)
 	case t < titleBootWeaponsEnd:
@@ -488,92 +487,16 @@ func drawTitleBoot(f *Frame, w, h, t, frame int, pal Colors) {
 	}
 }
 
-// drawBootPulse is the ignition: a point and expanding rings (0-14); the
-// rings settle dim (15-17); a crosshair zaps out across the frame (18-19);
-// the cross collapses into the slab's bounding box, which draws itself over
-// a scan flicker (20-29).
-func drawBootPulse(f *Frame, w, h, off, t int) {
-	cx, cy := w/2, h/2
-	if t < 4 {
+// drawBootIntro is the light pen's curtain-up: a black beat (0), then the
+// slab's bounding box draws itself (1-7), tip lit, over a scan flicker.
+// The box ends one cell left of the pen's first slab cell, so the tip
+// hands off cleanly when the trace starts.
+func drawBootIntro(f *Frame, w, off, t int) {
+	if t == 0 {
 		return
 	}
-	if t < 15 {
-		f.Set(cx, cy, Cell{R: '·', FG: 231})
-		for k := 0; k < 3; k++ {
-			age := t - 6 - 3*k
-			if age < 0 {
-				continue
-			}
-			r := float64(age) * 2.4
-			c := 231
-			if age >= 3 {
-				c = 117
-			}
-			if age >= 6 {
-				c = 51
-			}
-			dx := int(r/0.55) + 2
-			for x := cx - dx; x <= cx+dx; x++ {
-				if x < 0 || x >= w {
-					continue
-				}
-				for y := cy - int(r) - 2; y <= cy+int(r)+2; y++ {
-					if y < 0 || y >= h {
-						continue
-					}
-					d := math.Hypot(float64(x-cx)*0.55, float64(y-cy))
-					if math.Abs(d-r) < 0.7 {
-						f.Set(x, y, Cell{R: '·', FG: c})
-					}
-				}
-			}
-		}
-		return
-	}
-	if t < 18 {
-		// The rings freeze at their last radii and settle into the dark.
-		f.Set(cx, cy, Cell{R: '·', FG: 236})
-		c := 238 - (t - 15)
-		for k := 0; k < 3; k++ {
-			r := float64(8-3*k) * 2.4
-			dx := int(r/0.55) + 2
-			for x := cx - dx; x <= cx+dx; x++ {
-				if x < 0 || x >= w {
-					continue
-				}
-				for y := cy - int(r) - 2; y <= cy+int(r)+2; y++ {
-					if y < 0 || y >= h {
-						continue
-					}
-					d := math.Hypot(float64(x-cx)*0.55, float64(y-cy))
-					if math.Abs(d-r) < 0.7 {
-						f.Set(x, y, Cell{R: '·', FG: c})
-					}
-				}
-			}
-		}
-		return
-	}
-	if t < 20 {
-		// A crosshair zaps out: 70% then 100% across the whole frame.
-		hx, hy := 0.7, 0.4
-		if t == 19 {
-			hx, hy = 1, 1
-		}
-		for x := 0; x < w; x++ {
-			if math.Abs(float64(x-cx)) <= float64(w)*hx/2 {
-				f.Set(x, cy, Cell{R: '·', FG: 234})
-			}
-		}
-		for y := 0; y < h; y++ {
-			if math.Abs(float64(y-cy)) <= float64(h)*hy/2 {
-				f.Set(cx, y, Cell{R: '·', FG: 234})
-			}
-		}
-		return
-	}
-	// The bounding box draws itself (10 cells/frame) over a scan flicker.
-	pos := (t - 19) * 98 / 10
+	// The box draws itself (14 cells/frame).
+	pos := t * 98 / 7
 	drawBootBox(f, w, off, pos, 1, 234)
 	for y := off + 2; y <= off+6; y++ {
 		for x := 0; x < w; x++ {
@@ -1234,7 +1157,8 @@ func drawTitleBest(f *Frame, w, off int, scores map[string]int) {
 }
 
 // drawTitleEmptyBox is the idle battlefield: the sub-box and its path with
-// the ambient energy packet — no BATTLE/WAVE text, no towers, no enemies.
+// the ambient energy packet — no IDLE START SCREEN/WAVE text, no towers, no
+// enemies.
 func drawTitleEmptyBox(f *Frame, w, h, off, frame int, pal Colors) {
 	y0 := off + demoTop
 	if y0 <= 0 || y0+demoRows >= h-1 {
@@ -1317,15 +1241,15 @@ func drawTitleTagline(f *Frame, w, off, n int) {
 }
 
 // drawTitleDemo animates the scripted battle inside a full-width
-// [ BATTLE ] sub-box on band rows 9-13: five towers (three below the path,
-// two above) fire on scripted cooldowns at scripted enemy waves. Everything
-// is a pure function of fr.
+// [ IDLE START SCREEN ] sub-box on band rows 9-13: five towers (three below
+// the path, two above) fire on scripted cooldowns at scripted enemy waves.
+// Everything is a pure function of fr.
 func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
 	y0 := off + demoTop
 	if y0 <= 0 || y0+demoRows >= h-1 {
 		return
 	}
-	drawSubBox(f, 1, y0, w-2, demoRows, "BATTLE", pal)
+	drawSubBox(f, 1, y0, w-2, demoRows, "IDLE START SCREEN", pal)
 	waveText, waveFG := "WAVE 1", pal.Bright
 	switch {
 	case fr >= titleOverloadEnd-13: // the boss reaches the exit
@@ -1335,9 +1259,9 @@ func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
 	case fr >= 480:
 		waveText, waveFG = "WAVE 2", pal.Bright
 	}
-	// The BATTLE label occupies x 2..9 (┐ + 6 + ┌); the wave segment
-	// follows at x 11.
-	embedSegment(f, y0, 11, waveText, '┐', '┌', pal.Path, waveFG, true)
+	// The IDLE START SCREEN label occupies x 2..18 (┐ + 15 + ┌); the wave
+	// segment follows at x 20.
+	embedSegment(f, y0, 20, waveText, '┐', '┌', pal.Path, waveFG, true)
 
 	pathY := off + demoPath
 	L := w - 5 // path spans columns 2..w-3
