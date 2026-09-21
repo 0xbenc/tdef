@@ -495,31 +495,52 @@ func TestTitleBootSequence(t *testing.T) {
 	if c := f72.C[(off+6)*w+x0+3]; c.R != '▒' || c.FG != titleColors[0] {
 		t.Fatalf("boot 72 T bottom cell = %+v, want ▒/46", c)
 	}
-	// Boot 78: T's Gunner tracer is in flight, reticle locked at the target.
+	// Boot 78: T's Gunner tracer is in flight, the braille blob holds under
+	// its lock-on bracket.
 	f78 := RenderTitle(w, h, 78, 78, nil, Palette())
-	if c := f78.C[13*w+25]; c.R != '█' || c.FG != 255 {
+	if c := f78.C[12*w+24]; c.R != '█' || c.FG != 255 {
 		t.Fatalf("boot 78 tracer = %+v, want █/255", c)
 	}
-	if c := f78.C[27*w+11]; c.R != '+' || c.FG != 244 {
-		t.Fatalf("boot 78 reticle = %+v, want +/244", c)
+	if c := f78.C[25*w+2]; c.R != '⣾' || c.FG != 247 {
+		t.Fatalf("boot 78 blob cell = %+v, want ⣾/247", c)
 	}
-	// Boot 123: the Cannon shell has burst at the target.
-	f123 := RenderTitle(w, h, 123, 123, nil, Palette())
-	if c := f123.C[2*w+41]; c.R != '·' || c.FG != 240 {
-		t.Fatalf("boot 123 burst core = %+v, want ·/240", c)
+	if c := f78.C[24*w+1]; c.R != '·' || c.FG != 234 {
+		t.Fatalf("boot 78 bracket = %+v, want ·/234", c)
 	}
-	if c := f123.C[2*w+39]; c.R != '·' || c.FG != 220 {
-		t.Fatalf("boot 123 burst ring = %+v, want ·/220", c)
+	// Boot 133: the Cannon shell has landed — the bug squashes flat under
+	// the impact flash.
+	f133 := RenderTitle(w, h, 133, 133, nil, Palette())
+	if c := f133.C[4*w+2]; c.R != '▓' || c.FG != 255 || !c.Bold {
+		t.Fatalf("boot 133 squash = %+v, want ▓/255/bold", c)
 	}
-	// Boot 152: E's Sniper beam is lit full length.
+	if c := f133.C[4*w+3]; c.R != '█' || c.FG != 255 || !c.Bold {
+		t.Fatalf("boot 133 impact flash = %+v, want █/255/bold", c)
+	}
+	// Boot 135: the AOE ring expands over the bug's shards.
+	f135 := RenderTitle(w, h, 135, 135, nil, Palette())
+	if c := f135.C[4*w+3]; c.R != '·' || c.FG != 240 {
+		t.Fatalf("boot 135 burst core = %+v, want ·/240", c)
+	}
+	if c := f135.C[4*w+5]; c.R != '·' || c.FG != 220 {
+		t.Fatalf("boot 135 ring = %+v, want ·/220", c)
+	}
+	// Boot 152: E's Sniper beam is lit full length through the (o_o) guy's
+	// white flash.
 	f152 := RenderTitle(w, h, 152, 152, nil, Palette())
-	if c := f152.C[5*w+56]; c.R != '█' || c.FG != 255 {
+	if c := f152.C[5*w+75]; c.R != '█' || c.FG != 255 {
 		t.Fatalf("boot 152 beam = %+v, want █/255", c)
 	}
-	// Boot 183: F's Tesla chain is live — letter settled, frame busy.
+	if c := f152.C[3*w+94]; c.R != '(' || c.FG != 255 || !c.Bold {
+		t.Fatalf("boot 152 guy flash = %+v, want (/255/bold", c)
+	}
+	// Boot 183: F's Tesla arc is live — the >_< guy convulses under it,
+	// frame busy.
 	f183 := RenderTitle(w, h, 183, 183, nil, Palette())
 	if c := f183.C[7*w+62]; c.R != '█' || c.FG != 171 {
 		t.Fatalf("boot 183 F letter = %+v, want █/171", c)
+	}
+	if c := f183.C[26*w+95]; c.R != '>' || c.FG != 244 {
+		t.Fatalf("boot 183 zap guy = %+v, want >/244", c)
 	}
 	n := 0
 	for _, c := range f183.C {

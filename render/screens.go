@@ -162,11 +162,13 @@ const titleTagline = "— terminal tower defense —"
 //	             pen's curtain-up); a light pen traces the TDEF slab out of
 //	             digital noise (each letter flashing white as it locks in);
 //	             then each letter, left to right, fires a different weapon
-//	             at a lock-on reticle on the frame edge — Gunner tracer
-//	             spray, Cannon shell + AOE burst, Sniper charge + piercing
-//	             beam, Tesla chain lightning; the slab ignites white, the
-//	             subtitle decodes, then the frame chrome and an empty
-//	             battlefield fade in
+//	             at a creature in a frame corner — Gunner tracer spray into
+//	             a 2x2 braille blob, Cannon shell + AOE burst into a 3x5
+//	             bug, Sniper charge + piercing beam through an (o_o) guy,
+//	             Tesla chain lightning into a >_< guy — each dying with its
+//	             own animation; the slab ignites white, the subtitle
+//	             decodes, then the frame chrome and an empty battlefield
+//	             fade in
 //	boot 251+    the attract loop, every titleAttractCycle frames:
 //
 //	15s idle     standby: full UI, empty battlefield — no towers, no
@@ -640,26 +642,6 @@ func drawBootPen(f *Frame, w, off, t int) {
 
 // ---------------------------------------------------------------- weapon fan
 
-// shotTarget is where a ray from (mx,my) in unit direction (dx,dy) hits the
-// frame edge, inset two cells so the impact effects stay on screen.
-func shotTarget(w, h, mx, my int, dx, dy float64) (int, int) {
-	t := math.Inf(1)
-	if dx > 0 {
-		t = math.Min(t, float64(w-3-mx)/dx)
-	} else if dx < 0 {
-		t = math.Min(t, float64(mx-2)/-dx)
-	}
-	if dy > 0 {
-		t = math.Min(t, float64(h-3-my)/dy)
-	} else if dy < 0 {
-		t = math.Min(t, float64(my-2)/-dy)
-	}
-	if t != t || t == math.Inf(1) || t < 0 {
-		t = 0
-	}
-	return mx + int(math.Round(dx*t)), my + int(math.Round(dy*t))
-}
-
 // shotPos is the cell at fraction u (0..1) of the way from muzzle to target.
 func shotPos(mx, my, tx, ty int, u float64) (int, int) {
 	return mx + int(math.Round(float64(tx-mx)*u)), my + int(math.Round(float64(ty-my)*u))
@@ -693,9 +675,213 @@ func drawBootReticle(f *Frame, x, y, shatter int) {
 	f.Set(x, y+1, Cell{R: '·', FG: 236})
 }
 
+// drawBootBracket draws a pulsing lock-on bracket one cell around the
+// cols×rows target whose top-left corner is (x0, y0).
+func drawBootBracket(f *Frame, x0, y0, cols, rows int, on bool) {
+	if !on {
+		return
+	}
+	for _, p := range [4][2]int{{x0 - 1, y0 - 1}, {x0 + cols, y0 - 1}, {x0 - 1, y0 + rows}, {x0 + cols, y0 + rows}} {
+		f.Set(p[0], p[1], Cell{R: '·', FG: 234})
+	}
+}
+
+// The fan's four targets, one per weapon: a 2x2 braille blob lower-left, a
+// 3x5 bug upper-left, an (o_o) guy upper-right, a >_< guy lower-right. The
+// corners stay clear of the slab box at any frame size.
+
+// drawBootBrail is the Gunner's target: a 2x2 braille blob whose
+// bottom-right cell sits at (tx,ty). It bobs between two dot patterns,
+// flashes white while a tracer impact is fresh (hit = frames since, -1
+// none), and on the killing blow (die = frames since, -1 alive) dissolves
+// corner to corner into radial shards.
+func drawBootBrail(f *Frame, tx, ty, s, hit, die int) {
+	x0, y0 := tx-1, ty-1
+	if die >= 0 {
+		pos := [4][2]int{{0, 0}, {1, 0}, {1, 1}, {0, 1}}
+		for i, p := range pos {
+			switch {
+			case die == 0 || die < 2*i:
+				f.Set(x0+p[0], y0+p[1], Cell{R: '⣿', FG: 255, Bold: true})
+			case die < 2*i+2:
+				f.Set(x0+p[0], y0+p[1], Cell{R: '⠿', FG: 240})
+			case die < 2*i+3:
+				f.Set(x0+p[0], y0+p[1], Cell{R: '·', FG: 236})
+			}
+		}
+		if die < 8 {
+			for k := 0; k < 8; k++ {
+				a := float64(k) * math.Pi / 4
+				r := die + 1
+				c := 255
+				if die >= 3 {
+					c = 240
+				}
+				if die >= 6 {
+					c = 236
+				}
+				f.Set(x0+1+int(math.Round(math.Cos(a)*float64(r))), y0+1+int(math.Round(math.Sin(a)*float64(r))), Cell{R: '·', FG: c})
+			}
+		}
+		return
+	}
+	if hit >= 0 {
+		for r := 0; r < 2; r++ {
+			for c := 0; c < 2; c++ {
+				f.Set(x0+c, y0+r, Cell{R: '⣿', FG: 255, Bold: true})
+			}
+		}
+		return
+	}
+	ab := [2][2]rune{{'⣾', '⣾'}, {'⣿', '⣿'}}
+	if s%6 < 3 {
+		ab = [2][2]rune{{'⣿', '⣿'}, {'⣾', '⣾'}}
+	}
+	for r := 0; r < 2; r++ {
+		for c := 0; c < 2; c++ {
+			f.Set(x0+c, y0+r, Cell{R: ab[r][c], FG: 247})
+		}
+	}
+}
+
+// drawBootBug is the Cannon's target: a 3x5 bug centered at (tx,ty). It
+// cycles its legs, and on the shell impact (squash = frames since, -1
+// alive) collapses to a single row as the burst sprays it apart.
+func drawBootBug(f *Frame, tx, ty, s, squash int) {
+	if squash >= 0 {
+		switch {
+		case squash == 0:
+			for c := -1; c <= 1; c++ {
+				f.Set(tx+c, ty, Cell{R: '▓', FG: 255, Bold: true})
+			}
+		case squash == 1:
+			for c := -1; c <= 1; c++ {
+				f.Set(tx+c, ty, Cell{R: '░', FG: 240})
+			}
+			for i := 0; i < 6; i++ {
+				a := float64(i) * math.Pi / 3
+				f.Set(tx+int(math.Round(math.Cos(a))), ty+int(math.Round(math.Sin(a))), Cell{R: '▓', FG: 220})
+			}
+		case squash == 2:
+			for i := 0; i < 6; i++ {
+				a := float64(i) * math.Pi / 3
+				f.Set(tx+int(math.Round(2*math.Cos(a))), ty+int(math.Round(2*math.Sin(a))), Cell{R: '▓', FG: 240})
+			}
+		}
+		return
+	}
+	body := [4]string{"░▓░", "▓█▓", "█▓█", "▓█▓"}
+	for r, row := range body {
+		for c, ch := range []rune(row) {
+			f.Set(tx-1+c, ty-2+r, Cell{R: ch, FG: 205})
+		}
+	}
+	legs := "█ █"
+	if s%8 < 4 {
+		legs = "▓▓▓"
+	}
+	for c, ch := range []rune(legs) {
+		f.Set(tx-1+c, ty+2, Cell{R: ch, FG: 205})
+	}
+}
+
+// drawBootGuy is the Sniper's target: the ascii guy (o_o) centered at
+// (tx,ty). It blinks, and on the beam hit (die = frames since, -1 alive)
+// flashes white, then its five characters pop off one by one, spraying out
+// and up.
+func drawBootGuy(f *Frame, tx, ty, s, die int) {
+	if die >= 0 {
+		if die == 0 {
+			for i, ch := range []rune("(o_o)") {
+				f.Set(tx-2+i, ty, Cell{R: ch, FG: 255, Bold: true})
+			}
+			return
+		}
+		for i, ch := range []rune("(o_o)") {
+			age := die - 1 - 2*i
+			if age < 0 || age >= 9 {
+				continue
+			}
+			c := 255
+			if age >= 2 {
+				c = 245
+			}
+			if age >= 5 {
+				c = 236
+			}
+			x := tx - 2 + i + (i-2)*(age/2)
+			y := ty - age/3
+			f.Set(x, y, Cell{R: ch, FG: c, Bold: true})
+		}
+		return
+	}
+	guy := "(o_o)"
+	if s%8 >= 6 {
+		guy = "(-_-)"
+	}
+	for i, ch := range []rune(guy) {
+		f.Set(tx-2+i, ty, Cell{R: ch, FG: 250})
+	}
+}
+
+// drawBootZap is the Tesla's target: the ascii guy >_< centered at (tx,ty).
+// It jitters and convulses under the arc, and on the lock (die = frames
+// since, -1 alive) flashes white for two frames, then its characters pop
+// off while a spark ring expands.
+func drawBootZap(f *Frame, tx, ty, s, die int) {
+	if die >= 0 {
+		if die <= 1 {
+			for i, ch := range []rune(">_<") {
+				f.Set(tx-1+i, ty, Cell{R: ch, FG: 255, Bold: true})
+			}
+			return
+		}
+		for i, ch := range []rune(">_<") {
+			age := die - 2 - i
+			if age < 0 || age >= 5 {
+				continue
+			}
+			c := 255
+			if age >= 2 {
+				c = 240
+			}
+			if age >= 4 {
+				c = 236
+			}
+			x := tx - 1 + i + (i-1)*age
+			y := ty - age/2
+			f.Set(x, y, Cell{R: ch, FG: c, Bold: true})
+		}
+		if die < 8 {
+			r := die - 1
+			for k := 0; k < 8; k++ {
+				a := float64(k) * math.Pi / 4
+				c := 203
+				if k%2 == 0 {
+					c = 244
+				}
+				if die >= 5 {
+					c = 236
+				}
+				f.Set(tx+int(math.Round(math.Cos(a)*float64(r))), ty+int(math.Round(math.Sin(a)*float64(r))), Cell{R: '·', FG: c})
+			}
+		}
+		return
+	}
+	guy := ">_<"
+	if s%7 == 5 {
+		guy = "x_x"
+	}
+	jx := (s % 3) - 1
+	for i, ch := range []rune(guy) {
+		f.Set(tx-1+jx+i, ty, Cell{R: ch, FG: 244})
+	}
+}
+
 // drawBootWeapons is the fan: each letter, left to right, fires a different
-// game weapon at a lock-on reticle on the frame edge — T (Gunner, 9:45),
-// D (Cannon, 11:00), E (Sniper, 1:00), F (Tesla, 2:15). t is 0..129.
+// game weapon at a creature in a frame corner — T (Gunner) at the braille
+// blob lower-left, D (Cannon) at the 3x5 bug upper-left, E (Sniper) at the
+// (o_o) guy upper-right, F (Tesla) at the >_< guy lower-right. t is 0..129.
 func drawBootWeapons(f *Frame, w, h, off, t int) {
 	drawBootBox(f, w, off, 98, 0, 234)
 	drawBootSlab(f, w, off)
@@ -709,8 +895,9 @@ func drawBootWeapons(f *Frame, w, h, off, t int) {
 	}
 }
 
-// drawBootGunner: T sprays five tracers at 9:45. The letter flinches and
-// flashes with every round.
+// drawBootGunner: T sprays five tracers at the braille blob in the
+// lower-left corner. The letter flinches and flashes with every round; the
+// blob dies on the fifth impact.
 func drawBootGunner(f *Frame, w, h, off, t int) {
 	const li = 0
 	s := t
@@ -723,18 +910,26 @@ func drawBootGunner(f *Frame, w, h, off, t int) {
 		x0 = 0
 	}
 	mx, my := x0, off+4
-	const dx, dy = -0.7071, 0.7071
-	tx, ty := shotTarget(w, h, mx, my, dx, dy)
+	tx, ty := 3, h-4
 	fl := int(math.Hypot(float64(tx-mx), float64(ty-my))/1.5) + 1
-	last := 4*6 + fl
-	if s >= last+1 {
-		if s > last+3 {
-			return
-		}
-		drawBootReticle(f, tx, ty, s-last-1)
-		return
+	if fl > 24 {
+		fl = 24
 	}
-	drawBootReticle(f, tx, ty, -1)
+	last := 4*6 + fl
+	die := s - (last + 1)
+	if die < 0 {
+		die = -1
+	}
+	hit := -1
+	for r := 0; r < 4; r++ {
+		if d := s - (6*r + fl + 1); d >= 0 && d < 3 {
+			hit = d
+		}
+	}
+	drawBootBrail(f, tx, ty, s, hit, die)
+	if die < 0 {
+		drawBootBracket(f, tx-1, ty-1, 2, 2, s%4 < 3)
+	}
 	for r := 0; r < 5; r++ {
 		p := s - 6*r
 		if p < 0 {
@@ -770,8 +965,9 @@ func drawBootGunner(f *Frame, w, h, off, t int) {
 	}
 }
 
-// drawBootCannon: D recoils, then fires a chunky shell at 11:00 that ends
-// in an AOE burst.
+// drawBootCannon: D recoils, then fires a chunky shell at the 3x5 bug in
+// the upper-left corner. The bug squashes flat under the impact as the AOE
+// burst takes it.
 func drawBootCannon(f *Frame, w, h, off, t int) {
 	const li = 1
 	s := t - 30
@@ -784,20 +980,24 @@ func drawBootCannon(f *Frame, w, h, off, t int) {
 		x0 = 0
 	}
 	mx, my := x0+15, off+2
-	const dx, dy = -0.5, -0.8660
-	tx, ty := shotTarget(w, h, mx, my, dx, dy)
+	tx, ty := 3, 4
 	fl := int(math.Hypot(float64(tx-mx), float64(ty-my))*2) + 1
-	if s < 6 {
-		// Recoil: the letter is shoved down-right while the muzzle gathers.
-		drawBootLetter(f, w, off, li, 1, 1, 220, false)
-		if s >= 3 {
-			f.Set(mx, my, Cell{R: '•', FG: 220})
-		}
-		return
+	if fl > 24 {
+		fl = 24
 	}
-	p := s - 6
-	if p < fl {
-		drawBootReticle(f, tx, ty, -1)
+	if s < 6+fl {
+		drawBootBug(f, tx, ty, s, -1)
+		drawBootBracket(f, tx-1, ty-2, 3, 5, s%4 < 3)
+		if s < 6 {
+			// Recoil: the letter is shoved down-right while the muzzle
+			// gathers.
+			drawBootLetter(f, w, off, li, 1, 1, 220, false)
+			if s >= 3 {
+				f.Set(mx, my, Cell{R: '•', FG: 220})
+			}
+			return
+		}
+		p := s - 6
 		x, y := shotPos(mx, my, tx, ty, float64(p)/float64(fl))
 		f.Set(x, y, Cell{R: '▓', FG: 220, Bold: true})
 		if p >= 2 {
@@ -812,13 +1012,11 @@ func drawBootCannon(f *Frame, w, h, off, t int) {
 		}
 		return
 	}
-	if p > fl+5 {
+	if s > 6+fl+5 {
 		return
 	}
-	q := p - fl
-	if q <= 2 {
-		drawBootReticle(f, tx, ty, q)
-	}
+	q := s - 6 - fl
+	drawBootBug(f, tx, ty, s, q)
 	switch {
 	case q == 0:
 		f.Set(tx, ty, Cell{R: '█', FG: 255, Bold: true})
@@ -849,7 +1047,8 @@ func drawBootCannon(f *Frame, w, h, off, t int) {
 }
 
 // drawBootSniper: E charges for fourteen frames (its top row filling with a
-// ░▒▓█ ramp, the reticle locking on), then fires one piercing beam at 1:00.
+// ░▒▓█ ramp, the reticle locking on), then fires one piercing beam at the
+// (o_o) guy in the upper-right corner, who pops off bead by bead.
 func drawBootSniper(f *Frame, w, h, off, t int) {
 	const li = 2
 	s := t - 65
@@ -862,8 +1061,7 @@ func drawBootSniper(f *Frame, w, h, off, t int) {
 		x0 = 0
 	}
 	mx, my := x0+26, off+2
-	const dx, dy = 0.5, -0.8660
-	tx, ty := shotTarget(w, h, mx, my, dx, dy)
+	tx, ty := w-4, 3
 	if s < 14 {
 		fg := 203 + int(float64(s)/13*48)
 		drawBootLetter(f, w, off, li, 0, 0, fg, false)
@@ -883,28 +1081,30 @@ func drawBootSniper(f *Frame, w, h, off, t int) {
 			}
 			f.Set(x0+li*11+ci, off+2, Cell{R: r, FG: 203})
 		}
+		drawBootGuy(f, tx, ty, s, -1)
 		drawBootReticle(f, tx, ty, -1)
 		return
 	}
-	p := s - 14
-	if p < 2 {
+	die := s - 14
+	if die < 2 {
 		drawBootLetter(f, w, off, li, 0, 0, 255, true)
 		f.Set(mx, my, Cell{R: '█', FG: 255, Bold: true})
+	}
+	if die < 4 {
 		beamR, beamC := '█', 255
-		if p == 1 {
+		if die == 1 {
 			beamR, beamC = '▓', 203
 		}
-		for y := my; y >= ty; y-- {
-			x := mx + int(math.Round(float64(y-my)*dx/dy))
+		if die >= 2 {
+			beamR, beamC = '▓', 240
+		}
+		n := int(math.Hypot(float64(tx-mx), float64(ty-my))) + 1
+		for k := 0; k <= n; k++ {
+			x, y := shotPos(mx, my, tx, ty, float64(k)/float64(n))
 			f.Set(x, y, Cell{R: beamR, FG: beamC})
 		}
-	} else if p < 4 {
-		for y := my; y >= ty; y-- {
-			x := mx + int(math.Round(float64(y-my)*dx/dy))
-			f.Set(x, y, Cell{R: '▓', FG: 240})
-		}
 	}
-	switch p {
+	switch die {
 	case 0:
 		f.Set(tx-2, ty, Cell{R: '·', FG: 203})
 		f.Set(tx+2, ty, Cell{R: '·', FG: 203})
@@ -915,9 +1115,11 @@ func drawBootSniper(f *Frame, w, h, off, t int) {
 	case 4, 5:
 		f.Set(tx, ty, Cell{R: '·', FG: 234})
 	}
-	if p >= 0 && p <= 2 {
-		drawBootReticle(f, tx, ty, p)
+	if die <= 2 {
+		drawBootReticle(f, tx, ty, die)
 	}
+	// The guy draws last so its white flash beats the impact markers.
+	drawBootGuy(f, tx, ty, s, die)
 }
 
 // drawBootTesla: F charges, then chain lightning flickers toward the
@@ -935,8 +1137,11 @@ func drawBootTesla(f *Frame, w, h, off, t int) {
 		x0 = 0
 	}
 	mx, my := x0+41, off+4
-	const dx, dy = 0.7071, 0.7071
-	tx, ty := shotTarget(w, h, mx, my, dx, dy)
+	tx, ty := w-4, h-4
+	die := s - 12
+	if die < 0 {
+		die = -1
+	}
 	if s < 12 {
 		if s%5 != 4 {
 			drawBootReticle(f, tx, ty, -1)
@@ -953,9 +1158,11 @@ func drawBootTesla(f *Frame, w, h, off, t int) {
 				f.Set(mx+n%5-2, my+n%7-3, Cell{R: '·', FG: 203})
 			}
 		}
+		drawBootZap(f, tx, ty, s, die)
 		return
 	}
 	D := math.Hypot(float64(tx-mx), float64(ty-my))
+	dx, dy := float64(tx-mx)/D, float64(ty-my)/D
 	N := int(D / 2)
 	if N < 4 {
 		N = 4
@@ -999,6 +1206,8 @@ func drawBootTesla(f *Frame, w, h, off, t int) {
 	} else if s <= 15 {
 		f.Set(tx, ty, Cell{R: '·', FG: 203})
 	}
+	// The guy draws last so its white flash beats the impact markers.
+	drawBootZap(f, tx, ty, s, die)
 }
 
 // drawBootFlash is the ignition: the whole frame glows as a dim grid while
