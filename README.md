@@ -16,6 +16,7 @@ tuning) or driven by the interactive TUI.
 go build -o tdef .
 
 ./tdef                           # title screen -> main menu -> level select
+./tdef overworld                 # the lair map (overworld): walk the floors, descend into one
 ./tdef play -level canyon        # jump straight in: hub | winding | garden | canyon
 ./tdef play -maze 123            # procedural maze (seeded, reproducible)
 ./tdef play -diff easy           # easy | normal | hard

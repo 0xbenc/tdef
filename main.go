@@ -27,6 +27,8 @@ func main() {
 		headless(os.Args[2:])
 	case "capture":
 		capture(os.Args[2:])
+	case "overworld":
+		overworldCmd()
 	case "maps":
 		mapsCmd()
 	case "help", "-h", "--help":
@@ -45,6 +47,7 @@ usage:
   tdef bench [flags]       run autoplay balance benchmark
   tdef headless [flags]    run one autoplay game, print result
   tdef capture [flags]     render headless game frames to files
+  tdef overworld           the lair map (overworld look-dev)
   tdef maps                list built-in levels
   tdef help
 
@@ -281,6 +284,12 @@ func capture(args []string) {
 		st = "LOSE"
 	}
 	fmt.Printf("wrote frames to %s (ticks %d, wave %d, %s)\n", *out, tick, s.Wave, st)
+}
+
+func overworldCmd() {
+	if err := tui.RunOverworld(); err != nil {
+		die("%v", err)
+	}
 }
 
 func mapsCmd() {

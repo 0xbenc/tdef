@@ -23,6 +23,7 @@ const (
 	ScreenHiscores
 	ScreenLevelSelect
 	ScreenGame
+	ScreenOverworld
 )
 
 type App struct {
@@ -46,6 +47,7 @@ type App struct {
 	scores       map[string]int
 	lsPreview    *game.Map
 	lsPreviewKey string
+	ow           render.OWState // overworld (the lair map) state
 
 	events chan Event
 	acc    float64
@@ -178,7 +180,7 @@ func (a *App) loop() error {
 		switch a.screen {
 		case ScreenGame:
 			a.stepGame(real)
-		case ScreenTitle:
+		case ScreenTitle, ScreenOverworld:
 			a.frameNo++
 		}
 		a.drawScreen()
@@ -256,6 +258,8 @@ func (a *App) drawScreen() {
 		a.blit(render.RenderHighScores(w, h, a.hsTop, a.scores, a.pal))
 	case ScreenLevelSelect:
 		a.blit(render.RenderLevelSelect(a.lsView(), w, h, a.pal))
+	case ScreenOverworld:
+		a.blit(render.RenderOverworld(w, h, a.ow, a.frameNo, a.pal))
 	default:
 		a.drawGame()
 	}
@@ -315,6 +319,8 @@ func (a *App) handle(e Event) {
 		a.handleHiscores(e)
 	case ScreenLevelSelect:
 		a.handleLevelSelect(e)
+	case ScreenOverworld:
+		a.handleOverworld(e)
 	default:
 		a.handleGame(e)
 	}
