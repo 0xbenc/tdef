@@ -19,31 +19,74 @@ const (
 	OWH = 13
 )
 
+// owGlyph is one static landmark glyph, placed at (dx,dy) grid cells from the
+// room centre, in colour c.
+type owGlyph struct {
+	dx, dy int
+	r      rune
+	c      int
+}
+
 // owNode is one floor of the lair: a room on the map, wired to a game level
-// id. X,Y is the room centre in grid coords; PW,PH its size. Chrome is the
-// room frame colour; FG is the landmark glyph colour.
+// id. X,Y is the room centre in grid coords; PW,PH its size (both odd, so the
+// centre is exact). Chrome is the room frame colour; Glyph is the living
+// centre landmark; Deco is the static structure around it.
 type owNode struct {
 	ID     string
 	Name   string
 	Level  string
 	X, Y   int
 	PW, PH int
-	Chrome int // room frame colour
-	FG     int // landmark colour
-	Glyph  rune
-	Water  bool // Sunken Garden: the room is water
-	Fog    bool // Unmapped Depths: the room is fog
+	Chrome int  // room frame colour
+	Glyph  rune // animated centre landmark
+	Water  bool // Sunken Garden: the room interior is water
+	Fog    bool // Unmapped Depths: the room interior is fog
+	Deco   []owGlyph
 }
 
 // The five floors. The Rotunda is the hub every corridor runs through; the
 // Rift is where Grak starts. Order is the lair's "depth": the Rift is the
 // mouth, the Unmapped Depths are the far dark.
 var owNodes = []owNode{
-	{ID: "rift", Name: "the Rift", Level: "canyon", X: 6, Y: 9, PW: 3, PH: 3, Chrome: 208, FG: 214, Glyph: '◈'},
-	{ID: "rotunda", Name: "the Rotunda", Level: "hub", X: 22, Y: 6, PW: 5, PH: 5, Chrome: 178, FG: 196, Glyph: '♥'},
-	{ID: "halls", Name: "the Long Halls", Level: "winding", X: 35, Y: 3, PW: 3, PH: 3, Chrome: 110, FG: 111, Glyph: '≡'},
-	{ID: "garden", Name: "the Sunken Garden", Level: "garden", X: 36, Y: 10, PW: 5, PH: 3, Chrome: 45, FG: 45, Glyph: 'Ω', Water: true},
-	{ID: "depths", Name: "the Unmapped Depths", Level: "maze", X: 9, Y: 2, PW: 5, PH: 3, Chrome: 98, FG: 99, Glyph: '?', Fog: true},
+	{
+		ID: "rift", Name: "the Rift", Level: "canyon", X: 6, Y: 10, PW: 3, PH: 5,
+		Chrome: 208, Glyph: '◈',
+		Deco: []owGlyph{{0, -1, '╢', 208}, {0, 1, '╟', 208}},
+	},
+	{
+		ID: "rotunda", Name: "the Rotunda", Level: "hub", X: 22, Y: 6, PW: 7, PH: 5,
+		Chrome: 178, Glyph: '♥',
+		Deco: []owGlyph{
+			{-2, -1, '|', 178}, {0, -1, '|', 178}, {2, -1, '|', 178},
+			{-1, -1, '°', 236}, {1, -1, '°', 236},
+			{-2, 0, '°', 236}, {2, 0, '°', 236},
+			{-2, 1, '|', 178}, {0, 1, '|', 178}, {2, 1, '|', 178},
+			{-1, 1, '°', 236}, {1, 1, '°', 236},
+		},
+	},
+	{
+		ID: "halls", Name: "the Long Halls", Level: "winding", X: 35, Y: 3, PW: 5, PH: 3,
+		Chrome: 110, Glyph: '≡',
+		Deco: []owGlyph{{-1, 0, '|', 110}, {1, 0, '|', 110}},
+	},
+	{
+		ID: "garden", Name: "the Sunken Garden", Level: "garden", X: 36, Y: 10, PW: 5, PH: 5,
+		Chrome: 45, Glyph: 'Ω', Water: true,
+		Deco: []owGlyph{
+			{-1, -1, '~', 31}, {0, -1, '∧', 45}, {1, -1, '~', 31},
+			{-1, 0, '~', 31}, {1, 0, '~', 31},
+			{-1, 1, '~', 31}, {0, 1, '~', 31}, {1, 1, '~', 31},
+		},
+	},
+	{
+		ID: "depths", Name: "the Unmapped Depths", Level: "maze", X: 9, Y: 2, PW: 5, PH: 5,
+		Chrome: 98, Glyph: '?', Fog: true,
+		Deco: []owGlyph{
+			{-1, -1, '░', 60}, {0, -1, 'Ø', 99}, {1, -1, '░', 60},
+			{-1, 0, '░', 60}, {1, 0, '░', 60},
+			{-1, 1, '░', 60}, {0, 1, '░', 60}, {1, 1, '░', 60},
+		},
+	},
 }
 
 func owNodeByID(id string) *owNode {
@@ -59,7 +102,7 @@ func owNodeByID(id string) *owNode {
 // each running through the Rotunda hub. The corridor cell set is the union of
 // every segment; pad cells overdraw them, so routes can run pad-to-pad.
 var owRoutes = [][][]int{
-	{{6, 9}, {6, 6}, {22, 6}},    // Rift -> Rotunda
+	{{6, 10}, {6, 6}, {22, 6}},   // Rift -> Rotunda
 	{{22, 6}, {35, 6}, {35, 3}},  // Rotunda -> Long Halls
 	{{22, 6}, {36, 6}, {36, 10}}, // Rotunda -> Sunken Garden
 	{{22, 6}, {9, 6}, {9, 2}},    // Rotunda -> Unmapped Depths
@@ -115,6 +158,54 @@ var owOutcropSet = func() map[game.Vec]bool {
 	return m
 }()
 
+// owRouteCells expands each route into an ordered cell list, oriented from the
+// Rotunda hub outward, so an energy pulse can travel the corridors.
+var owRouteCells = buildOWRouteCells()
+
+func buildOWRouteCells() [][]game.Vec {
+	const hubX, hubY = 22, 6
+	out := make([][]game.Vec, len(owRoutes))
+	for i, route := range owRoutes {
+		r := make([][]int, len(route))
+		copy(r, route)
+		if r[0][0] != hubX || r[0][1] != hubY {
+			for a, b := 0, len(r)-1; a < b; a, b = a+1, b-1 {
+				r[a], r[b] = r[b], r[a]
+			}
+		}
+		cells := []game.Vec{{X: r[0][0], Y: r[0][1]}}
+		for j := 1; j < len(r); j++ {
+			x0, y0 := r[j-1][0], r[j-1][1]
+			x1, y1 := r[j][0], r[j][1]
+			sx, sy := 0, 0
+			switch {
+			case x1 > x0:
+				sx = 1
+			case x1 < x0:
+				sx = -1
+			case y1 > y0:
+				sy = 1
+			case y1 < y0:
+				sy = -1
+			}
+			x, y := x0, y0
+			for x != x1 || y != y1 {
+				x += sx
+				y += sy
+				cells = append(cells, game.Vec{X: x, Y: y})
+			}
+		}
+		out[i] = cells
+	}
+	return out
+}
+
+// hoardGlints are fixed gold sparkles in the void near the hoard (the Rotunda
+// core and the Rift), the fallen heroes' loot. Purely atmospheric.
+var hoardGlints = [][]int{
+	{15, 3}, {29, 3}, {15, 9}, {29, 9}, {22, 11}, {22, 1}, {4, 10}, {41, 10},
+}
+
 func (n *owNode) contains(x, y int) bool {
 	return x >= n.X-n.PW/2 && x <= n.X+n.PW/2 && y >= n.Y-n.PH/2 && y <= n.Y+n.PH/2
 }
@@ -152,7 +243,7 @@ type OWState struct {
 // Rotunda open ahead, the rest of the lair still sealed.
 func NewOWState() OWState {
 	return OWState{
-		Cursor: game.Vec{X: 6, Y: 9},
+		Cursor: game.Vec{X: 6, Y: 10},
 		Unlocked: map[string]bool{
 			"rift":    true,
 			"rotunda": true,
@@ -176,6 +267,18 @@ func OWFloorAt(x, y int) (OWFloor, bool) {
 		}
 	}
 	return OWFloor{}, false
+}
+
+// glow is the 0..1 falloff of a light centred on (cx,cy) sampled at (x,y);
+// zero beyond radius. Squared distance, so no per-cell sqrt.
+func glow(x, y, cx, cy, radius int) float64 {
+	dx, dy := x-cx, y-cy
+	d2 := dx*dx + dy*dy
+	r2 := radius * radius
+	if d2 >= r2 {
+		return 0
+	}
+	return float64(r2-d2) / float64(r2)
 }
 
 // owHash is a small deterministic 0..255 hash for ambient texture.
@@ -203,8 +306,9 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 	f := screenBox(w, h, "THE LAIR", overworldFooter(), frame%30 < 22, pal)
 
 	// 1. The void: the dark of the lair, lit faintly from the Rotunda core —
-	//    a radial fall-off to near-black at the edges, with rock grain and
-	//    outcrops so it reads as a cave, not a flat black field.
+	//    a radial fall-off to near-black at the edges, warm glow pools around
+	//    the fire floors (Rift, Rotunda) and cool around the cold ones
+	//    (Garden, Depths), with rock grain and outcrops so it reads as a cave.
 	for y := 0; y < OWH; y++ {
 		for x := 0; x < OWW; x++ {
 			dx := float64(x) - 22
@@ -214,6 +318,28 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 				d = 1
 			}
 			bg := 235 - int(d*4) // 235 at the core, 231 at the far edge
+			// Warm/cool temperature: glow pools around the fire and cold floors.
+			warm, cool := 0.0, 0.0
+			for _, c := range [][2]int{{6, 10}, {22, 6}} {
+				if g := glow(x, y, c[0], c[1], 8); g > warm {
+					warm = g
+				}
+			}
+			for _, c := range [][2]int{{36, 10}, {9, 2}} {
+				if g := glow(x, y, c[0], c[1], 8); g > cool {
+					cool = g
+				}
+			}
+			switch t := warm - cool; {
+			case t > 0.55:
+				bg = 95 // warm fire glow
+			case t > 0.28:
+				bg = 88
+			case t < -0.55:
+				bg = 24 // cold deep glow
+			case t < -0.28:
+				bg = 17
+			}
 			c := Cell{R: ' ', BG: bg}
 			if owOutcropSet[game.Vec{X: x, Y: y}] {
 				c.R, c.FG = '▒', bg+2
@@ -239,6 +365,38 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 	for v := range owCorridor {
 		cx, cy := l.center(v.X, v.Y)
 		f.Set(cx, cy, Cell{R: '·', FG: 245, BG: 238})
+	}
+
+	// 2b. Energy pulses travel out from the Rotunda core down each corridor —
+	//     a bright head with a short fading tail, the lair's lifeblood.
+	for _, cells := range owRouteCells {
+		if len(cells) == 0 {
+			continue
+		}
+		head := (frame / 2) % len(cells)
+		for k := 0; k < 3; k++ {
+			idx := head - k
+			if idx < 0 {
+				idx += len(cells)
+			}
+			v := cells[idx]
+			cx, cy := l.center(v.X, v.Y)
+			col := [3]int{220, 178, 136}[k]
+			f.Set(cx, cy, Cell{R: '·', FG: col, BG: 238, Bold: k == 0})
+		}
+	}
+
+	// 2c. Hoard glints: gold sparkles twinkle in the void near the hoard.
+	for _, g := range hoardGlints {
+		x, y := g[0], g[1]
+		if OWWalkable(x, y) {
+			continue // only in the void, not on a road or floor
+		}
+		if (frame/4+owHash(x, y, 0))%7 != 0 {
+			continue
+		}
+		cx, cy := l.center(x, y)
+		f.Set(cx, cy, Cell{R: '✦', FG: 220, BG: 0, Bold: true})
 	}
 
 	// 3. Node pads + landmarks + name tags.
@@ -351,6 +509,20 @@ func drawOWPad(f *Frame, l Layout, n *owNode, status OWStatus, frame int) {
 		}
 	}
 
+	// Deco: the static landmark structure (pillars, arch, spire, vortex),
+	// dimmed with the room when sealed.
+	for _, g := range n.Deco {
+		if !OWWalkable(n.X+g.dx, n.Y+g.dy) {
+			continue
+		}
+		gx, gy := l.center(n.X+g.dx, n.Y+g.dy)
+		c := g.c
+		if !open {
+			c = dim(c)
+		}
+		f.Set(gx, gy, Cell{R: g.r, FG: c, BG: bg, Bold: open})
+	}
+
 	// Chrome: a double-line frame around the room in the accent colour.
 	fx0, fy0 := l.X(x0), l.Y(y0)
 	fx1, fy1 := l.X(x1)+l.Scale-1, l.Y(y1)+l.Scale-1
@@ -421,9 +593,9 @@ func drawOWLandmark(f *Frame, cx, cy int, n *owNode, status OWStatus, frame int,
 		}
 		f.Set(cx, cy, Cell{R: n.Glyph, FG: c, BG: bg, Bold: true})
 	default:
-		fg := n.FG
+		fg := n.Chrome
 		if status == OWSealed {
-			fg = dim(n.FG)
+			fg = dim(n.Chrome)
 		}
 		f.Set(cx, cy, Cell{R: n.Glyph, FG: fg, BG: bg, Bold: status != OWSealed})
 	}
@@ -470,6 +642,26 @@ func drawOWLabel(f *Frame, l Layout, n *owNode, status OWStatus) {
 // drawOWPlayer stamps Grak at the cursor: a bold bright marker with a soft
 // pulse, so the Last Monster reads clearly against the dark lair.
 func drawOWPlayer(f *Frame, l Layout, cur game.Vec, frame int) {
+	// Aura: warm light breathes across the cells around Grak, tinting only
+	// the background texture so it never hides a landmark or a road.
+	if frame%30 < 20 {
+		for dx := -1; dx <= 1; dx++ {
+			for dy := -1; dy <= 1; dy++ {
+				if dx == 0 && dy == 0 {
+					continue
+				}
+				ox, oy := l.center(cur.X+dx, cur.Y+dy)
+				if ox < 0 || oy < 0 || ox >= f.W || oy >= f.H {
+					continue
+				}
+				c := f.C[oy*f.W+ox]
+				if c.R == ' ' || c.R == '·' || c.R == ':' || c.R == '▒' {
+					c.FG = 214
+					f.C[oy*f.W+ox] = c
+				}
+			}
+		}
+	}
 	cx, cy := l.center(cur.X, cur.Y)
 	pulse := frame%30 < 18
 	fg, bg := 255, 236

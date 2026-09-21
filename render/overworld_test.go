@@ -66,7 +66,7 @@ func TestOverworldDeterministic(t *testing.T) {
 // "connected points" guarantee. A BFS over walkable cells from the Rift must
 // land on every node's pad.
 func TestOverworldAllNodesReachable(t *testing.T) {
-	start := game.Vec{X: 6, Y: 9} // the Rift
+	start := game.Vec{X: 6, Y: 10} // the Rift
 	if !OWWalkable(start.X, start.Y) {
 		t.Fatal("the Rift start cell is not walkable")
 	}
