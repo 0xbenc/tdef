@@ -20,6 +20,10 @@ func RunOverworld() error {
 	a.ow = render.NewOWState()
 	a.owRefresh()
 	a.screen = ScreenOverworld
+	if !a.owBootArmed {
+		a.owBootArmed = true
+		a.ow.BootTTL = render.OWBootFrames
+	}
 	return a.run()
 }
 
@@ -32,12 +36,21 @@ var owFloorOrder = []string{"rift", "rotunda", "halls", "garden", "depths"}
 // esc returns to the title, q quits. The mouse clicks a floor pad to step
 // onto it (or descend if already on it); the wheel hops between floors.
 func (a *App) handleOverworld(e Event) {
-	if e.Mouse {
-		a.handleOWMouse(e)
-		return
-	}
 	if e.Key == KeyCtrlC {
 		a.quit()
+		return
+	}
+	if a.ow.BootTTL > 0 {
+		// The lair is waking: Grak cannot walk yet. Only nav keys pass.
+		if e.Key == KeyEscape {
+			a.toScreen(ScreenTitle)
+		} else if !e.Mouse && (e.Rune == 'q' || e.Rune == 'Q') {
+			a.quit()
+		}
+		return
+	}
+	if e.Mouse {
+		a.handleOWMouse(e)
 		return
 	}
 	if a.ow.Descending != "" {
@@ -124,9 +137,8 @@ func (a *App) owStep(dx, dy int) {
 	a.ow.Msg = ""
 	n := game.Vec{X: a.ow.Cursor.X + dx, Y: a.ow.Cursor.Y + dy}
 	if render.OWWalkable(n.X, n.Y) {
-		a.ow.Prev = a.ow.Cursor
+		a.ow.PushTrail(a.ow.Cursor)
 		a.ow.Cursor = n
-		a.ow.StepTTL = 12
 	}
 }
 
@@ -134,14 +146,27 @@ func (a *App) owStep(dx, dy int) {
 // walk. Called once per 30fps frame from the app loop.
 func (a *App) owTick() {
 	st := &a.ow
+	if st.BootTTL > 0 {
+		st.BootTTL--
+	}
+	if st.BlastTTL > 0 {
+		st.BlastTTL--
+	}
 	if st.ReturnTTL > 0 {
 		st.ReturnTTL--
 		if st.ReturnTTL == 0 {
 			st.ReturnMsg = ""
+			st.ReturnFX = render.OWReturnFX{}
 		}
 	}
-	if st.StepTTL > 0 {
-		st.StepTTL--
+	for i := len(st.TrailAge) - 1; i >= 0; i-- {
+		if st.TrailAge[i] > 0 {
+			st.TrailAge[i]--
+		}
+		if st.TrailAge[i] <= 0 {
+			st.Trail = append(st.Trail[:i], st.Trail[i+1:]...)
+			st.TrailAge = append(st.TrailAge[:i], st.TrailAge[i+1:]...)
+		}
 	}
 	for id, ttl := range st.Unsealing {
 		ttl--
@@ -341,6 +366,12 @@ func (a *App) owRefresh() {
 	st.BossReady = a.lair.BossReady(d)
 	st.BossDone = a.lair.BossHeld(d)
 	st.Tokens = a.lair.Tokens
+	// Mark this renown's heart state as seen, so an already-unsealed heart
+	// never re-fires the shockwave on entry.
+	if a.owBossSeen == nil {
+		a.owBossSeen = map[int]bool{}
+	}
+	a.owBossSeen[d] = st.BossReady
 	// The unseal chain: the Rift and the Rotunda are always open; the Halls
 	// open after the Rift is held, the Garden after the Halls, and the
 	// Depths once two built-in floors are held (the lair reveals its dark).

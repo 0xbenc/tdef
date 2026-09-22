@@ -150,6 +150,82 @@ func TestOWSpendRelic(t *testing.T) {
 	}
 }
 
+// While the lair is waking (BootTTL > 0) Grak cannot walk: the arrival
+// cinematic owns the screen. Nav keys (esc, q) still pass.
+func TestOWInputGateDuringBoot(t *testing.T) {
+	a := owTestApp(t)
+	a.ow.BootTTL = render.OWBootFrames
+	a.handleOverworld(Event{Rune: 'w'})
+	a.handleOverworld(Event{Key: KeyRight})
+	if a.ow.Cursor != (game.Vec{X: 6, Y: 10}) {
+		t.Fatalf("cursor moved during boot: %v", a.ow.Cursor)
+	}
+	if len(a.ow.Trail) != 0 {
+		t.Fatalf("trail left during boot: %v", a.ow.Trail)
+	}
+	a.handleOverworld(Event{Key: KeyEscape})
+	if a.screen != ScreenTitle {
+		t.Fatal("esc must pass during boot")
+	}
+}
+
+// The arrival cinematic is armed exactly once per session: the first entry
+// into the lair starts it, and later entries (returns from a defense) do not
+// replay it.
+func TestOWBootArmedOnce(t *testing.T) {
+	a := owTestApp(t)
+	a.toScreen(ScreenOverworld)
+	if a.ow.BootTTL != render.OWBootFrames {
+		t.Fatalf("first entry BootTTL = %d, want %d", a.ow.BootTTL, render.OWBootFrames)
+	}
+	for i := 0; i < 50; i++ {
+		a.owTick()
+	}
+	if got := a.ow.BootTTL; got != render.OWBootFrames-50 {
+		t.Fatalf("BootTTL after 50 ticks = %d, want %d", got, render.OWBootFrames-50)
+	}
+	a.toScreen(ScreenTitle)
+	a.toScreen(ScreenOverworld)
+	if a.ow.BootTTL != render.OWBootFrames-50 {
+		t.Fatalf("re-entry re-armed the boot: BootTTL = %d, want %d", a.ow.BootTTL, render.OWBootFrames-50)
+	}
+}
+
+// The heart-unseal shockwave arms exactly once, when a defense unseals the
+// heart at the current renown; an already-unsealed heart never re-fires it.
+func TestOWHeartBlastCheck(t *testing.T) {
+	a := owTestApp(t)
+	a.owRefresh() // no floors held: the heart is sealed, marked unseen
+	a.lair.Record("rift", 1, 20, true)
+	a.lair.Record("halls", 1, 20, true)
+	a.lair.Record("rotunda", 1, 20, true)
+	a.owHeartBlastCheck(1) // three floors: still sealed
+	if a.ow.BlastTTL != 0 {
+		t.Fatalf("blast armed with three floors held: %d", a.ow.BlastTTL)
+	}
+	a.lair.Record("garden", 1, 20, true) // the fourth: the heart unseals
+	a.owHeartBlastCheck(1)
+	if a.ow.BlastTTL != render.OWBlastFrames {
+		t.Fatalf("blast not armed on the unseal: %d, want %d", a.ow.BlastTTL, render.OWBlastFrames)
+	}
+	a.owHeartBlastCheck(1) // a later check must not re-arm it
+	if a.ow.BlastTTL != render.OWBlastFrames {
+		t.Fatalf("blast re-armed: %d", a.ow.BlastTTL)
+	}
+	// A renown whose heart was already unsealed at entry never fires it.
+	a2 := owTestApp(t)
+	a2.ow.Diff = 2
+	a2.lair.Record("rift", 2, 20, true)
+	a2.lair.Record("halls", 2, 20, true)
+	a2.lair.Record("rotunda", 2, 20, true)
+	a2.lair.Record("garden", 2, 20, true)
+	a2.owRefresh() // marks renown 2 as seen with the heart unsealed
+	a2.owHeartBlastCheck(2)
+	if a2.ow.BlastTTL != 0 {
+		t.Fatalf("blast fired for an already-unsealed heart: %d", a2.ow.BlastTTL)
+	}
+}
+
 // A run that started from the lair returns to the lair on game over (esc),
 // not to the level select.
 func TestOWGameOverReturnsToLair(t *testing.T) {

@@ -283,6 +283,43 @@ func TestOWSealedDim(t *testing.T) {
 	}
 }
 
+// The walk trail fades: the newest step is brightest, the oldest dimmest,
+// and a zero-age step is gone.
+func TestOWTrailFade(t *testing.T) {
+	pal := Palette()
+	w, h := 92, 32
+	l := GameLayout(OWW, OWH, w, h)
+	st := NewOWState()
+	st.Cursor = game.Vec{X: 14, Y: 6}
+	st.Trail = []game.Vec{{X: 13, Y: 6}, {X: 12, Y: 6}, {X: 11, Y: 6}}
+	st.TrailAge = []int{24, 12, 4}
+	f := RenderOverworld(w, h, st, 0, pal)
+	var fgs []int
+	for _, v := range st.Trail {
+		cx, cy := l.center(v.X, v.Y)
+		c := f.C[cy*f.W+cx]
+		if c.R != '·' {
+			t.Fatalf("trail cell (%d,%d) = %q, want ·", v.X, v.Y, c.R)
+		}
+		fgs = append(fgs, c.FG)
+	}
+	for i := 1; i < len(fgs); i++ {
+		if fgs[i-1] <= fgs[i] {
+			t.Fatalf("trail must dim with age: %v", fgs)
+		}
+	}
+	// A zero-age step is not drawn (the cell keeps its pad texture).
+	st2 := NewOWState()
+	st2.Cursor = game.Vec{X: 6, Y: 10}
+	st2.Trail = []game.Vec{{X: 5, Y: 10}}
+	st2.TrailAge = []int{0}
+	f2 := RenderOverworld(w, h, st2, 0, pal)
+	cx, cy := l.center(5, 10)
+	if f2.C[cy*f2.W+cx].R == '·' {
+		t.Fatal("zero-age trail cell still drawn")
+	}
+}
+
 // The first-run hint must actually show on first entry: Grak starts on the
 // Rift, so the old "only when the floor line is empty" trigger never fired.
 func TestOWFirstRunHint(t *testing.T) {

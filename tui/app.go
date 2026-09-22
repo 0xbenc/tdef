@@ -56,6 +56,8 @@ type App struct {
 	owFloorID      string
 	cleanWaves     int // waves held with no strike on the heart (relics)
 	waveStartLives int
+	owBootArmed    bool         // the arrival cinematic has been armed this session
+	owBossSeen     map[int]bool // renown -> the heart's unseal has been seen
 
 	// Relic bonuses carried into the next defense.
 	bonusGold  int
@@ -308,6 +310,7 @@ func (a *App) stepGame(real float64) {
 			// runs for runs that came from the lair (a.ow is initialised there).
 			a.owUnsealCheck(d)
 			a.owSetBanner(won, best, isNew)
+			a.owHeartBlastCheck(d)
 		}
 	}
 }
@@ -344,6 +347,17 @@ func (a *App) owUnsealCheck(d int) {
 	opened("depths", a.lair.ClearedCount(d) >= 2)
 }
 
+// owHeartBlastCheck arms the heart-unseal shockwave when a defense just
+// unsealed the heart at the current renown (BossReady false -> true). A
+// renown whose heart is already unsealed never re-fires it: owRefresh marks
+// each renown seen as the lair is entered.
+func (a *App) owHeartBlastCheck(d int) {
+	if a.lair.BossReady(d) && !a.owBossSeen[d] {
+		a.ow.BlastTTL = render.OWBlastFrames
+	}
+	a.owBossSeen[d] = a.lair.BossReady(d)
+}
+
 // owSetBanner writes the result line Grak reads back on the map.
 func (a *App) owSetBanner(won bool, best int, isNew bool) {
 	st := &a.ow
@@ -362,6 +376,7 @@ func (a *App) owSetBanner(won bool, best int, isNew bool) {
 	}
 	st.ReturnMsg = msg
 	st.ReturnTTL = 180
+	st.ReturnFX = render.OWReturnFX{Floor: a.owFloorID, Won: won}
 }
 
 // drawScreen renders the current screen. Every screen, game included, is
@@ -776,6 +791,11 @@ func (a *App) toScreen(s Screen) {
 		a.ls.Err = ""
 	case ScreenOverworld:
 		a.owRefresh()
+		if !a.owBootArmed {
+			// The arrival cinematic plays once per session, on first entry.
+			a.owBootArmed = true
+			a.ow.BootTTL = render.OWBootFrames
+		}
 	}
 }
 

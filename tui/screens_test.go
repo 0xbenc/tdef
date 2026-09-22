@@ -286,7 +286,11 @@ func TestScreenSequenceReachable(t *testing.T) {
 	if a.screen != ScreenOverworld {
 		t.Fatalf("menu -> %v, want the lair", a.screen)
 	}
-	// Grak starts on the Rift: descend and let the transition play out.
+	// Grak starts on the Rift: wait for the lair to wake (the boot gates
+	// input), then descend and let the transition play out.
+	for a.ow.BootTTL > 0 {
+		a.owTick()
+	}
 	a.handle(Event{Key: KeyEnter})
 	if a.ow.Descending != "rift" {
 		t.Fatalf("enter on the Rift = descending %q, want rift", a.ow.Descending)

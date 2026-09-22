@@ -32,6 +32,15 @@ const OWDescendFrames = 24
 // OWUnsealFrames is the length of a floor's unseal cascade (frames).
 const OWUnsealFrames = 60
 
+// OWBootFrames is the length of the arrival cinematic, "the lair wakes".
+const OWBootFrames = 90
+
+// OWBlastFrames is the length of the heart-unseal shockwave.
+const OWBlastFrames = 72
+
+// OWTrailMaxAge is how long a walk-trail cell lingers (frames).
+const OWTrailMaxAge = 24
+
 // HeartFloorID is the endgame defense's floor id (the heart chamber).
 const HeartFloorID = "heart"
 
@@ -318,6 +327,13 @@ type OWRec struct {
 	LastWon  bool
 }
 
+// OWReturnFX is the lair's reaction to a defense that just ended: which
+// floor to answer on (the heart renders on the Rotunda) and how it went.
+type OWReturnFX struct {
+	Floor string
+	Won   bool
+}
+
 // OWState is the overworld view state. Cursor is Grak's position (grid
 // coords); Unlocked holds the floor ids that are open (a floor not in
 // Unlocked is rendered sealed, unless it is mid-unseal in Unsealing).
@@ -341,13 +357,16 @@ type OWState struct {
 	Tokens    int              // relic tokens
 	Seed      string           // the Depths' maze seed ("" = uncharted)
 
+	BootTTL    int    // frames left on the arrival cinematic (0 = not playing)
+	BlastTTL   int    // frames left on the heart-unseal shockwave
 	Descending string // floor id under the descent transition
 	DescendTTL int
 	ReturnMsg  string // the result banner, after a defense
 	ReturnTTL  int
+	ReturnFX   OWReturnFX     // the result beat, while ReturnTTL > 0
 	Unsealing  map[string]int // floor id -> frames until it opens
-	Prev       game.Vec       // the cell Grak stepped from
-	StepTTL    int            // frames left on the walk trail
+	Trail      []game.Vec     // walk trail, newest first (cap 3)
+	TrailAge   []int          // frames left on each trail cell
 	RelicMenu  bool           // the relic-spend line is active
 	FirstRun   bool           // show the one-time hint line
 
@@ -367,6 +386,16 @@ func NewOWState() OWState {
 		Scores:    map[string]int{},
 		Diff:      1, // normal
 		FirstRun:  true,
+	}
+}
+
+// PushTrail records the cell Grak is leaving, keeping the newest three steps.
+func (st *OWState) PushTrail(v game.Vec) {
+	st.Trail = append([]game.Vec{v}, st.Trail...)
+	st.TrailAge = append([]int{OWTrailMaxAge}, st.TrailAge...)
+	if len(st.Trail) > 3 {
+		st.Trail = st.Trail[:3]
+		st.TrailAge = st.TrailAge[:3]
 	}
 }
 
@@ -1016,13 +1045,20 @@ func drawOWLabel(f *Frame, l Layout, n *owNode, v owPadView) {
 // drawOWPlayer stamps Grak at the cursor: a bold bright marker with a soft
 // pulse, and a fading footprint behind his last step.
 func drawOWPlayer(f *Frame, l Layout, st OWState, frame int) {
-	// The trail: the cell Grak just left, dimming over StepTTL frames.
-	if st.StepTTL > 0 {
-		px, py := l.center(st.Prev.X, st.Prev.Y)
+	// The trail: Grak's last three steps, newest first, dimming out.
+	for i, v := range st.Trail {
+		if st.TrailAge[i] <= 0 {
+			continue
+		}
+		px, py := l.center(v.X, v.Y)
 		if px >= 0 && py >= 0 && px < f.W && py < f.H {
 			c := f.C[py*f.W+px]
 			if c.R == ' ' || c.R == '·' || c.R == ':' || c.R == '▒' {
-				f.C[py*f.W+px] = Cell{R: '·', FG: 174 + (st.StepTTL-1)*5, BG: c.BG}
+				fg := 174 + st.TrailAge[i]*38/24
+				if fg > 214 {
+					fg = 214
+				}
+				f.C[py*f.W+px] = Cell{R: '·', FG: fg, BG: c.BG}
 			}
 		}
 	}
