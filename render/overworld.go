@@ -76,16 +76,16 @@ var owNodes = []owNode{
 	{
 		ID: "rift", Name: "the Rift", Level: "canyon", X: 6, Y: 10, PW: 3, PH: 5,
 		Chrome: 208, Glyph: '◈',
-		Deco: []owGlyph{{0, -1, '╢', 208}, {0, 1, '╟', 208}},
+		Deco: []owGlyph{{0, -1, '╎', 208}, {0, 1, '╎', 208}},
 	},
 	{
 		ID: "rotunda", Name: "the Rotunda", Level: "hub", X: 22, Y: 6, PW: 7, PH: 5,
 		Chrome: 178, Glyph: '♥',
 		Deco: []owGlyph{
-			{-2, -1, '|', 178}, {0, -1, '|', 178}, {2, -1, '|', 178},
+			{-2, -1, '┃', 178}, {0, -1, '┃', 178}, {2, -1, '┃', 178},
 			{-1, -1, '°', 236}, {1, -1, '°', 236},
 			{-2, 0, '°', 236}, {2, 0, '°', 236},
-			{-2, 1, '|', 178}, {0, 1, '|', 178}, {2, 1, '|', 178},
+			{-2, 1, '┃', 178}, {0, 1, '┃', 178}, {2, 1, '┃', 178},
 			{-1, 1, '°', 236}, {1, 1, '°', 236},
 		},
 	},
@@ -235,17 +235,16 @@ var hoardGlints = [][]int{
 	{15, 3}, {29, 3}, {15, 9}, {29, 9}, {22, 11}, {22, 1}, {4, 10}, {41, 10},
 }
 
-// owEchoes are the Long Halls' ghosts: a flicker of a fallen hero in the void
-// beside the pad (their glyphs and colours, from the guild's roster).
-var owEchoes = []struct {
+// owProcessionHeroes are the Long Halls' ghosts: a line of fallen heroes
+// (their glyphs and colours, from the guild's roster) that marches the
+// corridor when the halls are open.
+var owProcessionHeroes = [3]struct {
 	g rune
 	c int
 }{
-	{'r', 244}, // a rogue
-	{'g', 244}, // a mercenary
 	{'t', 251}, // a paladin
-	{'s', 208}, // a necromancer
-	{'o', 240}, // a squire
+	{'g', 244}, // a mercenary
+	{'r', 244}, // a rogue
 }
 
 // owDragonVoice is Malgrath at the Rotunda, tiered by the hearts held at the
@@ -537,6 +536,14 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 			c := Cell{R: ' ', BG: bg}
 			if owOutcropSet[game.Vec{X: x, Y: y}] {
 				c.R, c.FG = '▒', bg+2
+				// A lighter cap on top when the cell above is open void, so
+				// the formation reads as a ridge.
+				if y > 0 && !OWWalkable(x, y-1) && !owOutcropSet[game.Vec{X: x, Y: y - 1}] {
+					capx, capy := l.center(x, y-1)
+					if cc := f.C[capy*f.W+capx]; cc.R == ' ' || cc.R == '·' || cc.R == ':' {
+						f.C[capy*f.W+capx] = Cell{R: '░', FG: bg + 3, BG: cc.BG}
+					}
+				}
 			} else {
 				switch (x*13 + y*7) % 29 {
 				case 0:
@@ -546,6 +553,10 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 				case 9:
 					c.R, c.FG = '▒', bg+2
 				}
+			}
+			// Grain twinkle: a speck of dust catches the light for a moment.
+			if c.R != ' ' && owHash(x, y, frame/16)%23 == 0 {
+				c.FG++
 			}
 			l.block(f, x, y, c)
 		}
@@ -645,6 +656,7 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 			status:  owNodeStatus(st, n.ID),
 			rec:     st.Records[n.ID],
 			fogLift: fogLift,
+			cursor:  st.Cursor,
 		}
 		if ttl, ok := st.Unsealing[n.ID]; ok {
 			v.status = OWOpen
@@ -658,8 +670,9 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 		drawOWLabel(f, l, n, v)
 	}
 
-	// 4. The Long Halls' echo: a fallen hero flickers in the void.
-	drawOWEcho(f, l, st, frame)
+	// 4. The Long Halls' echo: a procession of fallen heroes marches the
+	//    corridor (drawn after the corridor pulses, so it rides on top).
+	drawOWProcession(f, l, st, frame)
 
 	// 5. Grak, at the cursor, with a fading trail behind his last step.
 	drawOWPlayer(f, l, st, frame)
@@ -779,10 +792,11 @@ func owInterior(n *owNode) int {
 type owPadView struct {
 	status  OWStatus
 	rec     OWRec
-	unseal  float64 // 0..1 unseal-cascade progress (0 = none)
-	fogLift int     // 0..4 built-in floors held (the depths' reveal)
-	boss    bool    // the heart has unsealed (the Rotunda is a door)
-	done    bool    // the heart is held (the end state)
+	unseal  float64  // 0..1 unseal-cascade progress (0 = none)
+	fogLift int      // 0..4 built-in floors held (the depths' reveal)
+	boss    bool     // the heart has unsealed (the Rotunda is a door)
+	done    bool     // the heart is held (the end state)
+	cursor  game.Vec // where Grak stands (so the landmark can avoid him)
 }
 
 func owRouteSealed(st OWState, fl string) bool {
@@ -874,19 +888,23 @@ func drawOWPad(f *Frame, l Layout, n *owNode, v owPadView, frame int) {
 		}
 	}
 
-	// Deco: the static landmark structure (pillars, arch, spire, vortex),
-	// dimmed with the room when sealed, dark until the room wakes.
-	for _, g := range n.Deco {
+	// Deco: the landmark structure (pillars, arch, spire, vortex), each room
+	// with its own living ambient (the rift's flicker, the garden's depth
+	// gradient, the depths' swirl), dimmed with the room when sealed, dark
+	// until the room wakes.
+	for i, g := range n.Deco {
 		if !OWWalkable(n.X+g.dx, n.Y+g.dy) {
 			continue
 		}
 		gx, gy := l.center(n.X+g.dx, n.Y+g.dy)
-		c := g.c
+		r, c := owDecoCell(n, g, i, frame)
 		if !open || v.unseal < 0.5 {
 			c = dim(c)
 		}
-		f.Set(gx, gy, Cell{R: g.r, FG: c, BG: bg, Bold: open})
+		f.Set(gx, gy, Cell{R: r, FG: c, BG: bg, Bold: open})
 	}
+	// The room's living details over the interior (embers, hoard glints).
+	drawOWRoomAmbient(f, l, n, open, frame, bg)
 
 	// Chrome: a double-line frame around the room in the accent colour.
 	fx0, fy0 := l.X(x0), l.Y(y0)
@@ -899,8 +917,9 @@ func drawOWPad(f *Frame, l Layout, n *owNode, v owPadView, frame int) {
 		f.Set(lx, ly, Cell{R: '╳', FG: dim(167)})
 	}
 
-	// Landmark at the centre.
-	cx, cy := l.center(n.X, n.Y)
+	// Landmark at the centre — but if Grak is standing on it, the landmark
+	// shifts to the first free interior cell so the player never occludes it.
+	cx, cy := owLandmarkPos(l, n, v)
 	drawOWLandmark(f, cx, cy, n, v, frame, bg)
 
 	// A soft glow just outside the frame, so open rooms read as lit beacons.
@@ -915,6 +934,107 @@ func drawOWPad(f *Frame, l Layout, n *owNode, v owPadView, frame int) {
 			}
 			if r := f.C[p[1]*f.W+p[0]].R; r == ' ' || r == 0 {
 				f.Put(p[0], p[1], '·', dim(accent), 0)
+			}
+		}
+	}
+}
+
+// owDecoCell returns the rune and base colour for a deco glyph, applying the
+// room's living ambient: the rift's fissure flickers, the garden's ring steps
+// through its depth gradient (with a sunbeam on the peak), and the depths'
+// swirl cycles its mists. Static rooms (rotunda, halls) return the glyph
+// unchanged.
+func owDecoCell(n *owNode, g owGlyph, i int, frame int) (rune, int) {
+	r, c := g.r, g.c
+	switch n.ID {
+	case "rift":
+		if c == 208 && owHash(0, i, frame/8)%2 == 0 {
+			c = 214 // the fissure flickers
+		}
+	case "garden":
+		switch g.dy {
+		case -1:
+			if g.r == '∧' {
+				c = 45
+				if frame%10 < 5 {
+					c = 87 // a sunbeam
+				}
+			} else {
+				c = 31
+			}
+		case 0:
+			c = 27
+		case 1:
+			c = 23
+		}
+	case "depths":
+		switch g.r {
+		case '░':
+			c = 60 + ((i+frame/8)%4 - 2) // a slow swirl through the mists
+		case 'Ø':
+			if frame%12 < 6 {
+				r, c = 'Ø', 99
+			} else {
+				r, c = 'ø', 107
+			}
+		}
+	}
+	return r, c
+}
+
+// drawOWRoomAmbient stamps a room's living details over its interior: the
+// rift's rising embers and the rotunda's hoard glints. Texture-guarded so
+// they never hide a landmark or a road.
+func drawOWRoomAmbient(f *Frame, l Layout, n *owNode, open bool, frame int, bg int) {
+	switch n.ID {
+	case "rift":
+		// Embers rising from the fissure: two columns, climbing and fading.
+		for k := 0; k < 2; k++ {
+			x := 5 + (k%2)*2
+			y := 11 - ((frame/6 + k*3) % 4)
+			step := (frame/6 + k*3) % 4
+			var fg int
+			switch step {
+			case 0:
+				fg = 214
+			case 1:
+				fg = 202
+			case 2:
+				fg = 196
+			default:
+				continue // the ember has risen out and faded
+			}
+			if !open {
+				fg = dim(fg)
+			}
+			cx, cy := l.center(x, y)
+			if cx < 0 || cy < 0 || cx >= f.W || cy >= f.H {
+				continue
+			}
+			if c := f.C[cy*f.W+cx]; c.R == ' ' || c.R == '·' || c.R == ':' || c.R == '▒' {
+				f.Set(cx, cy, Cell{R: '·', FG: fg, BG: c.BG})
+			}
+		}
+	case "rotunda":
+		// The hoard: gold glints on either side of the heart.
+		for _, p := range [2][2]int{{-1, 0}, {1, 0}} {
+			x, y := n.X+p[0], n.Y+p[1]
+			if !n.contains(x, y) {
+				continue
+			}
+			c, bold := 220, false
+			if owHash(frame/4, x, y)%5 == 0 {
+				c, bold = 230, true // a glint
+			}
+			if !open {
+				c = dim(c)
+			}
+			cx, cy := l.center(x, y)
+			if cx < 0 || cy < 0 || cx >= f.W || cy >= f.H {
+				continue
+			}
+			if cc := f.C[cy*f.W+cx]; cc.R == ' ' || cc.R == '·' || cc.R == ':' || cc.R == '▒' {
+				f.Set(cx, cy, Cell{R: '·', FG: c, BG: cc.BG, Bold: bold})
 			}
 		}
 	}
@@ -966,6 +1086,37 @@ func owHalo(f *Frame, cx, cy, c int, on bool) {
 			f.C[oy*f.W+ox].FG = c
 		}
 	}
+}
+
+// owLandmarkPos returns the frame pixel for a room's landmark. When Grak is
+// standing on the pad centre the landmark shifts to the first free interior
+// cell in probe order (up, down, left, right, then the diagonals) so the
+// player never occludes it; otherwise it stays at the centre. "Free" means
+// strictly interior, not the centre, and not a deco cell. If no cell is free
+// the landmark stays at the centre (the player occludes it).
+func owLandmarkPos(l Layout, n *owNode, v owPadView) (int, int) {
+	centre := game.Vec{X: n.X, Y: n.Y}
+	if v.cursor != centre {
+		return l.center(n.X, n.Y)
+	}
+	deco := map[game.Vec]bool{}
+	for _, g := range n.Deco {
+		deco[game.Vec{X: g.dx, Y: g.dy}] = true
+	}
+	x0, y0 := n.X-n.PW/2, n.Y-n.PH/2
+	x1, y1 := x0+n.PW-1, y0+n.PH-1
+	probes := [8][2]int{{0, -1}, {0, 1}, {-1, 0}, {1, 0}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}}
+	for _, p := range probes {
+		x, y := n.X+p[0], n.Y+p[1]
+		if x < x0 || x > x1 || y < y0 || y > y1 {
+			continue // not interior
+		}
+		if deco[game.Vec{X: p[0], Y: p[1]}] {
+			continue // a deco cell
+		}
+		return l.center(x, y)
+	}
+	return l.center(n.X, n.Y)
 }
 
 // drawOWLandmark stamps the floor's glyph at (cx,cy) with its living
@@ -1111,22 +1262,31 @@ func drawOWPlayer(f *Frame, l Layout, st OWState, frame int) {
 			}
 		}
 	}
-	// Aura: warm light breathes across the cells around Grak, tinting only
-	// the background texture so it never hides a landmark or a road.
+	// The lantern: warm light breathes across the eight neighbour blocks,
+	// tinting every texture subcell — orthogonal neighbours bright, diagonals
+	// a shade dimmer — so it never hides a landmark or a road.
 	if frame%30 < 20 {
-		for dx := -1; dx <= 1; dx++ {
-			for dy := -1; dy <= 1; dy++ {
+		for dy := -1; dy <= 1; dy++ {
+			for dx := -1; dx <= 1; dx++ {
 				if dx == 0 && dy == 0 {
 					continue
 				}
-				ox, oy := l.center(st.Cursor.X+dx, st.Cursor.Y+dy)
-				if ox < 0 || oy < 0 || ox >= f.W || oy >= f.H {
-					continue
+				fg := 180
+				if dx == 0 || dy == 0 {
+					fg = 214
 				}
-				c := f.C[oy*f.W+ox]
-				if c.R == ' ' || c.R == '·' || c.R == ':' || c.R == '▒' {
-					c.FG = 214
-					f.C[oy*f.W+ox] = c
+				for sy := 0; sy < l.Scale; sy++ {
+					for sx := 0; sx < l.Scale; sx++ {
+						px, py := l.X(st.Cursor.X+dx)+sx, l.Y(st.Cursor.Y+dy)+sy
+						if px < 0 || py < 0 || px >= f.W || py >= f.H {
+							continue
+						}
+						c := f.C[py*f.W+px]
+						if c.R == ' ' || c.R == '·' || c.R == ':' || c.R == '▒' {
+							c.FG = fg
+							f.C[py*f.W+px] = c
+						}
+					}
 				}
 			}
 		}
@@ -1140,23 +1300,41 @@ func drawOWPlayer(f *Frame, l Layout, st OWState, frame int) {
 	f.Set(cx, cy, Cell{R: '@', FG: fg, BG: bg, Bold: true})
 }
 
-// drawOWEcho flickers a fallen hero's glyph in the void beside the Long
-// Halls, when the halls are open: the guild's echo of every defense.
-func drawOWEcho(f *Frame, l Layout, st OWState, frame int) {
+// drawOWProcession marches the Long Halls' ghosts down their corridor when the
+// halls are open: the guild's echo of every defense. A line of three fallen
+// heroes creeps along the route once a while, fading in and out at the edges
+// of its window.
+func drawOWProcession(f *Frame, l Layout, st OWState, frame int) {
 	open := st.Unlocked["halls"] || st.RevealAll || st.Unsealing["halls"] > 0
 	if !open {
 		return
 	}
-	cycle := (frame / 20) % 17
-	if cycle > 2 {
+	cells := owRouteCells[1]
+	if len(cells) == 0 {
 		return
 	}
-	e := owEchoes[(frame/60)%len(owEchoes)]
-	cx, cy := l.center(39, 2)
-	if cx < 0 || cy < 0 || cx >= f.W || cy >= f.H {
-		return
+	cyc := frame % 240
+	if cyc >= 60 {
+		return // the procession is between passes
 	}
-	f.Set(cx, cy, Cell{R: e.g, FG: e.c, Bold: cycle == 1})
+	base := 10 + (frame/4)%5
+	for i, h := range owProcessionHeroes {
+		idx := base - i*2
+		idx %= len(cells)
+		if idx < 0 {
+			idx += len(cells)
+		}
+		v := cells[idx]
+		cx, cy := l.center(v.X, v.Y)
+		if cx < 0 || cy < 0 || cx >= f.W || cy >= f.H {
+			continue
+		}
+		c := h.c
+		if cyc < 12 || cyc > 48 {
+			c = dim(c) // the echo fades in and out
+		}
+		f.Set(cx, cy, Cell{R: h.g, FG: c, Bold: i == 0})
+	}
 }
 
 // drawOWDescent swallows Grak into the floor he is descending into: the pad

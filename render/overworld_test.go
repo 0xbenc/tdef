@@ -406,6 +406,104 @@ func TestOwLedgerAccents(t *testing.T) {
 	}
 }
 
+// When Grak stands on a room's centre the landmark shifts to the first free
+// interior cell so the player never occludes it; off the centre it stays put.
+func TestOWLandmarkNotOccluded(t *testing.T) {
+	pal := Palette()
+	w, h := 92, 32
+	l := GameLayout(OWW, OWH, w, h)
+
+	// Grak on the Rift's centre: the landmark shifts off him to (5,10).
+	st := NewOWState()
+	st.Cursor = game.Vec{X: 6, Y: 10}
+	f := RenderOverworld(w, h, st, 0, pal)
+	cx, cy := l.center(6, 10)
+	if c := f.C[cy*f.W+cx]; c.R != '@' {
+		t.Fatalf("rift centre = %q, want @ (Grak)", c.R)
+	}
+	lx, ly := l.center(5, 10)
+	if c := f.C[ly*f.W+lx]; c.R != '◈' {
+		t.Fatalf("rift landmark = %q at (5,10), want ◈", c.R)
+	}
+
+	// Grak off the centre: the landmark stays at the centre.
+	st2 := NewOWState()
+	st2.Cursor = game.Vec{X: 14, Y: 6}
+	f2 := RenderOverworld(w, h, st2, 0, pal)
+	cx2, cy2 := l.center(6, 10)
+	if c := f2.C[cy2*f2.W+cx2]; c.R != '◈' {
+		t.Fatalf("rift landmark (no Grak) = %q, want ◈ at centre", c.R)
+	}
+
+	// Grak on the Rotunda's centre: the heart shifts to (21,6), over the hoard.
+	st3 := NewOWState()
+	st3.Cursor = game.Vec{X: 22, Y: 6}
+	f3 := RenderOverworld(w, h, st3, 0, pal)
+	hx, hy := l.center(22, 6)
+	if c := f3.C[hy*f3.W+hx]; c.R != '@' {
+		t.Fatalf("rotunda centre = %q, want @ (Grak)", c.R)
+	}
+	hx2, hy2 := l.center(21, 6)
+	if c := f3.C[hy2*f3.W+hx2]; c.R != '♥' {
+		t.Fatalf("rotunda heart = %q at (21,6), want ♥", c.R)
+	}
+}
+
+// The Rotunda's hoard: gold glints on either side of the heart when the room
+// is open.
+func TestOWRotundaHoard(t *testing.T) {
+	pal := Palette()
+	w, h := 92, 32
+	l := GameLayout(OWW, OWH, w, h)
+	st := NewOWState()
+	st.Cursor = game.Vec{X: 14, Y: 6} // Grak elsewhere
+	f := RenderOverworld(w, h, st, 0, pal)
+	for _, v := range []game.Vec{{X: 21, Y: 6}, {X: 23, Y: 6}} {
+		cx, cy := l.center(v.X, v.Y)
+		c := f.C[cy*f.W+cx]
+		if c.R != '·' {
+			t.Fatalf("hoard cell (%d,%d) = %q, want ·", v.X, v.Y, c.R)
+		}
+		if c.FG != 220 && c.FG != 230 {
+			t.Fatalf("hoard cell (%d,%d) FG = %d, want 220 or 230 (gold)", v.X, v.Y, c.FG)
+		}
+	}
+}
+
+// The Long Halls' procession: a line of fallen heroes marches the corridor
+// when the halls are open, inside its window, and fades out between passes.
+func TestOWProcession(t *testing.T) {
+	pal := Palette()
+	w, h := 92, 32
+	l := GameLayout(OWW, OWH, w, h)
+	st := NewOWState()
+	st.RevealAll = true // open the halls
+	st.Cursor = game.Vec{X: 14, Y: 6}
+	cells := owRouteCells[1]
+	heroes := map[rune]int{'t': 251, 'g': 244, 'r': 244}
+
+	// frame 20 is inside the window and not edge-faded.
+	f := RenderOverworld(w, h, st, 20, pal)
+	base := 10 + (20/4)%5
+	for i, hr := range [3]rune{'t', 'g', 'r'} {
+		v := cells[base-i*2]
+		cx, cy := l.center(v.X, v.Y)
+		c := f.C[cy*f.W+cx]
+		if c.R != hr || c.FG != heroes[hr] {
+			t.Fatalf("procession (%d,%d) = %q/%d, want %q/%d", v.X, v.Y, c.R, c.FG, hr, heroes[hr])
+		}
+	}
+	// frame 100 is outside the window: the procession is gone.
+	f2 := RenderOverworld(w, h, st, 100, pal)
+	for i, hr := range [3]rune{'t', 'g', 'r'} {
+		v := cells[10+(100/4)%5-i*2]
+		cx, cy := l.center(v.X, v.Y)
+		if c := f2.C[cy*f2.W+cx]; c.R == hr {
+			t.Fatalf("procession still visible at frame 100: %q", c.R)
+		}
+	}
+}
+
 // OWFloorOf / OWFloorName expose each floor's identity; the boss door reads
 // "the Heart".
 func TestOWFloorIdentity(t *testing.T) {
