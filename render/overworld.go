@@ -672,10 +672,15 @@ func owNodeStatus(st OWState, id string) OWStatus {
 	return OWSealed
 }
 
-// dim halves a 256-colour intensity toward the void for sealed nodes.
+// dim halves a 256-colour intensity toward the void for sealed nodes, with a
+// floor of 24 so a sealed room still reads as a shape (garden chrome 45 ->
+// 24, not 22, which vanished into the dark).
 func dim(c int) int {
 	if c < 232 {
-		return c / 2
+		if v := c/2 + 2; v > 24 {
+			return v
+		}
+		return 24
 	}
 	return c - (c-232)/2 - 1
 }
@@ -821,11 +826,13 @@ func drawOWPad(f *Frame, l Layout, n *owNode, v owPadView, frame int) {
 	drawOWLandmark(f, cx, cy, n, v, frame, bg)
 
 	// A soft glow just outside the frame, so open rooms read as lit beacons.
+	// Clamped to the playfield: the top and bottom pads touch the map edges,
+	// and an unclamped glow would spill onto the voice row and the ledger.
 	if open {
 		for _, p := range [4][2]int{
 			{cx, fy0 - 1}, {cx, fy1 + 1}, {fx0 - 1, cy}, {fx1 + 1, cy},
 		} {
-			if p[0] < 0 || p[1] < 0 || p[0] >= f.W || p[1] >= f.H {
+			if p[0] < l.Ox || p[1] < l.Oy || p[0] >= l.Ox+OWW*l.Scale || p[1] >= l.Oy+OWH*l.Scale {
 				continue
 			}
 			if r := f.C[p[1]*f.W+p[0]].R; r == ' ' || r == 0 {
@@ -1129,11 +1136,13 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 			fg = 174
 		}
 	default:
-		s, fg = owNodeLine(st, frame)
-		if s == "" {
-			if st.FirstRun {
-				s, fg = "wasd walk the lair · enter descend · tab renown", 240
-			} else if st.BossDone {
+		if st.FirstRun {
+			// Shown even on a pad: a first-time Grak starts on the Rift, so
+			// the old "only when the line is empty" trigger never fired.
+			s, fg = "wasd walk the lair · enter descend · tab renown", 240
+		} else {
+			s, fg = owNodeLine(st, frame)
+			if s == "" && st.BossDone {
 				s, fg = "Malgrath endures.", 255
 			}
 		}
@@ -1240,28 +1249,30 @@ func putCenteredRuns(f *Frame, y int, runs []owRun) {
 // pending bonuses).
 func drawOWChromeRows(f *Frame, st OWState) {
 	h := f.H
-	// Row h-4: the expedition ledger.
+	// Row h-4: the expedition ledger. Each floor's id wears the accent of
+	// its room, so the ledger reads as the map, not a log.
+	accent := map[string]int{"rift": 208, "halls": 110, "garden": 45, "rotunda": 178}
 	var rs []owRun
 	for _, id := range []string{"rift", "halls", "garden", "rotunda"} {
 		rec := st.Records[id]
-		rs = append(rs, owRun{"  " + id + " ", 240, false})
+		rs = append(rs, owRun{"  " + id + " ", accent[id], false})
 		switch {
 		case rec.Cleared:
 			rs = append(rs, owRun{"✓" + strconv.Itoa(game.MaxWaves), 114, true})
 		case rec.BestWave > 0:
 			rs = append(rs, owRun{"✗" + strconv.Itoa(rec.BestWave), 167, false})
 		default:
-			rs = append(rs, owRun{"·", 240, false})
+			rs = append(rs, owRun{"·", 245, false})
 		}
 	}
-	rs = append(rs, owRun{"  heart ", 240, false})
+	rs = append(rs, owRun{"  heart ", 220, false})
 	switch {
 	case st.BossDone:
 		rs = append(rs, owRun{"✓", 255, true})
 	case st.BossReady:
 		rs = append(rs, owRun{"◉", 220, true})
 	default:
-		rs = append(rs, owRun{"·", 240, false})
+		rs = append(rs, owRun{"·", 245, false})
 	}
 	putCenteredRuns(f, h-4, rs)
 

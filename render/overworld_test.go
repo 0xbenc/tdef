@@ -227,6 +227,93 @@ func TestOverworldRichStateDeterministic(t *testing.T) {
 	}
 }
 
+// owStateAllHeld is a fully-held lair for render tests: every built-in floor
+// cleared, all corridors open, the heart unsealed.
+func owStateAllHeld() OWState {
+	st := NewOWState()
+	for _, id := range []string{"rift", "halls", "garden", "rotunda"} {
+		st.Records[id] = OWRec{Cleared: true, BestWave: 20, LastWave: 20, LastWon: true}
+		st.Scores[id] = 9000
+	}
+	st.Unlocked["halls"] = true
+	st.Unlocked["garden"] = true
+	st.Unlocked["depths"] = true
+	st.Hearts = 4
+	st.BossReady = true
+	st.FirstRun = false
+	return st
+}
+
+// Pad edge glows must not leave the playfield: the bottom pads (Rift, Garden)
+// touch grid row 12, so their "glow just outside the frame" used to land on
+// the ledger row (h-4), and the Depths touches row 0, its glow the voice row.
+func TestOWGlowClamped(t *testing.T) {
+	pal := Palette()
+	w, h := 182, 58
+	l := GameLayout(OWW, OWH, w, h)
+	f := RenderOverworld(w, h, owStateAllHeld(), 0, pal)
+	// The Rift's bottom glow point: its centre column, the first row below
+	// the map (the ledger row at this size).
+	rx, ry := l.X(6)+l.Scale/2, l.Oy+OWH*l.Scale
+	if c := f.C[ry*f.W+rx]; c.R != ' ' {
+		t.Fatalf("rift bottom glow leaked to (%d,%d) = %q, want blank", rx, ry, c.R)
+	}
+	// The Depths' top glow point: its centre column, the first row above the
+	// map (the voice row; blank there in this state).
+	dx, dy := l.X(9)+l.Scale/2, l.Oy-1
+	if c := f.C[dy*f.W+dx]; c.R != ' ' {
+		t.Fatalf("depths top glow leaked to (%d,%d) = %q, want blank", dx, dy, c.R)
+	}
+}
+
+// Sealed rooms must stay legible: dim() floors at 24, so the Sunken Garden's
+// chrome reads as dark green against the void, not black.
+func TestOWSealedDim(t *testing.T) {
+	pal := Palette()
+	w, h := 62, 19
+	l := GameLayout(OWW, OWH, w, h)
+	f := RenderOverworld(w, h, NewOWState(), 0, pal)
+	n := owNodeByID("garden")
+	c := f.C[l.Y(n.Y-n.PH/2)*f.W+l.X(n.X-n.PW/2)]
+	if c.R != '╔' || c.FG != dim(45) {
+		t.Fatalf("sealed garden corner = %q/%d, want ╔/%d", c.R, c.FG, dim(45))
+	}
+	if dim(45) < 24 {
+		t.Fatalf("dim(45) = %d, want >= 24 (sealed rooms must stay legible)", dim(45))
+	}
+}
+
+// The first-run hint must actually show on first entry: Grak starts on the
+// Rift, so the old "only when the floor line is empty" trigger never fired.
+func TestOWFirstRunHint(t *testing.T) {
+	pal := Palette()
+	f := RenderOverworld(62, 19, NewOWState(), 0, pal)
+	row := strings.Split(f.Text(), "\n")[1]
+	if !strings.Contains(row, "wasd walk the lair") {
+		t.Fatalf("first-run hint missing from the voice row: %q", row)
+	}
+}
+
+// The ledger's floor ids wear each room's accent colour (rift 208, halls 110,
+// garden 45, rotunda 178, heart 220), so the ledger reads as the map.
+func TestOwLedgerAccents(t *testing.T) {
+	pal := Palette()
+	w, h := 62, 19
+	f := RenderOverworld(w, h, NewOWState(), 0, pal)
+	seen := map[int]bool{}
+	for x := 0; x < w; x++ {
+		c := f.C[(h-4)*f.W+x]
+		if c.R == 'r' || c.R == 'h' || c.R == 'g' {
+			seen[c.FG] = true
+		}
+	}
+	for _, fg := range []int{208, 110, 45, 178, 220} {
+		if !seen[fg] {
+			t.Fatalf("ledger row missing accent colour %d", fg)
+		}
+	}
+}
+
 // OWFloorOf / OWFloorName expose each floor's identity; the boss door reads
 // "the Heart".
 func TestOWFloorIdentity(t *testing.T) {
