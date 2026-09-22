@@ -356,3 +356,69 @@
   elision boundaries shift with the longer names (existing drop logic).
 - Tests updated across game/render/tui; gofmt/vet/test -race green;
   README + LORE.md updated.
+- 2026-09-22 (overworld look-dev pass, branch overworld-lookdev)
+- The lair — the 45x13 overworld map Grak walks before descending — got a
+  full imagineer-grade look-dev pass on top of the "lair as front door" base
+  (a5d54ee). One commit per concern, each green; RenderOverworld stays a
+  pure function of (w, h, state, frame, palette), and the bench pass results
+  stay byte-identical (the pass touches only render/ + tui/).
+- NOTE: the user asked for the design to be done with parallel subagents
+  (the repo's design->contract->implement culture). The subagent API was
+  unreachable for the whole session ("Cannot connect to API" on every task
+  launch, including connectivity probes), so the three design contracts
+  (visual / narrative / impl) were written solo and consolidated into one
+  spec; implementation then proceeded solo.
+- Audit-first (C1): a frame-by-frame look at the rendered lair found concrete
+  defects, fixed before any new work — pad edge-glow leaking outside the
+  playfield (stray dots on the ledger row) clamped to the map rect; sealed
+  rooms too dark because dim() had no floor (floored at 24); the first-run
+  hint never showed (Grak starts on the Rift, so the old "empty floor line"
+  trigger never fired) now shows whenever FirstRun; the flat one-colour
+  ledger now wears each room's accent (rift 208 / halls 110 / garden 45 /
+  rotunda 178 / heart 220).
+- State plumbing (C2): OWState gained the frame-counted TTLs the pass drives
+  — BootTTL (the arrival), BlastTTL (the heart-unseal shockwave), ReturnFX
+  (which floor a finished defense answers on, won/broke), and a three-cell
+  walk trail (Trail/TrailAge) replacing the old single Prev/StepTTL step.
+  The boot is armed once per session on first entry and gates input while it
+  plays (walk/descend/mouse; esc and q still pass). The heart-unseal blast
+  arms exactly once (BossReady false->true), never re-firing on an
+  already-unsealed heart or a renown switch.
+- Arrival cinematic (C3): on first entry the map is a dark void and only the
+  Rotunda (the dragon's heart) is lit; a light front sweeps out from the
+  heart across the corridors, unmasking the map as it passes, and Grak wakes
+  with it (masked until the light reaches him). The waking narrates itself —
+  "the lair stirs in the dark" -> "the heart beats — light runs the
+  corridors" -> "Malgrath: …grak. the guild still hunts." — then hands back
+  to the steady state. Seam holds: the last frame is the steady state at
+  62x19 and 137x45.
+- Per-room ambient (C4): the Rift's fissure (╎) flickers with rising embers;
+  the Rotunda's pillars are ┃ with a gold hoard glinting either side of the
+  heart; the Long Halls' static fallen-hero flicker becomes a procession of
+  three heroes (t/g/r) marching the corridor on a 240-frame cycle, fading at
+  the edges; the Garden's ring steps through a depth gradient (31/27/23) with
+  a sunbeam on the peak; the Depths' ░ mists swirl and the Ø alternates Ø/ø;
+  the void's grain twinkles and outcrops wear a lighter cap. Grak's flat aura
+  becomes a two-tone lantern (orthogonal bright 214, diagonals 180) tinting
+  every texture subcell. Landmark not occluded: when Grak stands on a room's
+  centre the landmark shifts to the first free interior cell (rift -> (5,10),
+  rotunda -> (21,6) over the hoard) — the audit's "Grak hides the landmark"
+  defect.
+- The beats (C5): returning from a defense runs a ring of light down the
+  floor's route (bright front, two-cell tail) and flashes the room's chrome
+  toward the result colour (gold 220 held / scarlet 167 broke), the ledger
+  entry flashing white with it; unsealing the heart fires a shockwave across
+  the whole map (bright front ring, warm trail) with the voice "the heart has
+  unsealed — the final expedition stirs"; the descent flood gains a hot rim.
+- Copy (C6): the result banner reads like the lair — "<floor> held — 20/20 ·
+  the lair stands steadier" / "<floor> broke at N · the lair will mend" (the
+  heart-held line "the heart is held — Malgrath endures" and the "· new best
+  N" suffix kept). Longest banner 59 runes: full at normal widths, graceful
+  ellipsis at the 62-col minimum.
+- Verification: gofmt+vet+test -race+build green on every commit. New tests:
+  TestOWGlowClamped, TestOWSealedDim, TestOWFirstRunHint, TestOwLedgerAccents,
+  TestOWTrailFade, TestOWBootPhases, TestOWBootSeam, TestOWInputGateDuringBoot,
+  TestOWBootArmedOnce, TestOWHeartBlastCheck, TestOWLandmarkNotOccluded,
+  TestOWRotundaHoard, TestOWProcession, TestOWReturnFX, TestOWBlast,
+  TestOWBlastDecay, TestOWRichDeterministic. Bench pass results byte-identical
+  to baseline (canyon/garden/hub/winding 100%, heart 0%, maze 100%, ALL 83%).
