@@ -367,9 +367,9 @@ func (a *App) owSetBanner(won bool, best int, isNew bool) {
 	case won && a.owFloorID == render.HeartFloorID:
 		msg = "the heart is held — Malgrath endures"
 	case won:
-		msg = name + " held — 20/20"
+		msg = name + " held — 20/20 · the lair stands steadier"
 	default:
-		msg = name + " broke at " + strconv.Itoa(a.g.Wave)
+		msg = name + " broke at " + strconv.Itoa(a.g.Wave) + " · the lair will mend"
 	}
 	if isNew {
 		msg += " · new best " + strconv.Itoa(best)
