@@ -283,6 +283,61 @@ func TestOWSealedDim(t *testing.T) {
 	}
 }
 
+// The arrival cinematic: the heart's room is the ignition source (lit from
+// the first frame), the unlit void is masked until the light front sweeps
+// out across the map, and the last frame is the steady state (seam).
+func TestOWBootPhases(t *testing.T) {
+	pal := Palette()
+	w, h := 137, 45
+	l := GameLayout(OWW, OWH, w, h)
+	st := NewOWState()
+
+	// First frame of the waking: the far corner is unlit dark; the heart,
+	// the ignition source, is already lit.
+	st.BootTTL = OWBootFrames - 1
+	f := RenderOverworld(w, h, st, 0, pal)
+	cx, cy := l.center(44, 0)
+	if c := f.C[cy*f.W+cx]; c.R != ' ' || c.BG != 233 {
+		t.Fatalf("boot frame 1: far corner = %q bg %d, want unlit (space/233)", c.R, c.BG)
+	}
+	hx, hy := l.center(22, 6)
+	if c := f.C[hy*f.W+hx]; c.R != '♥' {
+		t.Fatalf("boot frame 1: heart = %q, want ♥ (the ignition source)", c.R)
+	}
+
+	// Mid-sweep (frame 65): the light has crossed the Rift's pad — a corner
+	// of the pad is lit (its interior, not the unlit void's 233). Grak starts
+	// on the Rift's centre landmark, so the landmark itself is occluded until
+	// he walks off it (the C4 lantern addresses that).
+	st.BootTTL = OWBootFrames - 65
+	f2 := RenderOverworld(w, h, st, 0, pal)
+	rx, ry := l.center(5, 8)
+	if c := f2.C[ry*f2.W+rx]; c.BG == 233 {
+		t.Fatalf("boot frame 65: rift pad corner still unlit (bg 233)")
+	}
+	// The front itself is a white dot at the cell 18 units from the heart.
+	fx, fy := l.center(4, 6)
+	if c := f2.C[fy*f2.W+fx]; c.R != '·' || c.FG != 255 {
+		t.Fatalf("boot frame 65: front at (4,6) = %q/%d, want ·/255", c.R, c.FG)
+	}
+}
+
+// The boot's last frame must be the steady state: at BootTTL = 1 nothing is
+// masked, no front is drawn, the chrome is up and the normal voice speaks.
+func TestOWBootSeam(t *testing.T) {
+	pal := Palette()
+	for _, s := range []struct{ w, h int }{{62, 19}, {137, 45}} {
+		st := NewOWState()
+		st.BootTTL = 1
+		a := RenderOverworld(s.w, s.h, st, 0, pal).Text()
+		st.BootTTL = 0
+		b := RenderOverworld(s.w, s.h, st, 0, pal).Text()
+		if a != b {
+			t.Fatalf("boot seam broken at %dx%d (BootTTL 1 != 0)", s.w, s.h)
+		}
+	}
+}
+
 // The walk trail fades: the newest step is brightest, the oldest dimmest,
 // and a zero-age step is gone.
 func TestOWTrailFade(t *testing.T) {

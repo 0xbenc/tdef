@@ -667,13 +667,62 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 	// 6. The descent: the floor Grak is entering floods in from its centre.
 	drawOWDescent(f, l, st)
 
-	// 7. The lair's voice line (row under the top border).
+	// 7. The arrival: while the lair wakes, the unlit dark masks the map
+	//    until the light from the heart sweeps out across it.
+	drawOWBoot(f, l, st)
+
+	// 8. The lair's voice line (row under the top border; the waking
+	//    narrates itself while the boot plays).
 	drawOWVoice(f, w, st, frame)
 
-	// 8. The bottom chrome: expedition ledger, renown + hearts + relics,
+	// 9. The bottom chrome: expedition ledger, renown + hearts + relics,
 	//    and the context line (seed, relics, pending bonuses).
 	drawOWChromeRows(f, st)
 	return f
+}
+
+// drawOWBoot is the arrival cinematic, "the lair wakes": the Rotunda (the
+// dragon's heart) is the ignition source and stays lit, while a light front
+// sweeps out from it — the unlit void is masked as dark until the front
+// passes. A pure function of (st, frame): progress comes from st.BootTTL.
+// At BootTTL <= 1 the sweep has crossed the far corner (22.8 grid units),
+// so nothing is masked and the frame is the steady state (the seam).
+func drawOWBoot(f *Frame, l Layout, st OWState) {
+	if st.BootTTL <= 1 {
+		return
+	}
+	b := OWBootFrames - st.BootTTL // frames into the waking
+	// The sweep leaves the heart at frame 15 and crosses 27 grid units
+	// (just past the far corner) by the end, so the far rooms wake during
+	// the "light runs the corridors" line.
+	r := 0.0
+	if b > 15 {
+		r = float64(b-15) * 27.0 / 75.0
+	}
+	rot := owNodeByID("rotunda")
+	for y := 0; y < OWH; y++ {
+		for x := 0; x < OWW; x++ {
+			if rot != nil && rot.contains(x, y) {
+				continue // the ignition source stays lit
+			}
+			dx, dy := float64(x)-22, float64(y)-6
+			if math.Sqrt(dx*dx+dy*dy) <= r {
+				continue // the light has reached this cell
+			}
+			l.block(f, x, y, Cell{R: ' ', BG: 233})
+		}
+	}
+	if r > 0 && r <= 24 {
+		for y := 0; y < OWH; y++ {
+			for x := 0; x < OWW; x++ {
+				dx, dy := float64(x)-22, float64(y)-6
+				if math.Abs(math.Sqrt(dx*dx+dy*dy)-r) < 0.75 {
+					cx, cy := l.center(x, y)
+					f.Set(cx, cy, Cell{R: '·', FG: 255, BG: 233, Bold: true})
+				}
+			}
+		}
+	}
 }
 
 // OWStatus is a node's presentation state.
@@ -1150,6 +1199,19 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 	var s string
 	var fg int
 	switch {
+	case st.BootTTL > 15:
+		// The waking narrates itself (frames 0-74); from frame 75 on the
+		// normal voice takes over, so the boot's last frame is the steady
+		// state (the seam).
+		b := OWBootFrames - st.BootTTL
+		switch {
+		case b < 25:
+			s, fg = "the lair stirs in the dark", 244
+		case b < 50:
+			s, fg = "the heart beats — light runs the corridors", 244
+		default:
+			s, fg = "Malgrath: …grak. the guild still hunts.", 214
+		}
 	case st.ReturnTTL > 0 && st.ReturnMsg != "":
 		s = st.ReturnMsg
 		fg = 244
@@ -1282,8 +1344,11 @@ func putCenteredRuns(f *Frame, y int, runs []owRun) {
 // drawOWChromeRows writes the lair's bottom chrome: the expedition ledger
 // (each floor's best result at this renown, and the heart), the renown +
 // hearts + relics, and a context line (the Depths' seed, the relic offer,
-// pending bonuses).
+// pending bonuses). The chrome waits for the waking to end (frame 76.5+).
 func drawOWChromeRows(f *Frame, st OWState) {
+	if st.BootTTL > 13 {
+		return
+	}
 	h := f.H
 	// Row h-4: the expedition ledger. Each floor's id wears the accent of
 	// its room, so the ledger reads as the map, not a log.
