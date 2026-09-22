@@ -504,6 +504,109 @@ func TestOWProcession(t *testing.T) {
 	}
 }
 
+// The return FX: as Grak answers back on the map, a ring of light runs the
+// floor's route and the room's chrome flashes toward the result colour.
+func TestOWReturnFX(t *testing.T) {
+	pal := Palette()
+	w, h := 92, 32
+	l := GameLayout(OWW, OWH, w, h)
+	st := NewOWState()
+	st.ReturnFX = OWReturnFX{Floor: "rift", Won: true}
+	st.ReturnTTL = 180 // q=0: full flash, ring front at the start of the route
+	f := RenderOverworld(w, h, st, 0, pal)
+
+	// The ring's front is a bright bold dot on the rift's route.
+	cells := owRouteCells[owRouteIndexFor("rift")]
+	fx, fy := l.center(cells[0].X, cells[0].Y)
+	if c := f.C[fy*f.W+fx]; c.R != '·' || c.FG != 255 || !c.Bold {
+		t.Fatalf("return ring front = %q/%d/bold=%v, want ·/255/bold", c.R, c.FG, c.Bold)
+	}
+	// The rift's chrome flashes toward the held colour (220).
+	found := false
+	for gy := 8; gy <= 12 && !found; gy++ {
+		for gx := 5; gx <= 7 && !found; gx++ {
+			for sy := 0; sy < l.Scale && !found; sy++ {
+				for sx := 0; sx < l.Scale; sx++ {
+					if f.C[(l.Y(gy)+sy)*f.W+l.X(gx)+sx].FG == 220 {
+						found = true
+					}
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("rift chrome not flashing to 220")
+	}
+}
+
+// The heart-unseal blast: a bright front ring with a warm trail, expanding
+// from the heart.
+func TestOWBlast(t *testing.T) {
+	pal := Palette()
+	w, h := 92, 32
+	l := GameLayout(OWW, OWH, w, h)
+	st := NewOWState()
+	st.BlastTTL = 36 // p=0.5, R=12, k=1
+	f := RenderOverworld(w, h, st, 0, pal)
+	// The front: a bright bold dot 12 units from the heart.
+	fx, fy := l.center(10, 6)
+	if c := f.C[fy*f.W+fx]; c.R != '·' || c.FG != 255 || !c.Bold {
+		t.Fatalf("blast front (10,6) = %q/%d/bold=%v, want ·/255/bold", c.R, c.FG, c.Bold)
+	}
+	// The trail: a warm dot ~10 units out.
+	tx, ty := l.center(12, 6)
+	if c := f.C[ty*f.W+tx]; c.R != '·' || (c.FG != 214 && c.FG != 208 && c.FG != 196) {
+		t.Fatalf("blast trail (12,6) = %q/%d, want ·/warm", c.R, c.FG)
+	}
+	// The far corner (d=22.8) is well outside the band: untouched.
+	cx, cy := l.center(0, 0)
+	if c := f.C[cy*f.W+cx]; c.FG == 255 {
+		t.Fatal("blast front reached the far corner")
+	}
+}
+
+// The blast's last frame has decayed past the far corner: the map region is
+// the steady state (the voice still carries the unseal line, so only the map
+// is compared).
+func TestOWBlastDecay(t *testing.T) {
+	pal := Palette()
+	w, h := 92, 32
+	l := GameLayout(OWW, OWH, w, h)
+	st := NewOWState()
+	st.BlastTTL = 1
+	f1 := RenderOverworld(w, h, st, 0, pal)
+	st.BlastTTL = 0
+	f0 := RenderOverworld(w, h, st, 0, pal)
+	top := l.Oy
+	bot := l.Oy + OWH*l.Scale
+	for y := top; y < bot; y++ {
+		for x := 0; x < w; x++ {
+			if f1.C[y*w+x] != f0.C[y*w+x] {
+				t.Fatalf("blast seam broken at (%d,%d): %+v vs %+v", x, y, f1.C[y*w+x], f0.C[y*w+x])
+			}
+		}
+	}
+}
+
+// A state with every beat active at once (boot, blast, trail, return) must
+// render identically twice.
+func TestOWRichDeterministic(t *testing.T) {
+	pal := Palette()
+	w, h := 137, 45
+	st := NewOWState()
+	st.BootTTL = 40
+	st.BlastTTL = 30
+	st.Trail = []game.Vec{{X: 13, Y: 6}, {X: 12, Y: 6}}
+	st.TrailAge = []int{20, 10}
+	st.ReturnFX = OWReturnFX{Floor: "rift", Won: true}
+	st.ReturnTTL = 100
+	a := RenderOverworld(w, h, st, 7, pal).Text()
+	b := RenderOverworld(w, h, st, 7, pal).Text()
+	if a != b {
+		t.Fatal("rich state (boot+blast+trail+return) not deterministic")
+	}
+}
+
 // OWFloorOf / OWFloorName expose each floor's identity; the boss door reads
 // "the Heart".
 func TestOWFloorIdentity(t *testing.T) {

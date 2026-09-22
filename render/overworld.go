@@ -650,6 +650,20 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 			fogLift++
 		}
 	}
+	// The return flash: as Grak comes back from a defense, the room he
+	// answers on blazes toward the result colour over the first 30 frames.
+	returnFlash := 0.0
+	returnFlashC := 220
+	if st.ReturnTTL > 0 && st.ReturnFX.Floor != "" {
+		q := 1 - float64(st.ReturnTTL)/180
+		returnFlash = 1 - q*6
+		if returnFlash < 0 {
+			returnFlash = 0
+		}
+		if !st.ReturnFX.Won {
+			returnFlashC = 167
+		}
+	}
 	for i := range owNodes {
 		n := &owNodes[i]
 		v := owPadView{
@@ -666,6 +680,10 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 			v.boss = st.BossReady
 			v.done = st.BossDone
 		}
+		if n.ID == st.ReturnFX.Floor && returnFlash > 0 {
+			v.flash = returnFlash
+			v.flashC = returnFlashC
+		}
 		drawOWPad(f, l, n, v, frame)
 		drawOWLabel(f, l, n, v)
 	}
@@ -674,11 +692,19 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 	//    corridor (drawn after the corridor pulses, so it rides on top).
 	drawOWProcession(f, l, st, frame)
 
+	// 4b. The return ring: a pulse of light runs the floor's route as Grak
+	//     answers back on the map.
+	drawOWReturnRing(f, l, st)
+
 	// 5. Grak, at the cursor, with a fading trail behind his last step.
 	drawOWPlayer(f, l, st, frame)
 
 	// 6. The descent: the floor Grak is entering floods in from its centre.
 	drawOWDescent(f, l, st)
+
+	// 6b. The heart-unseal blast: a shockwave runs out from the heart across
+	//     the whole map.
+	drawOWBlast(f, l, st, frame)
 
 	// 7. The arrival: while the lair wakes, the unlit dark masks the map
 	//    until the light from the heart sweeps out across it.
@@ -797,6 +823,8 @@ type owPadView struct {
 	boss    bool     // the heart has unsealed (the Rotunda is a door)
 	done    bool     // the heart is held (the end state)
 	cursor  game.Vec // where Grak stands (so the landmark can avoid him)
+	flash   float64  // 0..1 return-flash strength on this pad's chrome
+	flashC  int      // the flash target colour (220 held / 167 broke)
 }
 
 func owRouteSealed(st OWState, fl string) bool {
@@ -838,6 +866,11 @@ func drawOWPad(f *Frame, l Layout, n *owNode, v owPadView, frame int) {
 		open = true
 		bg = lerp(dim(bgFull), bgFull, v.unseal)
 		accent = lerp(dim(n.Chrome), n.Chrome, v.unseal)
+	}
+	if v.flash > 0 {
+		// The return flash: the room's frame blazes toward the result colour
+		// (gold for a hold, scarlet for a break) as Grak comes back.
+		accent = lerp(accent, v.flashC, v.flash)
 	}
 	x0, y0 := n.X-n.PW/2, n.Y-n.PH/2
 	x1, y1 := x0+n.PW-1, y0+n.PH-1
@@ -1337,6 +1370,86 @@ func drawOWProcession(f *Frame, l Layout, st OWState, frame int) {
 	}
 }
 
+// owRouteIndexFor is the corridor (owRouteCells index) that serves a floor.
+func owRouteIndexFor(floor string) int {
+	for i, fl := range owRouteFloors {
+		if fl == floor {
+			return i
+		}
+	}
+	return -1
+}
+
+// drawOWReturnRing runs a pulse of light down the route of the floor Grak
+// just answered on: a bright front with a two-cell tail, over the first 60
+// frames of the return banner.
+func drawOWReturnRing(f *Frame, l Layout, st OWState) {
+	if st.ReturnTTL <= 0 || st.ReturnFX.Floor == "" {
+		return
+	}
+	q := 1 - float64(st.ReturnTTL)/180
+	if q*3 >= 1 {
+		return // the ring has finished its pass
+	}
+	ri := owRouteIndexFor(st.ReturnFX.Floor)
+	if ri < 0 {
+		return
+	}
+	cells := owRouteCells[ri]
+	if len(cells) == 0 {
+		return
+	}
+	front := int(q * 3 * float64(len(cells)-1))
+	if front > len(cells)-1 {
+		front = len(cells) - 1
+	}
+	for k, fg := range []int{255, 214, 196} {
+		idx := front - k
+		if idx < 0 {
+			break
+		}
+		v := cells[idx]
+		cx, cy := l.center(v.X, v.Y)
+		if cx < 0 || cy < 0 || cx >= f.W || cy >= f.H {
+			continue
+		}
+		f.Set(cx, cy, Cell{R: '·', FG: fg, Bold: k == 0})
+	}
+}
+
+// drawOWBlast is the heart-unseal shockwave: a bright ring runs out from the
+// heart across the whole map, leaving a warm trail behind it, and fades as it
+// crosses the far corner. A pure function of (st, frame) via st.BlastTTL.
+func drawOWBlast(f *Frame, l Layout, st OWState, frame int) {
+	if st.BlastTTL <= 0 {
+		return
+	}
+	p := 1 - float64(st.BlastTTL)/OWBlastFrames
+	R := p * 24
+	k := 1.0
+	if p > 0.85 {
+		k = (1 - p) / 0.15
+	}
+	for y := 0; y < OWH; y++ {
+		for x := 0; x < OWW; x++ {
+			dx, dy := float64(x)-22, float64(y)-6
+			d := math.Sqrt(dx*dx + dy*dy)
+			cx, cy := l.center(x, y)
+			if cx < 0 || cy < 0 || cx >= f.W || cy >= f.H {
+				continue
+			}
+			if math.Abs(d-R) < 0.8*k {
+				f.Set(cx, cy, Cell{R: '·', FG: 255, Bold: true}) // the front
+				continue
+			}
+			if d > R-5*k && d < R-0.8*k {
+				c := [3]int{214, 208, 196}[owHash(x, y, frame/2)%3] // the trail
+				f.Set(cx, cy, Cell{R: '·', FG: c})
+			}
+		}
+	}
+}
+
 // drawOWDescent swallows Grak into the floor he is descending into: the pad
 // floods in from its centre with the floor's own light, and the last frames
 // blaze solid before the screen changes.
@@ -1354,17 +1467,27 @@ func drawOWDescent(f *Frame, l Layout, st OWState) {
 	}
 	maxD2 := (n.PW/2)*(n.PW/2) + (n.PH/2)*(n.PH/2)
 	x0, y0 := n.X-n.PW/2, n.Y-n.PH/2
+	r2 := phase * phase * float64(maxD2)
 	for y := y0; y <= y0+n.PH-1; y++ {
 		for x := x0; x <= x0+n.PW-1; x++ {
 			dx, dy := x-n.X, y-n.Y
-			if dx*dx+dy*dy > int(phase*phase*float64(maxD2)) {
-				continue
+			d2 := float64(dx*dx + dy*dy)
+			if d2 <= r2 {
+				c := Cell{R: '·', FG: dim(n.Chrome), BG: n.Chrome}
+				if st.DescendTTL <= 6 {
+					c = Cell{R: ' ', FG: 0, BG: n.Chrome}
+				}
+				l.block(f, x, y, c)
+			} else if d2 <= r2+3 {
+				// The hot rim: a bright edge just ahead of the flood.
+				cx, cy := l.center(x, y)
+				if cx < 0 || cy < 0 || cx >= f.W || cy >= f.H {
+					continue
+				}
+				if cc := f.C[cy*f.W+cx]; cc.R == ' ' || cc.R == '·' || cc.R == ':' || cc.R == '▒' {
+					f.Set(cx, cy, Cell{R: '·', FG: n.Chrome, BG: cc.BG, Bold: true})
+				}
 			}
-			c := Cell{R: '·', FG: dim(n.Chrome), BG: n.Chrome}
-			if st.DescendTTL <= 6 {
-				c = Cell{R: ' ', FG: 0, BG: n.Chrome}
-			}
-			l.block(f, x, y, c)
 		}
 	}
 }
@@ -1390,6 +1513,8 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 		default:
 			s, fg = "Malgrath: …grak. the guild still hunts.", 214
 		}
+	case st.BlastTTL > 0:
+		s, fg = "the heart has unsealed — the final expedition stirs", 220
 	case st.ReturnTTL > 0 && st.ReturnMsg != "":
 		s = st.ReturnMsg
 		fg = 244
@@ -1529,12 +1654,23 @@ func drawOWChromeRows(f *Frame, st OWState) {
 	}
 	h := f.H
 	// Row h-4: the expedition ledger. Each floor's id wears the accent of
-	// its room, so the ledger reads as the map, not a log.
+	// its room, so the ledger reads as the map, not a log. A floor Grak just
+	// answered on flashes white while the return flash plays.
 	accent := map[string]int{"rift": 208, "halls": 110, "garden": 45, "rotunda": 178}
+	ledgerFlash := ""
+	if st.ReturnTTL > 0 && st.ReturnFX.Floor != "" {
+		if q := 1 - float64(st.ReturnTTL)/180; 1-q*6 > 0 {
+			ledgerFlash = st.ReturnFX.Floor
+		}
+	}
 	var rs []owRun
 	for _, id := range []string{"rift", "halls", "garden", "rotunda"} {
 		rec := st.Records[id]
-		rs = append(rs, owRun{"  " + id + " ", accent[id], false})
+		fg, b := accent[id], false
+		if id == ledgerFlash {
+			fg, b = 255, true
+		}
+		rs = append(rs, owRun{"  " + id + " ", fg, b})
 		switch {
 		case rec.Cleared:
 			rs = append(rs, owRun{"✓" + strconv.Itoa(game.MaxWaves), 114, true})
@@ -1544,7 +1680,11 @@ func drawOWChromeRows(f *Frame, st OWState) {
 			rs = append(rs, owRun{"·", 245, false})
 		}
 	}
-	rs = append(rs, owRun{"  heart ", 220, false})
+	hfg, hb := 220, false
+	if "heart" == ledgerFlash {
+		hfg, hb = 255, true
+	}
+	rs = append(rs, owRun{"  heart ", hfg, hb})
 	switch {
 	case st.BossDone:
 		rs = append(rs, owRun{"✓", 255, true})
