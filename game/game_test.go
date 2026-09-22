@@ -461,3 +461,55 @@ func TestFullGame(t *testing.T) {
 		}
 	}
 }
+
+// The heart chamber is a real, playable level: a contiguous spawn->exit path
+// with build space, hidden from the level select (the lair unseals it).
+func TestLoadBoss(t *testing.T) {
+	m, err := LoadBoss()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.W != 45 || m.H != 13 {
+		t.Fatalf("boss map is %dx%d, want 45x13", m.W, m.H)
+	}
+	if m.Spawn == (Vec{}) || m.Exit == (Vec{}) {
+		t.Fatalf("boss map missing spawn/exit: %v %v", m.Spawn, m.Exit)
+	}
+	if len(m.Path) < 100 {
+		t.Fatalf("boss path too short: %d cells", len(m.Path))
+	}
+	if m.Path[0].Man(m.Spawn) != 1 {
+		t.Errorf("path does not leave the spawn: %v vs %v", m.Path[0], m.Spawn)
+	}
+	if m.Path[len(m.Path)-1] != m.Exit {
+		t.Errorf("path does not end at exit: %v vs %v", m.Path[len(m.Path)-1], m.Exit)
+	}
+	prev := m.Path[0]
+	for _, v := range m.Path[1:] {
+		if v.Man(prev) != 1 {
+			t.Fatalf("boss path not contiguous at %v -> %v", prev, v)
+		}
+		prev = v
+	}
+	// build space exists
+	grass := 0
+	for y := 0; y < m.H; y++ {
+		for x := 0; x < m.W; x++ {
+			if m.At(Vec{X: x, Y: y}) == CellGrass {
+				grass++
+			}
+		}
+	}
+	if grass < 20 {
+		t.Fatalf("boss map has too little build space: %d grass cells", grass)
+	}
+	if m.HPMul <= 0 {
+		t.Errorf("boss map HPMul = %v, want > 0", m.HPMul)
+	}
+	// the heart is not listed as a selectable level
+	for _, n := range LevelNames() {
+		if n == "heart" || n == "boss" {
+			t.Fatalf("LevelNames lists the boss: %q", n)
+		}
+	}
+}

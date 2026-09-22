@@ -24,11 +24,16 @@ go build -o tdef .
 ```
 
 Bare `./tdef` (or `play` with no level) starts at the animated title
-screen: **main menu** (Start / Help / High Scores / Quit) → **level
-select** with the built-in maps, a procedural maze row (type a seed,
-empty = random), and a difficulty pick. Tall terminals get a live map
-preview. Explicit `-level`/`-maze` flags skip the menus and start the
-game directly; `-diff` preselects the difficulty.
+screen: **main menu** (Start / Quick Play / Help / High Scores / Quit) →
+**the lair**, the overworld map. You play Grak walking the lair's floors
+(the Rift, the Rotunda, the Long Halls, the Sunken Garden, the Unmapped
+Depths); the floors unseal as you hold them, and pressing `enter` on a
+floor descends into its defense. The result comes back to the map.
+**Quick Play** skips the lair and goes straight to **level select** with
+the built-in maps, a procedural maze row (type a seed, empty = random),
+and a difficulty pick; tall terminals get a live map preview. Explicit
+`-level`/`-maze` flags skip the menus and start the game directly;
+`-diff` preselects the difficulty.
 
 Requires a real TTY (raw mode, alternate screen, mouse).
 
@@ -47,13 +52,33 @@ Requires a real TTY (raw mode, alternate screen, mouse).
 | `f` | cycle speed 1x / 2x / 4x |
 | `h` | toggle help |
 | `r` | restart (on game over) |
-| `esc` | cancel placement; back out of menus (not in-game) |
+| `esc` | cancel placement; back to the lair (lair runs) or level select (menu runs) on game over; back out of menus |
 | `q` | quit (any screen) |
 
-In the menus: `enter` activates, `1`-`4` pick a menu item, and the mouse
+In the menus: `enter` activates, `1`-`5` pick a menu item, and the mouse
 works too (click items, wheel scrolls). Mouse in-game: click a tower in
 the menu, then click the map; scroll wheel cycles speed (1x/2x/4x, like
 `f`).
+
+### In the lair (overworld)
+
+| key | action |
+|-----|--------|
+| arrows / `wasd` | walk Grak (one cell per keypress) |
+| `enter` | descend into the floor under Grak |
+| `tab` | cycle the renown (easy / normal / hard) — the lair is remembered per renown |
+| `0`-`9` / `backspace` / `c` | set the Unmapped Depths' maze seed (on the Depths; `c` clears, empty = uncharted) |
+| `t` | spend a relic at the Rotunda (+60 gold / a free Orc Gunner / +1♥ on the next defense) |
+| `r` | reveal the whole lair (look-dev) |
+| `esc` | back to the title |
+| mouse | click a floor to step onto it (click the floor you're on to descend); wheel hops between floors |
+
+The lair remembers each floor per renown: a ✓ and best wave once held, a
+✕ and the wave it broke at. Holding a floor earns a **dragon heart** (+1
+starting life on later defenses, up to four); holding every built-in floor
+unseals **the Heart** — the endgame chamber behind the Rotunda, which the
+Rotunda becomes once the heart is unsealed. Holding a wave without the
+heart being struck earns a **relic** to spend at the Rotunda.
 
 ## Towers
 
@@ -121,6 +146,13 @@ biases toward long, snake-like chokepoints. The CLI level ids stay the
 short forms; the display names are presentation only (hiscore keys use
 the ids).
 
+Beyond the four floors is **the Heart** (`heart`, the heart chamber): a
+fifth 45×13 map, a long serpentine that the level select never lists. It
+unseals in the lair once all four built-in floors are held at a renown,
+and the Rotunda becomes its door. It is tuned harder than the ladder —
+the final expedition a passive player loses — but a player who arrives
+carrying dragon hearts (+lives) and relics can hold it.
+
 ## Rendering
 
 The whole terminal is the frame: one rounded box edge to edge, with the
@@ -154,18 +186,22 @@ virtual terminal size that yields that scale (62×19, 92×32, 137×45,
 182×58), so frame dumps are byte-identical regardless of the environment
 the dump runs in.
 
-High scores are stored per-map in `~/.tdef-hiscores.json`.
+High scores are stored per-map in `~/.tdef-hiscores.json`; the lair's
+memory (floor results, hearts, relics, the held heart) is stored
+separately in `~/.tdef-lair.json`, so the hiscore table stays a plain
+map.
 
 ## Layout
 
 ```
-main.go            CLI (play / bench / headless / capture / maps)
+main.go            CLI (play / bench / headless / capture / overworld / maps)
 game/              pure, deterministic engine (no I/O)
   balance.go       tower/enemy specs, wave scaling, difficulty
   mapgen.go        procedural maze generator
   sim.go           autoplay AI + headless simulation
   levels/          built-in .txt maps
-render/            pure frame model + ANSI/text exporters
-tui/               terminal driver, input parser, app loop
-hiscore/           persistent high scores
+  levels/boss/     the heart chamber (endgame, unsealed by the lair)
+render/            pure frame model + ANSI/text exporters (incl. the lair)
+tui/               terminal driver, input parser, app loop (incl. the lair)
+hiscore/           persistent high scores + the lair's memory
 ```

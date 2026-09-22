@@ -49,6 +49,19 @@ type App struct {
 	lsPreviewKey string
 	ow           render.OWState // overworld (the lair map) state
 
+	// Lair (overworld) plumbing: the persistent lair memory, and the run's
+	// provenance, so a defense's result comes back to the map it left.
+	lair           *hiscore.Lair
+	fromOW         bool // the run started from the overworld
+	owFloorID      string
+	cleanWaves     int // waves held with no strike on the heart (relics)
+	waveStartLives int
+
+	// Relic bonuses carried into the next defense.
+	bonusGold  int
+	bonusTower bool
+	bonusLives int
+
 	events chan Event
 	acc    float64
 	msgTTL float64
@@ -78,6 +91,7 @@ func RunMenu(diff game.Difficulty) error {
 	a := newApp(term, diff)
 	a.ls.Levels = game.LevelNames()
 	a.ls.Diff = diffIndex(diff)
+	a.ow = render.NewOWState()
 	return a.run()
 }
 
@@ -97,6 +111,7 @@ func newApp(term *Terminal, diff game.Difficulty) *App {
 		diff:   diff,
 		events: make(chan Event, 256),
 		scores: hiscore.Load(),
+		lair:   hiscore.LoadLair(),
 	}
 }
 
@@ -119,6 +134,19 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 	a.ui = freshUI(m)
 	a.ui.Level = name
 	a.ui.Paused = false
+	a.ui.ToLair = a.fromOW
+	// Relic bonuses earned on the lair, spent at the Rotunda: they ride into
+	// this defense and are consumed here.
+	a.g.Gold += a.bonusGold
+	a.g.Lives += a.bonusLives
+	if a.bonusTower {
+		if cell, ok := firstGrass(m); ok {
+			a.g.Build(cell, game.TowerGunner)
+		}
+	}
+	a.bonusGold, a.bonusTower, a.bonusLives = 0, false, 0
+	a.cleanWaves = 0
+	a.waveStartLives = a.g.Lives
 	tw, th := a.termSize()
 	a.layout = render.GameLayout(m.W, m.H, tw, th)
 	a.scored = false
@@ -126,6 +154,19 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 	a.msgTTL = 0
 	a.prev = nil
 	a.screen = ScreenGame
+}
+
+// firstGrass is the first grass cell in reading order: where a relic's free
+// tower waits.
+func firstGrass(m *game.Map) (game.Vec, bool) {
+	for y := 0; y < m.H; y++ {
+		for x := 0; x < m.W; x++ {
+			if m.At(game.Vec{X: x, Y: y}) == game.CellGrass {
+				return game.Vec{X: x, Y: y}, true
+			}
+		}
+	}
+	return game.Vec{}, false
 }
 
 // run starts the input reader, switches the terminal into raw mode and runs
@@ -180,7 +221,10 @@ func (a *App) loop() error {
 		switch a.screen {
 		case ScreenGame:
 			a.stepGame(real)
-		case ScreenTitle, ScreenOverworld:
+		case ScreenOverworld:
+			a.frameNo++
+			a.owTick()
+		case ScreenTitle:
 			a.frameNo++
 		}
 		a.drawScreen()
@@ -212,6 +256,9 @@ func (a *App) stepGame(real float64) {
 		if steps == 10 {
 			a.acc = 0
 		}
+		if !prevWaveActive && a.g.WaveActive {
+			a.waveStartLives = a.g.Lives
+		}
 		if a.g.Lives < prevLives {
 			n := prevLives - a.g.Lives
 			a.term.Write([]byte("\a"))
@@ -222,6 +269,9 @@ func (a *App) stepGame(real float64) {
 			}
 		}
 		if prevWaveActive && !a.g.WaveActive && a.g.Wave < game.MaxWaves {
+			if a.g.Lives == a.waveStartLives {
+				a.cleanWaves++ // a clean expedition: the heart was not struck
+			}
 			next := a.g.Wave + 1
 			if tg := game.WaveTelegraph(next); tg != "" {
 				// Hold the telegraph for the whole break so it can be read.
@@ -236,10 +286,82 @@ func (a *App) stepGame(real float64) {
 	}
 	if a.g.Status != game.StatusRunning && !a.scored {
 		a.scored = true
+		won := a.g.Status == game.StatusVictory
+		if won && a.g.Lives == a.waveStartLives {
+			a.cleanWaves++ // the final expedition held clean
+		}
 		best, isNew := hiscore.Update(a.level, a.g.Score)
 		a.ui.BestScore = best
 		a.ui.NewBest = isNew
+		// The lair remembers the defense: its record, its relics, and any
+		// floor the result just unseals.
+		d := diffIndex(a.diff)
+		floor := a.owFloorID
+		if floor == "" {
+			floor = floorForLevel(a.level)
+		}
+		a.lair.Record(floor, d, a.g.Wave, won)
+		a.lair.Tokens += a.cleanWaves
+		hiscore.SaveLair(a.lair)
+		if a.fromOW {
+			// The unseal cascade is a visual transition on the map, so it only
+			// runs for runs that came from the lair (a.ow is initialised there).
+			a.owUnsealCheck(d)
+			a.owSetBanner(won, best, isNew)
+		}
 	}
+}
+
+// floorForLevel maps a level id to the lair floor that played it, so runs
+// from Quick Play feed the same memory as runs from the overworld.
+func floorForLevel(level string) string {
+	switch {
+	case level == "canyon":
+		return "rift"
+	case level == "hub":
+		return "rotunda"
+	case level == "winding":
+		return "halls"
+	case level == "garden":
+		return "garden"
+	case len(level) > 4 && level[:4] == "maze":
+		return hiscore.DepthsFloor
+	}
+	return level // "heart" passes through
+}
+
+// owUnsealCheck starts the unseal cascade for any floor that just opened on
+// the current renown (the cascade plays when Grak returns to the map).
+func (a *App) owUnsealCheck(d int) {
+	st := &a.ow
+	opened := func(id string, cond bool) {
+		if cond && !st.Unlocked[id] && st.Unsealing[id] == 0 {
+			st.Unsealing[id] = render.OWUnsealFrames
+		}
+	}
+	opened("halls", a.lair.Floor("rift", d).Cleared)
+	opened("garden", a.lair.Floor("halls", d).Cleared)
+	opened("depths", a.lair.ClearedCount(d) >= 2)
+}
+
+// owSetBanner writes the result line Grak reads back on the map.
+func (a *App) owSetBanner(won bool, best int, isNew bool) {
+	st := &a.ow
+	name := render.OWFloorName(a.owFloorID)
+	var msg string
+	switch {
+	case won && a.owFloorID == render.HeartFloorID:
+		msg = "the heart is held — Malgrath endures"
+	case won:
+		msg = name + " held — 20/20"
+	default:
+		msg = name + " broke at " + strconv.Itoa(a.g.Wave)
+	}
+	if isNew {
+		msg += " · new best " + strconv.Itoa(best)
+	}
+	st.ReturnMsg = msg
+	st.ReturnTTL = 180
 }
 
 // drawScreen renders the current screen. Every screen, game included, is
@@ -358,7 +480,7 @@ func (a *App) handleMenu(e Event) {
 		a.moveMenu(-1)
 	case 's', 'S':
 		a.moveMenu(1)
-	case '1', '2', '3', '4':
+	case '1', '2', '3', '4', '5':
 		a.activateMenu(int(e.Rune - '1'))
 	}
 	switch e.Key {
@@ -548,10 +670,12 @@ func (a *App) moveMenu(dir int) {
 func (a *App) activateMenu(i int) {
 	switch i {
 	case 0:
-		a.toScreen(ScreenLevelSelect)
+		a.toScreen(ScreenOverworld) // Start: the lair itself
 	case 1:
-		a.toScreen(ScreenHelp)
+		a.toScreen(ScreenLevelSelect)
 	case 2:
+		a.toScreen(ScreenHelp)
+	case 3:
 		a.toScreen(ScreenHiscores)
 	default:
 		a.quit()
@@ -650,6 +774,8 @@ func (a *App) toScreen(s Screen) {
 		a.hsTop = 0
 	case ScreenLevelSelect:
 		a.ls.Err = ""
+	case ScreenOverworld:
+		a.owRefresh()
 	}
 }
 
@@ -668,11 +794,13 @@ func (a *App) handleGame(e Event) {
 		return
 	}
 	if a.g.Status != game.StatusRunning {
-		switch e.Rune {
-		case 'q', 'Q':
+		switch {
+		case e.Rune == 'q' || e.Rune == 'Q':
 			a.quit()
-		case 'r', 'R':
+		case e.Rune == 'r' || e.Rune == 'R':
 			a.restart()
+		case e.Key == KeyEscape:
+			a.leaveGame()
 		}
 		return
 	}
@@ -928,6 +1056,8 @@ func (a *App) restart() {
 	m := a.g.Map
 	a.g = game.NewStateDiff(m, a.diff)
 	a.scored = false
+	a.cleanWaves = 0
+	a.waveStartLives = a.g.Lives
 	// Rebuild the UI, but keep player preferences (speed, help). The
 	// playfield scale follows the live terminal size, so there is nothing
 	// to preserve there.
@@ -939,9 +1069,25 @@ func (a *App) restart() {
 		Help:      a.ui.Help,
 		Level:     a.level,
 		BestScore: hiscore.Load()[a.level],
+		ToLair:    a.fromOW,
 	}
 	a.acc = 0
 	a.prev = nil
+}
+
+// leaveGame ends the run from the game-over box: back to the lair map (with
+// the result banner) when the run started from the overworld, otherwise back
+// to the level select (or the title, when there is no menu state).
+func (a *App) leaveGame() {
+	if a.fromOW {
+		a.toScreen(ScreenOverworld)
+		return
+	}
+	if len(a.ls.Levels) > 0 {
+		a.toScreen(ScreenLevelSelect)
+		return
+	}
+	a.toScreen(ScreenTitle)
 }
 
 type pen struct {

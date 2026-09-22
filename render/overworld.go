@@ -1,7 +1,9 @@
 package render
 
 import (
+	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"tdef/game"
@@ -13,11 +15,25 @@ import (
 // reuses the exact playfield scale logic (ComputeScale / GameLayout /
 // Layout.block): the largest integer scale 1-4 that fits, centered in the
 // playfield region, min frame 62x19, live reflow on resize.
+//
+// The map is the lair's memory: each floor's pad carries the result of its
+// last defense (a check, a scar, a best wave), the corridors run brighter as
+// floors are held, the Rotunda's heart unseals into a door once every floor
+// is held, and Malgrath himself speaks to Grak at the hub.
 
 const (
 	OWW = 45
 	OWH = 13
 )
+
+// OWDescendFrames is the length of the descent transition (frames).
+const OWDescendFrames = 24
+
+// OWUnsealFrames is the length of a floor's unseal cascade (frames).
+const OWUnsealFrames = 60
+
+// HeartFloorID is the endgame defense's floor id (the heart chamber).
+const HeartFloorID = "heart"
 
 // owGlyph is one static landmark glyph, placed at (dx,dy) grid cells from the
 // room centre, in colour c.
@@ -107,6 +123,10 @@ var owRoutes = [][][]int{
 	{{22, 6}, {36, 6}, {36, 10}}, // Rotunda -> Sunken Garden
 	{{22, 6}, {9, 6}, {9, 2}},    // Rotunda -> Unmapped Depths
 }
+
+// owRouteFloors maps each corridor (owRouteCells order) to the floor it
+// serves, so a route carries the state of its floor.
+var owRouteFloors = []string{"rift", "halls", "garden", "depths"}
 
 // owCorridor is the set of grid cells a corridor runs through.
 var owCorridor = buildOWCorridor()
@@ -206,6 +226,69 @@ var hoardGlints = [][]int{
 	{15, 3}, {29, 3}, {15, 9}, {29, 9}, {22, 11}, {22, 1}, {4, 10}, {41, 10},
 }
 
+// owEchoes are the Long Halls' ghosts: a flicker of a fallen hero in the void
+// beside the pad (their glyphs and colours, from the guild's roster).
+var owEchoes = []struct {
+	g rune
+	c int
+}{
+	{'r', 244}, // a rogue
+	{'g', 244}, // a mercenary
+	{'t', 251}, // a paladin
+	{'s', 208}, // a necromancer
+	{'o', 240}, // a squire
+}
+
+// owDragonVoice is Malgrath at the Rotunda, tiered by the hearts held at the
+// current renown (0..4). He speaks slowly; the line turns every 6s.
+var owDragonVoice = [5][]string{
+	{
+		"Malgrath: …the guild again? Good. I was already dying, Grak.",
+		"Malgrath: take the hoard. They came for it — take theirs first.",
+	},
+	{"Malgrath: my breath is short today. Hold the halls."},
+	{"Malgrath: the heart steadies. The hoard is nearly safe."},
+	{"Malgrath: I remember when we were the ones they feared."},
+	{"Malgrath: before you came I was dying. Now I am only resting."},
+}
+
+const owDragonVoiceDone = "Malgrath: they will come again, Grak. We will be ready."
+
+// owFloorFlavor is the lair's voice on each floor, by state: 0 never held,
+// 1 the last defense broke, 2 held.
+var owFloorFlavor = map[string][3]string{
+	"rift": {
+		"the rift still burns where the first expedition broke in",
+		"the rift smokes — the guild reached the heart here",
+		"the rift is held. no blood on the basalt",
+	},
+	"rotunda": {
+		"the heart beats slow in the rotunda",
+		"the rotunda still aches where they struck",
+		"the heart beats steady in the rotunda",
+	},
+	"halls": {
+		"stone corridors ring hollow with old echoes",
+		"the long halls still smell of blood",
+		"the halls ring empty. the guild lost its way",
+	},
+	"garden": {
+		"the water remembers a temple's prayers",
+		"the garden is stained; the water runs red at the edges",
+		"the garden keeps. the temple stones are quiet",
+	},
+	"depths": {
+		"the depths are uncharted; the dark maps itself",
+		"something in the depths is still hunting",
+		"the depths let you through. barely",
+	},
+	HeartFloorID: {
+		"the heart chamber. the final expedition waits",
+		"the guild's champion broke through the heart",
+		"the heart is held. the guild's hunt fails",
+	},
+}
+
 func (n *owNode) contains(x, y int) bool {
 	return x >= n.X-n.PW/2 && x <= n.X+n.PW/2 && y >= n.Y-n.PH/2 && y <= n.Y+n.PH/2
 }
@@ -227,46 +310,105 @@ func OWWalkable(x, y int) bool {
 	return false
 }
 
-// OWState is the overworld view state. Cursor is Grak's position (grid
-// coords); Unlocked holds the floor ids that are open. A floor not in
-// Unlocked is rendered sealed (dimmed, locked).
-type OWState struct {
-	Cursor   game.Vec
-	Unlocked map[string]bool
-	Msg      string // transient line shown in row 1 (e.g. "sealed")
-	// RevealAll shows every floor at full brightness regardless of Unlocked —
-	// a look-dev view for evaluating all the landmark art at once.
-	RevealAll bool
+// OWRec is the lair's memory of one floor at the current renown.
+type OWRec struct {
+	Cleared  bool
+	BestWave int
+	LastWave int
+	LastWon  bool
 }
 
-// NewOWState is the starting look: Grak at the Rift, the Rift cleared and the
-// Rotunda open ahead, the rest of the lair still sealed.
+// OWState is the overworld view state. Cursor is Grak's position (grid
+// coords); Unlocked holds the floor ids that are open (a floor not in
+// Unlocked is rendered sealed, unless it is mid-unseal in Unsealing).
+//
+// The Records/Scores/Hearts/... fields are the lair's memory, rebuilt by the
+// TUI from hiscore.Lair; the TTL fields are frame-counted transitions,
+// decremented by the TUI's per-frame tick. RenderOverworld stays a pure
+// function of (w, h, state, frame).
+type OWState struct {
+	Cursor    game.Vec
+	Unlocked  map[string]bool
+	Msg       string // transient line (e.g. "sealed")
+	RevealAll bool   // look-dev: every floor at full brightness
+
+	Diff      int              // index into Difficulties (the renown)
+	Records   map[string]OWRec // floor id -> record at the current renown
+	Scores    map[string]int   // floor id -> best score
+	Hearts    int              // dragon hearts at this renown (0..4)
+	BossReady bool             // the heart has unsealed
+	BossDone  bool             // the heart is held
+	Tokens    int              // relic tokens
+	Seed      string           // the Depths' maze seed ("" = uncharted)
+
+	Descending string // floor id under the descent transition
+	DescendTTL int
+	ReturnMsg  string // the result banner, after a defense
+	ReturnTTL  int
+	Unsealing  map[string]int // floor id -> frames until it opens
+	Prev       game.Vec       // the cell Grak stepped from
+	StepTTL    int            // frames left on the walk trail
+	RelicMenu  bool           // the relic-spend line is active
+	FirstRun   bool           // show the one-time hint line
+
+	BonusGold  int // relic bonuses for the next defense
+	BonusTower bool
+	BonusLives int
+}
+
+// NewOWState is the starting look: Grak at the Rift, the Rift and the
+// Rotunda open, the rest of the lair still sealed, no memory.
 func NewOWState() OWState {
 	return OWState{
-		Cursor: game.Vec{X: 6, Y: 10},
-		Unlocked: map[string]bool{
-			"rift":    true,
-			"rotunda": true,
-		},
+		Cursor:    game.Vec{X: 6, Y: 10},
+		Unlocked:  map[string]bool{"rift": true, "rotunda": true},
+		Unsealing: map[string]int{},
+		Records:   map[string]OWRec{},
+		Scores:    map[string]int{},
+		Diff:      1, // normal
+		FirstRun:  true,
 	}
 }
 
 // OWFloor is the public identity of a floor: enough for the TUI to launch the
-// matching level and name it, without exposing the renderer's node table.
+// matching level, name it, and stand Grak on its centre.
 type OWFloor struct {
-	ID    string
-	Name  string
-	Level string
+	ID     string
+	Name   string
+	Level  string
+	Center game.Vec
 }
 
 // OWFloorAt reports which floor pad (if any) covers grid cell (x,y).
 func OWFloorAt(x, y int) (OWFloor, bool) {
 	for i := range owNodes {
 		if owNodes[i].contains(x, y) {
-			return OWFloor{ID: owNodes[i].ID, Name: owNodes[i].Name, Level: owNodes[i].Level}, true
+			n := &owNodes[i]
+			return OWFloor{ID: n.ID, Name: n.Name, Level: n.Level, Center: game.Vec{X: n.X, Y: n.Y}}, true
 		}
 	}
 	return OWFloor{}, false
+}
+
+// OWFloorOf returns a floor's public identity by id.
+func OWFloorOf(id string) (OWFloor, bool) {
+	n := owNodeByID(id)
+	if n == nil {
+		return OWFloor{}, false
+	}
+	return OWFloor{ID: n.ID, Name: n.Name, Level: n.Level, Center: game.Vec{X: n.X, Y: n.Y}}, true
+}
+
+// OWFloorName is a floor's display name; the boss door reads "the Heart".
+func OWFloorName(id string) string {
+	if id == HeartFloorID {
+		return "the Heart"
+	}
+	n := owNodeByID(id)
+	if n == nil {
+		return id
+	}
+	return n.Name
 }
 
 // glow is the 0..1 falloff of a light centred on (cx,cy) sampled at (x,y);
@@ -288,13 +430,24 @@ func owHash(x, y, t int) int {
 	return (h ^ (h >> 16)) & 0xff
 }
 
+// lerp steps from a to b by t (clamped 0..1).
+func lerp(a, b int, t float64) int {
+	if t < 0 {
+		t = 0
+	}
+	if t > 1 {
+		t = 1
+	}
+	return a + int(float64(b-a)*t)
+}
+
 // overworldFooter is the control hint group for the screen's bottom border.
 func overworldFooter() []fseg {
 	return []fseg{
 		{key: "wasd", text: " walk"},
 		{key: "⏎", text: " descend"},
-		{key: "r", text: " reveal"},
-		{key: "q", text: " quit"},
+		{key: "tab", text: " renown"},
+		{key: "esc", text: " back"},
 	}
 }
 
@@ -303,12 +456,21 @@ func overworldFooter() []fseg {
 // unit-testable; frame (the 30fps counter) drives the ambient animation.
 func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 	l := GameLayout(OWW, OWH, w, h)
-	f := screenBox(w, h, "THE LAIR", overworldFooter(), frame%30 < 22, pal)
+	title := "THE LAIR"
+	if st.BossDone {
+		title = "THE LAIR — HELD"
+	}
+	f := screenBox(w, h, title, overworldFooter(), frame%30 < 22, pal)
 
 	// 1. The void: the dark of the lair, lit faintly from the Rotunda core —
 	//    a radial fall-off to near-black at the edges, warm glow pools around
 	//    the fire floors (Rift, Rotunda) and cool around the cold ones
 	//    (Garden, Depths), with rock grain and outcrops so it reads as a cave.
+	//    A held lair glows a shade warmer.
+	glowR := 8
+	if st.BossDone {
+		glowR = 10
+	}
 	for y := 0; y < OWH; y++ {
 		for x := 0; x < OWW; x++ {
 			dx := float64(x) - 22
@@ -318,15 +480,18 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 				d = 1
 			}
 			bg := 235 - int(d*4) // 235 at the core, 231 at the far edge
+			if st.BossDone {
+				bg = 237 - int(d*4)
+			}
 			// Warm/cool temperature: glow pools around the fire and cold floors.
 			warm, cool := 0.0, 0.0
 			for _, c := range [][2]int{{6, 10}, {22, 6}} {
-				if g := glow(x, y, c[0], c[1], 8); g > warm {
+				if g := glow(x, y, c[0], c[1], glowR); g > warm {
 					warm = g
 				}
 			}
 			for _, c := range [][2]int{{36, 10}, {9, 2}} {
-				if g := glow(x, y, c[0], c[1], 8); g > cool {
+				if g := glow(x, y, c[0], c[1], glowR); g > cool {
 					cool = g
 				}
 			}
@@ -357,67 +522,128 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 		}
 	}
 
-	// 2. Corridors: a lit stone band with a centre trail, drawn under the
-	//    pads so the roads visibly run into every floor.
-	for v := range owCorridor {
-		l.block(f, v.X, v.Y, Cell{R: ' ', FG: 0, BG: 238})
-	}
-	for v := range owCorridor {
-		cx, cy := l.center(v.X, v.Y)
-		f.Set(cx, cy, Cell{R: '·', FG: 245, BG: 238})
-	}
-
-	// 2b. Energy pulses travel out from the Rotunda core down each corridor —
-	//     a bright head with a short fading tail, the lair's lifeblood.
-	for _, cells := range owRouteCells {
+	// 2. Corridors: a lit stone band with a centre trail, drawn per route so
+	//    each road carries the state of the floor it serves: sealed routes
+	//    run dark, held routes run bright with a green trail, and a broken
+	//    defense leaves scars. Energy pulses travel out from the heart and
+	//    back — the lair's circulation.
+	for i, cells := range owRouteCells {
+		fl := owRouteFloors[i]
+		band := 238
+		if owRouteSealed(st, fl) {
+			band = 236
+		}
+		for _, v := range cells {
+			l.block(f, v.X, v.Y, Cell{R: ' ', FG: 0, BG: band})
+		}
+		pulse, trail := owRouteColors(st, fl)
+		for _, v := range cells {
+			cx, cy := l.center(v.X, v.Y)
+			f.Set(cx, cy, Cell{R: '·', FG: trail, BG: band})
+		}
 		if len(cells) == 0 {
 			continue
 		}
-		head := (frame / 2) % len(cells)
+		// Inbound first (dim embers returning to the heart), so the
+		// outbound head rides on top.
+		half := len(cells) / 2
+		head := (frame/2 + half) % len(cells)
 		for k := 0; k < 3; k++ {
 			idx := head - k
 			if idx < 0 {
 				idx += len(cells)
 			}
-			v := cells[idx]
-			cx, cy := l.center(v.X, v.Y)
-			col := [3]int{220, 178, 136}[k]
-			f.Set(cx, cy, Cell{R: '·', FG: col, BG: 238, Bold: k == 0})
+			cx, cy := l.center(cells[idx].X, cells[idx].Y)
+			f.Set(cx, cy, Cell{R: '·', FG: [3]int{124, 94, 88}[k], BG: band})
+		}
+		speed := 2
+		if st.BossDone {
+			speed = 1
+		}
+		head = (frame / speed) % len(cells)
+		for k := 0; k < 3; k++ {
+			idx := head - k
+			if idx < 0 {
+				idx += len(cells)
+			}
+			cx, cy := l.center(cells[idx].X, cells[idx].Y)
+			f.Set(cx, cy, Cell{R: '·', FG: pulse[k], BG: band, Bold: k == 0})
+		}
+		// Scars where the last defense on this floor broke.
+		if rec := st.Records[fl]; !rec.LastWon && rec.LastWave > 0 {
+			for j, v := range cells {
+				if j%6 != 3 {
+					continue
+				}
+				cx, cy := l.center(v.X, v.Y)
+				if f.C[cy*f.W+cx].R == '·' {
+					f.Set(cx, cy, Cell{R: '✕', FG: 166, BG: band})
+				}
+			}
 		}
 	}
 
-	// 2c. Hoard glints: gold sparkles twinkle in the void near the hoard.
+	// 2b. Hoard glints: gold sparkles twinkle in the void near the hoard
+	//     (twinkling faster once the lair is held).
+	glintMod := 7
+	if st.BossDone {
+		glintMod = 4
+	}
 	for _, g := range hoardGlints {
 		x, y := g[0], g[1]
 		if OWWalkable(x, y) {
 			continue // only in the void, not on a road or floor
 		}
-		if (frame/4+owHash(x, y, 0))%7 != 0 {
+		if (frame/4+owHash(x, y, 0))%glintMod != 0 {
 			continue
 		}
 		cx, cy := l.center(x, y)
 		f.Set(cx, cy, Cell{R: '✦', FG: 220, BG: 0, Bold: true})
 	}
 
-	// 3. Node pads + landmarks + name tags.
+	// 3. Node pads + landmarks + name tags (with result badges). The depths'
+	//    fog thins as the built-in floors are held; an unsealing room wakes
+	//    over OWUnsealFrames.
+	fogLift := 0
+	for _, id := range []string{"rift", "rotunda", "halls", "garden"} {
+		if st.Records[id].Cleared {
+			fogLift++
+		}
+	}
 	for i := range owNodes {
 		n := &owNodes[i]
-		status := owNodeStatus(st, n.ID)
-		drawOWPad(f, l, n, status, frame)
-		drawOWLabel(f, l, n, status)
-	}
-
-	// 4. Grak, at the cursor.
-	drawOWPlayer(f, l, st.Cursor, frame)
-
-	// 5. A transient message in the row under the top border.
-	if st.Msg != "" {
-		fg := 244
-		if strings.Contains(st.Msg, "sealed") {
-			fg = 174
+		v := owPadView{
+			status:  owNodeStatus(st, n.ID),
+			rec:     st.Records[n.ID],
+			fogLift: fogLift,
 		}
-		putString(f, 2, 1, fitMsg(st.Msg, w-4), fg, 0, false)
+		if ttl, ok := st.Unsealing[n.ID]; ok {
+			v.status = OWOpen
+			v.unseal = 1 - float64(ttl)/float64(OWUnsealFrames)
+		}
+		if n.ID == "rotunda" {
+			v.boss = st.BossReady
+			v.done = st.BossDone
+		}
+		drawOWPad(f, l, n, v, frame)
+		drawOWLabel(f, l, n, v)
 	}
+
+	// 4. The Long Halls' echo: a fallen hero flickers in the void.
+	drawOWEcho(f, l, st, frame)
+
+	// 5. Grak, at the cursor, with a fading trail behind his last step.
+	drawOWPlayer(f, l, st, frame)
+
+	// 6. The descent: the floor Grak is entering floods in from its centre.
+	drawOWDescent(f, l, st)
+
+	// 7. The lair's voice line (row under the top border).
+	drawOWVoice(f, w, st, frame)
+
+	// 8. The bottom chrome: expedition ledger, renown + hearts + relics,
+	//    and the context line (seed, relics, pending bonuses).
+	drawOWChromeRows(f, st)
 	return f
 }
 
@@ -431,6 +657,9 @@ const (
 )
 
 func owNodeStatus(st OWState, id string) OWStatus {
+	if st.Unsealing[id] > 0 {
+		return OWOpen
+	}
 	n := owNodeByID(id)
 	if n != nil && st.Cursor.X >= n.X-n.PW/2 && st.Cursor.X <= n.X+n.PW/2 && st.Cursor.Y >= n.Y-n.PH/2 && st.Cursor.Y <= n.Y+n.PH/2 {
 		if st.Unlocked[id] || st.RevealAll {
@@ -451,8 +680,7 @@ func dim(c int) int {
 	return c - (c-232)/2 - 1
 }
 
-// owInterior is a room's dark floor colour (the old solid slab is gone — a
-// room is lit only by its chrome frame and its landmark).
+// owInterior is a room's dark floor colour.
 func owInterior(n *owNode) int {
 	switch {
 	case n.Water:
@@ -464,24 +692,61 @@ func owInterior(n *owNode) int {
 	}
 }
 
+// owPadView is everything a pad needs to know to draw itself in one frame.
+type owPadView struct {
+	status  OWStatus
+	rec     OWRec
+	unseal  float64 // 0..1 unseal-cascade progress (0 = none)
+	fogLift int     // 0..4 built-in floors held (the depths' reveal)
+	boss    bool    // the heart has unsealed (the Rotunda is a door)
+	done    bool    // the heart is held (the end state)
+}
+
+func owRouteSealed(st OWState, fl string) bool {
+	return !st.Unlocked[fl] && st.Unsealing[fl] == 0 && !st.RevealAll
+}
+
+// owRouteColors is a corridor's pulse palette and trail colour, by the state
+// of the floor it serves.
+func owRouteColors(st OWState, fl string) (pulse [3]int, trail int) {
+	if st.BossDone {
+		return [3]int{220, 214, 144}, 220
+	}
+	if owRouteSealed(st, fl) {
+		return [3]int{100, 124, 148}, 238
+	}
+	if st.Records[fl].Cleared {
+		return [3]int{220, 196, 144}, 114
+	}
+	return [3]int{214, 178, 136}, 245
+}
+
 // drawOWPad renders a floor as a room: a double-line chrome frame in the
 // floor's accent colour, a dark textured interior, and the glowing landmark
-// at the centre. Sealed rooms are dimmed throughout.
-func drawOWPad(f *Frame, l Layout, n *owNode, status OWStatus, frame int) {
-	open := status != OWSealed
+// at the centre. Sealed rooms are dimmed and wear a blinking lock; an
+// unsealing room wakes over the cascade.
+func drawOWPad(f *Frame, l Layout, n *owNode, v owPadView, frame int) {
+	open := v.status != OWSealed
 	accent := n.Chrome
 	if !open {
 		accent = dim(n.Chrome)
 	}
-	bg := owInterior(n)
+	bgFull := owInterior(n)
+	bg := bgFull
 	if !open {
-		bg = dim(bg)
+		bg = dim(bgFull)
+	}
+	if v.unseal > 0 {
+		// The room is waking: interior and frame brighten as it opens.
+		open = true
+		bg = lerp(dim(bgFull), bgFull, v.unseal)
+		accent = lerp(dim(n.Chrome), n.Chrome, v.unseal)
 	}
 	x0, y0 := n.X-n.PW/2, n.Y-n.PH/2
 	x1, y1 := x0+n.PW-1, y0+n.PH-1
 
-	// Interior: dark, lightly textured (water shimmers, fog drifts, stone
-	// has a faint grain).
+	// Interior: dark, lightly textured (water shimmers and ripples, fog
+	// drifts and thins, stone has a faint grain).
 	for y := y0; y <= y1; y++ {
 		for x := x0; x <= x1; x++ {
 			if x < 0 || y < 0 || x >= OWW || y >= OWH {
@@ -495,9 +760,26 @@ func drawOWPad(f *Frame, l Layout, n *owNode, status OWStatus, frame int) {
 					if owHash(x, y, frame/8)%3 == 0 {
 						c.R = '≈'
 					}
+					// A ripple ring sweeps out from the centre.
+					dx, dy := x-n.X, y-n.Y
+					d := int(math.Round(math.Sqrt(float64(dx*dx + dy*dy))))
+					if d > 0 && d == (frame/10)%6 {
+						c.R, c.FG = '≈', 45
+					}
 				case n.Fog:
-					if owHash(x*3, y*5, frame/6)%5 == 0 {
-						c.R, c.FG = '░', 60
+					if v.fogLift >= 4 {
+						// Fully revealed: the stone shows through.
+						if owHash(x*7, y*11, 0)%17 == 0 {
+							c.R, c.FG = '·', 236
+						}
+					} else {
+						// Drifting fog, thinning as the lair is held.
+						if owHash(x*3+frame/4, y*5-frame/4, 7)%(5-v.fogLift/2) == 0 {
+							c.R, c.FG = '░', 60
+						}
+						if v.fogLift >= 1 && owHash(x*11-frame/3, y*13, 9)%9 == 0 {
+							c.R, c.FG = '░', 100
+						}
 					}
 				default:
 					if owHash(x*7, y*11, 0)%17 == 0 {
@@ -510,14 +792,14 @@ func drawOWPad(f *Frame, l Layout, n *owNode, status OWStatus, frame int) {
 	}
 
 	// Deco: the static landmark structure (pillars, arch, spire, vortex),
-	// dimmed with the room when sealed.
+	// dimmed with the room when sealed, dark until the room wakes.
 	for _, g := range n.Deco {
 		if !OWWalkable(n.X+g.dx, n.Y+g.dy) {
 			continue
 		}
 		gx, gy := l.center(n.X+g.dx, n.Y+g.dy)
 		c := g.c
-		if !open {
+		if !open || v.unseal < 0.5 {
 			c = dim(c)
 		}
 		f.Set(gx, gy, Cell{R: g.r, FG: c, BG: bg, Bold: open})
@@ -528,9 +810,15 @@ func drawOWPad(f *Frame, l Layout, n *owNode, status OWStatus, frame int) {
 	fx1, fy1 := l.X(x1)+l.Scale-1, l.Y(y1)+l.Scale-1
 	drawOWChrome(f, fx0, fy0, fx1, fy1, accent)
 
+	// A sealed room wears a blinking lock on its frame.
+	if v.status == OWSealed && frame%40 < 24 {
+		lx, ly := l.center(n.X, n.Y-n.PH/2)
+		f.Set(lx, ly, Cell{R: '╳', FG: dim(167)})
+	}
+
 	// Landmark at the centre.
 	cx, cy := l.center(n.X, n.Y)
-	drawOWLandmark(f, cx, cy, n, status, frame, bg)
+	drawOWLandmark(f, cx, cy, n, v, frame, bg)
 
 	// A soft glow just outside the frame, so open rooms read as lit beacons.
 	if open {
@@ -567,54 +855,132 @@ func drawOWChrome(f *Frame, x0, y0, x1, y1, color int) {
 	f.Set(x1, y1, Cell{R: '╝', FG: color})
 }
 
-// drawOWLandmark stamps the floor's glyph at (cx,cy) with its living behaviour:
-// the Rift breathes, the Rotunda's heart beats, the rest hold steady.
-func drawOWLandmark(f *Frame, cx, cy int, n *owNode, status OWStatus, frame int, bg int) {
+// owLandmarkGlyph is the centre glyph in the "Grak is here" case: the
+// unsealed Rotunda shows the portal, not the heart.
+func owLandmarkGlyph(n *owNode, v owPadView) rune {
+	if n.Glyph == '♥' && v.boss && !v.done {
+		return '◉'
+	}
+	return n.Glyph
+}
+
+// owHalo stamps soft light on the four neighbours of (cx,cy), only over
+// plain texture so it never hides a landmark or a road.
+func owHalo(f *Frame, cx, cy, c int, on bool) {
+	if !on {
+		return
+	}
+	for _, p := range [4][2]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+		ox, oy := cx+p[0], cy+p[1]
+		if ox < 0 || oy < 0 || ox >= f.W || oy >= f.H {
+			continue
+		}
+		r := f.C[oy*f.W+ox].R
+		if r == ' ' || r == '·' || r == ':' || r == '▒' {
+			f.C[oy*f.W+ox].R = '·'
+			f.C[oy*f.W+ox].FG = c
+		}
+	}
+}
+
+// drawOWLandmark stamps the floor's glyph at (cx,cy) with its living
+// behaviour: the Rift breathes, the Rotunda's heart beats (or becomes the
+// unsealed portal, or holds steady and bright once the heart is held), the
+// rest hold steady. An unsealing room keeps its landmark dark, then ignites
+// it near the end of the cascade.
+func drawOWLandmark(f *Frame, cx, cy int, n *owNode, v owPadView, frame int, bg int) {
+	if v.unseal > 0 && v.unseal < 0.5 {
+		return
+	}
+	ignite := v.unseal > 0 && v.unseal < 0.85
 	switch {
-	case status == OWCurrent:
-		f.Set(cx, cy, Cell{R: n.Glyph, FG: 255, BG: bg, Bold: true})
-	case n.Glyph == '♥': // the dying Dragon's heart: a slow, gapped pulse
-		bold := frame%60 < 34
-		c := 196
-		if frame%60 < 10 {
-			c = 202
+	case v.status == OWCurrent || ignite:
+		f.Set(cx, cy, Cell{R: owLandmarkGlyph(n, v), FG: 255, BG: bg, Bold: true})
+	case n.Glyph == '♥':
+		if v.boss && !v.done {
+			// The unsealed heart: a portal that pulls the light in.
+			c := 220
+			if frame%20 < 10 {
+				c = 226
+			}
+			f.Set(cx, cy, Cell{R: '◉', FG: c, BG: bg, Bold: true})
+			owHalo(f, cx, cy, 220, frame%20 < 10)
+		} else if v.done {
+			// The held heart: steady, bright, unafraid.
+			f.Set(cx, cy, Cell{R: '♥', FG: 255, BG: bg, Bold: frame%12 < 8})
+			owHalo(f, cx, cy, 255, frame%12 < 8)
+		} else {
+			// The dying Dragon's heart: a slow, gapped pulse.
+			bold := frame%60 < 34
+			c := 196
+			if frame%60 < 10 {
+				c = 202
+			}
+			if v.status == OWSealed {
+				c, bold = dim(196), false
+			}
+			f.Set(cx, cy, Cell{R: n.Glyph, FG: c, BG: bg, Bold: bold})
 		}
-		if status == OWSealed {
-			c, bold = dim(196), false
-		}
-		f.Set(cx, cy, Cell{R: n.Glyph, FG: c, BG: bg, Bold: bold})
-	case n.Glyph == '◈': // the Rift: a hot, breathing fissure
+	case n.Glyph == '◈':
 		c := 208
 		if frame%16 < 8 {
 			c = 214
 		}
-		if status == OWSealed {
+		if v.status == OWSealed {
 			c = dim(208)
 		}
 		f.Set(cx, cy, Cell{R: n.Glyph, FG: c, BG: bg, Bold: true})
+		if v.status != OWSealed {
+			// The fissure breathes: a halo swells and fades.
+			owHalo(f, cx, cy, 214, frame%40 < 24)
+		}
 	default:
 		fg := n.Chrome
-		if status == OWSealed {
+		if v.status == OWSealed {
 			fg = dim(n.Chrome)
 		}
-		f.Set(cx, cy, Cell{R: n.Glyph, FG: fg, BG: bg, Bold: status != OWSealed})
+		if n.Fog && v.fogLift >= 4 {
+			fg = 189 // the revealed depths
+		}
+		f.Set(cx, cy, Cell{R: n.Glyph, FG: fg, BG: bg, Bold: v.status != OWSealed})
 	}
 }
 
 // drawOWLabel writes the node's name tag just below its pad (above, for the
-// bottom floors, so it never runs into the frame chrome).
-func drawOWLabel(f *Frame, l Layout, n *owNode, status OWStatus) {
+// bottom floors, so it never runs into the frame chrome), with the floor's
+// result badge: ✓ held, ✗ best wave on a broken floor, ◉ the unsealed heart.
+func drawOWLabel(f *Frame, l Layout, n *owNode, v owPadView) {
 	label := n.Name
+	if n.ID == "rotunda" && v.boss {
+		label = "the Heart"
+	}
 	fg := n.Chrome
 	mark := '◆'
-	switch status {
+	switch v.status {
 	case OWCurrent:
 		mark = '▶'
 	case OWSealed:
 		fg = 240
 		mark = '✕'
+	case OWOpen:
+		if v.unseal > 0 {
+			mark = '✦'
+		}
 	}
-	s := string(mark) + " " + label
+	badge, badgeFG := "", fg
+	switch {
+	case n.ID == "rotunda" && v.boss:
+		if v.done {
+			badge, badgeFG = " ✓", 255
+		} else {
+			badge, badgeFG = " ◉", 220
+		}
+	case v.rec.Cleared:
+		badge, badgeFG = " ✓", 114
+	case v.rec.BestWave > 0:
+		badge, badgeFG = " "+strconv.Itoa(v.rec.BestWave), 167
+	}
+	s := string(mark) + " " + label + badge
 	row := n.Y + n.PH/2 + 1
 	if row > OWH-2 {
 		row = n.Y - n.PH/2 - 1
@@ -632,16 +998,27 @@ func drawOWLabel(f *Frame, l Layout, n *owNode, status OWStatus) {
 		}
 	}
 	markFG := fg
-	if status == OWCurrent {
+	if v.status == OWCurrent {
 		markFG = pal_Bright()
 	}
-	f.Set(x, y, Cell{R: mark, FG: markFG, BG: 233, Bold: status != OWSealed})
-	putString(f, x+2, y, label, fg, 233, status == OWCurrent)
+	f.Set(x, y, Cell{R: mark, FG: markFG, BG: 233, Bold: v.status != OWSealed})
+	putString(f, x+2, y, label, fg, 233, v.status == OWCurrent)
+	putString(f, x+2+len(label), y, badge, badgeFG, 233, true)
 }
 
 // drawOWPlayer stamps Grak at the cursor: a bold bright marker with a soft
-// pulse, so the Last Monster reads clearly against the dark lair.
-func drawOWPlayer(f *Frame, l Layout, cur game.Vec, frame int) {
+// pulse, and a fading footprint behind his last step.
+func drawOWPlayer(f *Frame, l Layout, st OWState, frame int) {
+	// The trail: the cell Grak just left, dimming over StepTTL frames.
+	if st.StepTTL > 0 {
+		px, py := l.center(st.Prev.X, st.Prev.Y)
+		if px >= 0 && py >= 0 && px < f.W && py < f.H {
+			c := f.C[py*f.W+px]
+			if c.R == ' ' || c.R == '·' || c.R == ':' || c.R == '▒' {
+				f.C[py*f.W+px] = Cell{R: '·', FG: 174 + (st.StepTTL-1)*5, BG: c.BG}
+			}
+		}
+	}
 	// Aura: warm light breathes across the cells around Grak, tinting only
 	// the background texture so it never hides a landmark or a road.
 	if frame%30 < 20 {
@@ -650,7 +1027,7 @@ func drawOWPlayer(f *Frame, l Layout, cur game.Vec, frame int) {
 				if dx == 0 && dy == 0 {
 					continue
 				}
-				ox, oy := l.center(cur.X+dx, cur.Y+dy)
+				ox, oy := l.center(st.Cursor.X+dx, st.Cursor.Y+dy)
 				if ox < 0 || oy < 0 || ox >= f.W || oy >= f.H {
 					continue
 				}
@@ -662,13 +1039,278 @@ func drawOWPlayer(f *Frame, l Layout, cur game.Vec, frame int) {
 			}
 		}
 	}
-	cx, cy := l.center(cur.X, cur.Y)
+	cx, cy := l.center(st.Cursor.X, st.Cursor.Y)
 	pulse := frame%30 < 18
 	fg, bg := 255, 236
 	if !pulse {
 		bg = 235
 	}
 	f.Set(cx, cy, Cell{R: '@', FG: fg, BG: bg, Bold: true})
+}
+
+// drawOWEcho flickers a fallen hero's glyph in the void beside the Long
+// Halls, when the halls are open: the guild's echo of every defense.
+func drawOWEcho(f *Frame, l Layout, st OWState, frame int) {
+	open := st.Unlocked["halls"] || st.RevealAll || st.Unsealing["halls"] > 0
+	if !open {
+		return
+	}
+	cycle := (frame / 20) % 17
+	if cycle > 2 {
+		return
+	}
+	e := owEchoes[(frame/60)%len(owEchoes)]
+	cx, cy := l.center(39, 2)
+	if cx < 0 || cy < 0 || cx >= f.W || cy >= f.H {
+		return
+	}
+	f.Set(cx, cy, Cell{R: e.g, FG: e.c, Bold: cycle == 1})
+}
+
+// drawOWDescent swallows Grak into the floor he is descending into: the pad
+// floods in from its centre with the floor's own light, and the last frames
+// blaze solid before the screen changes.
+func drawOWDescent(f *Frame, l Layout, st OWState) {
+	if st.Descending == "" || st.DescendTTL <= 0 {
+		return
+	}
+	n := owNodeByID(st.Descending)
+	if n == nil {
+		return
+	}
+	phase := 1 - float64(st.DescendTTL)/float64(OWDescendFrames)
+	if phase < 0 {
+		phase = 0
+	}
+	maxD2 := (n.PW/2)*(n.PW/2) + (n.PH/2)*(n.PH/2)
+	x0, y0 := n.X-n.PW/2, n.Y-n.PH/2
+	for y := y0; y <= y0+n.PH-1; y++ {
+		for x := x0; x <= x0+n.PW-1; x++ {
+			dx, dy := x-n.X, y-n.Y
+			if dx*dx+dy*dy > int(phase*phase*float64(maxD2)) {
+				continue
+			}
+			c := Cell{R: '·', FG: dim(n.Chrome), BG: n.Chrome}
+			if st.DescendTTL <= 6 {
+				c = Cell{R: ' ', FG: 0, BG: n.Chrome}
+			}
+			l.block(f, x, y, c)
+		}
+	}
+}
+
+// drawOWVoice writes the lair's single voice line in the row under the top
+// border. One line, by priority: the result banner, the descent, the relic
+// menu, a transient input message, the floor under Grak (Malgrath speaks at
+// the Rotunda), then first-run help.
+func drawOWVoice(f *Frame, w int, st OWState, frame int) {
+	var s string
+	var fg int
+	switch {
+	case st.ReturnTTL > 0 && st.ReturnMsg != "":
+		s = st.ReturnMsg
+		fg = 244
+		switch {
+		case strings.Contains(s, "held") || strings.Contains(s, "endures") || strings.Contains(s, "breaks open"):
+			fg = 114
+		case strings.Contains(s, "broke"):
+			fg = 167
+		}
+	case st.Descending != "":
+		s = "descending into " + OWFloorName(st.Descending) + "…"
+		fg = 244
+	case st.RelicMenu:
+		s = fmt.Sprintf("relics %d — 1) +60g · 2) free gunner · 3) +1♥ · esc close", st.Tokens)
+		fg = 220
+	case st.Msg != "":
+		s = st.Msg
+		fg = 244
+		if strings.Contains(s, "sealed") {
+			fg = 174
+		}
+	default:
+		s, fg = owNodeLine(st, frame)
+		if s == "" {
+			if st.FirstRun {
+				s, fg = "wasd walk the lair · enter descend · tab renown", 240
+			} else if st.BossDone {
+				s, fg = "Malgrath endures.", 255
+			}
+		}
+	}
+	if s == "" {
+		return
+	}
+	putString(f, 2, 1, fitMsg(s, w-4), fg, 0, false)
+}
+
+// owNodeLine is the floor under Grak: at the Rotunda, Malgrath speaks (tiered
+// by the hearts held); on an unsealed heart, the door's warning; elsewhere,
+// the floor's result line and its flavor, turning between the two.
+func owNodeLine(st OWState, frame int) (string, int) {
+	fl, ok := OWFloorAt(st.Cursor.X, st.Cursor.Y)
+	if !ok {
+		return "", 0
+	}
+	id := fl.ID
+	rec := st.Records[id]
+	switch {
+	case id == "rotunda" && st.BossReady:
+		if st.BossDone {
+			return owDragonVoiceDone, 255
+		}
+		return "the heart has unsealed — enter to face the final expedition", 220
+	case id == "rotunda":
+		tier := st.Hearts
+		if tier < 0 {
+			tier = 0
+		}
+		if tier > 4 {
+			tier = 4
+		}
+		voice := owDragonVoice[tier]
+		return voice[(frame/180)%len(voice)], 214
+	}
+	best := ""
+	if s := st.Scores[id]; s > 0 {
+		best = strconv.Itoa(s)
+	}
+	var result string
+	rfg := 240
+	switch {
+	case rec.Cleared:
+		result = owInfoLine(fl.Name, best, "held 20/20")
+		rfg = 114
+	case rec.BestWave > 0:
+		result = owInfoLine(fl.Name, best, "broke at "+strconv.Itoa(rec.BestWave))
+		rfg = 167
+	}
+	state := 0
+	switch {
+	case rec.Cleared:
+		state = 2
+	case !rec.LastWon && rec.LastWave > 0:
+		state = 1
+	}
+	flavor := owFloorFlavor[id][state]
+	if result != "" && (frame/150)%2 == 0 {
+		return result, rfg
+	}
+	return flavor, 244
+}
+
+func owInfoLine(name, best, result string) string {
+	if best != "" {
+		return name + " · best " + best + " · " + result
+	}
+	return name + " · " + result
+}
+
+// owRun is one colored segment of a chrome line.
+type owRun struct {
+	s  string
+	fg int
+	b  bool
+}
+
+// putCenteredRuns draws a mixed-color line centered on row y.
+func putCenteredRuns(f *Frame, y int, runs []owRun) {
+	total := 0
+	for _, r := range runs {
+		total += len([]rune(r.s))
+	}
+	if total == 0 {
+		return
+	}
+	x := (f.W - total) / 2
+	if x < 1 {
+		x = 1
+	}
+	for _, r := range runs {
+		for _, ch := range r.s {
+			f.Set(x, y, Cell{R: ch, FG: r.fg, Bold: r.b})
+			x++
+		}
+	}
+}
+
+// drawOWChromeRows writes the lair's bottom chrome: the expedition ledger
+// (each floor's best result at this renown, and the heart), the renown +
+// hearts + relics, and a context line (the Depths' seed, the relic offer,
+// pending bonuses).
+func drawOWChromeRows(f *Frame, st OWState) {
+	h := f.H
+	// Row h-4: the expedition ledger.
+	var rs []owRun
+	for _, id := range []string{"rift", "halls", "garden", "rotunda"} {
+		rec := st.Records[id]
+		rs = append(rs, owRun{"  " + id + " ", 240, false})
+		switch {
+		case rec.Cleared:
+			rs = append(rs, owRun{"✓" + strconv.Itoa(game.MaxWaves), 114, true})
+		case rec.BestWave > 0:
+			rs = append(rs, owRun{"✗" + strconv.Itoa(rec.BestWave), 167, false})
+		default:
+			rs = append(rs, owRun{"·", 240, false})
+		}
+	}
+	rs = append(rs, owRun{"  heart ", 240, false})
+	switch {
+	case st.BossDone:
+		rs = append(rs, owRun{"✓", 255, true})
+	case st.BossReady:
+		rs = append(rs, owRun{"◉", 220, true})
+	default:
+		rs = append(rs, owRun{"·", 240, false})
+	}
+	putCenteredRuns(f, h-4, rs)
+
+	// Row h-3: the renown, the dragon hearts, the relic tokens.
+	rs = rs[:0]
+	for i := range Difficulties {
+		name := DiffName(i)
+		if i == st.Diff {
+			rs = append(rs, owRun{"▸" + name + " ", 255, true})
+		} else {
+			rs = append(rs, owRun{" " + name + " ", 240, false})
+		}
+	}
+	if st.Hearts > 0 {
+		rs = append(rs, owRun{"♥×" + strconv.Itoa(st.Hearts), 214, true})
+	}
+	if st.Tokens > 0 {
+		rs = append(rs, owRun{"  relics " + strconv.Itoa(st.Tokens), 220, false})
+	}
+	putCenteredRuns(f, h-3, rs)
+
+	// Row h-2: context — the Depths' seed, pending bonuses, the relic offer.
+	var ctx string
+	fl, onPad := OWFloorAt(st.Cursor.X, st.Cursor.Y)
+	switch {
+	case onPad && fl.ID == "depths":
+		if st.Seed != "" {
+			ctx = "seed " + st.Seed + " · ⌫ cut · c clear"
+		} else {
+			ctx = "no seed — enter rolls the uncharted"
+		}
+	case st.BonusGold > 0 || st.BonusTower || st.BonusLives > 0:
+		var b []string
+		if st.BonusGold > 0 {
+			b = append(b, "+"+strconv.Itoa(st.BonusGold)+"g")
+		}
+		if st.BonusTower {
+			b = append(b, "free gunner")
+		}
+		if st.BonusLives > 0 {
+			b = append(b, "+"+strconv.Itoa(st.BonusLives)+"♥")
+		}
+		ctx = "next defense: " + strings.Join(b, " · ")
+	case onPad && fl.ID == "rotunda" && st.Tokens > 0 && !st.RelicMenu:
+		ctx = "t spend a relic"
+	}
+	if ctx != "" {
+		putCenteredRuns(f, h-2, []owRun{{ctx, 240, false}})
+	}
 }
 
 // pal_Bright returns the palette's bright white; RenderOverworld's inner

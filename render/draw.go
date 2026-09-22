@@ -27,6 +27,10 @@ type UI struct {
 
 	BestScore int
 	NewBest   bool
+
+	// ToLair marks a run that started from the overworld, so the game-over
+	// box offers "esc lair" (back to the map) as well as restart/quit.
+	ToLair bool
 }
 
 const (
@@ -340,15 +344,40 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 		lore = "Malgrath has fallen. The lair is clean."
 	}
 	putString(f, bx+(bw-len([]rune(lore)))/2, by+8, lore, 244, bg, false)
-	x := bx + (bw-len("r restart | q quit"))/2
-	for _, part := range []struct {
+	parts := []struct {
 		s  string
 		fg int
 	}{
-		{"r", 167}, {" restart | ", 251}, {"q", 167}, {" quit", 251},
-	} {
+		{"r", 167}, {" restart | ", 251},
+	}
+	if ui.ToLair {
+		parts = append(parts,
+			struct {
+				s  string
+				fg int
+			}{"esc", 220},
+			struct {
+				s  string
+				fg int
+			}{" lair | ", 251})
+	}
+	parts = append(parts,
+		struct {
+			s  string
+			fg int
+		}{"q", 167},
+		struct {
+			s  string
+			fg int
+		}{" quit", 251})
+	total := 0
+	for _, p := range parts {
+		total += len(p.s)
+	}
+	x := bx + (bw-total)/2
+	for _, part := range parts {
 		for _, ch := range part.s {
-			f.Set(x, by+9, Cell{R: ch, FG: part.fg, BG: bg, Bold: part.fg == 167})
+			f.Set(x, by+9, Cell{R: ch, FG: part.fg, BG: bg, Bold: part.fg == 167 || part.fg == 220})
 			x++
 		}
 	}
@@ -447,7 +476,7 @@ func headerSegments(g *game.State, ui *UI, pal Colors) []headerSeg {
 	}
 	if ui.Level != "" {
 		segs = append(segs, headerSeg{
-			runs: []headerRun{{levelDisplayName(ui.Level) + " · " + diffName(g.Diff), pal.Path, false}},
+			runs: []headerRun{{levelDisplayName(ui.Level) + " · " + diffName(g.Diff), pal.Bright, true}},
 			drop: 0,
 		})
 	}
@@ -615,9 +644,9 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 	hint := func(y int, pairs [][2]string) {
 		x := 2
 		for _, p := range pairs {
-			putString(f, x, y, p[0], 167, 0, true)
+			putString(f, x, y, p[0], 167, 0, true) // the slot-key red
 			x += len([]rune(p[0]))
-			putString(f, x, y, p[1], pal.Path, 0, false)
+			putString(f, x, y, p[1], pal.Bright, 0, false)
 			x += len([]rune(p[1]))
 		}
 	}

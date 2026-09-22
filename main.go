@@ -43,11 +43,11 @@ func usage() {
 	fmt.Fprint(os.Stderr, `tdef - terminal tower defense
 
 usage:
-  tdef [play flags]        play (default)
+  tdef [play flags]        play (default: title -> menu -> the lair)
   tdef bench [flags]       run autoplay balance benchmark
   tdef headless [flags]    run one autoplay game, print result
   tdef capture [flags]     render headless game frames to files
-  tdef overworld           the lair map (overworld look-dev)
+  tdef overworld           the lair map: walk the floors, descend into one
   tdef maps                list built-in levels
   tdef help
 
@@ -146,7 +146,10 @@ func bench(args []string) {
 	diff := diffFrom(fs)
 
 	names := game.LevelNames()
-	if *levels != "all" {
+	if *levels == "all" {
+		// The heart is the endgame gate; bench it like a level.
+		names = append(names, "heart")
+	} else {
 		names = strings.Split(*levels, ",")
 	}
 	total := len(names)*(*n) + *nMaze
@@ -154,7 +157,13 @@ func bench(args []string) {
 	start := time.Now()
 	all := []game.SimResult{}
 	for _, name := range names {
-		m, err := game.LoadLevel(name)
+		var m *game.Map
+		var err error
+		if name == "heart" {
+			m, err = game.LoadBoss()
+		} else {
+			m, err = game.LoadLevel(name)
+		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "skip:", err)
 			continue
@@ -301,6 +310,9 @@ func mapsCmd() {
 			continue
 		}
 		fmt.Printf("  %-12s path %.0f cells\n", n, m.TotalLen)
+	}
+	if m, err := game.LoadBoss(); err == nil {
+		fmt.Printf("  %-12s path %.0f cells  (the heart: unseals after all floors, per renown)\n", "heart", m.TotalLen)
 	}
 	fmt.Println("procedural: -maze <seed>")
 }

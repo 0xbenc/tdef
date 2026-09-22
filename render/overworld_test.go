@@ -1,6 +1,7 @@
 package render
 
 import (
+	"strings"
 	"testing"
 
 	"tdef/game"
@@ -122,5 +123,124 @@ func TestNewOWStateStart(t *testing.T) {
 	}
 	if st.Unlocked["halls"] || st.Unlocked["garden"] || st.Unlocked["depths"] {
 		t.Fatal("the far floors must be sealed at start")
+	}
+}
+
+// owNodeStatus must read the lair's memory: sealed when locked, open when
+// unlocked, current when Grak stands on it, and open mid-unseal.
+func TestOWNodeStatus(t *testing.T) {
+	st := NewOWState()
+	if got := owNodeStatus(st, "halls"); got != OWSealed {
+		t.Errorf("halls status = %v, want sealed", got)
+	}
+	if got := owNodeStatus(st, "rift"); got != OWCurrent {
+		t.Errorf("rift status (Grak is there) = %v, want current", got)
+	}
+	if got := owNodeStatus(st, "rotunda"); got != OWOpen {
+		t.Errorf("rotunda status = %v, want open", got)
+	}
+	st.Cursor = game.Vec{X: 35, Y: 3} // stand on the (sealed) halls
+	if got := owNodeStatus(st, "halls"); got != OWSealed {
+		t.Errorf("standing on a sealed floor = %v, want still sealed", got)
+	}
+	st.Unlocked["halls"] = true
+	if got := owNodeStatus(st, "halls"); got != OWCurrent {
+		t.Errorf("unlocked+standing = %v, want current", got)
+	}
+	st.Unsealing["garden"] = 20
+	if got := owNodeStatus(st, "garden"); got != OWOpen {
+		t.Errorf("mid-unseal garden = %v, want open", got)
+	}
+}
+
+// A sealed floor wears a blinking lock on its top frame; a revealed lair has
+// no locks at all.
+func TestOWSealedLock(t *testing.T) {
+	pal := Palette()
+	w, h := 62, 19
+	l := GameLayout(OWW, OWH, w, h)
+	st := NewOWState()
+	f := RenderOverworld(w, h, st, 0, pal) // frame 0: the lock is lit
+	n := owNodeByID("halls")
+	lx, ly := l.center(n.X, n.Y-n.PH/2)
+	if got := f.C[ly*f.W+lx].R; got != '╳' {
+		t.Fatalf("sealed halls lock at (%d,%d) = %q, want ╳", lx, ly, got)
+	}
+	// RevealAll unseals the presentation: no lock remains.
+	st.RevealAll = true
+	f2 := RenderOverworld(w, h, st, 0, pal)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			if f2.C[y*f2.W+x].R == '╳' {
+				t.Fatalf("revealed lair still shows a lock at (%d,%d)", x, y)
+			}
+		}
+	}
+}
+
+// When the heart has unsealed, the Rotunda's landmark becomes the portal
+// (◉) instead of the heart (♥).
+func TestOWBossDoor(t *testing.T) {
+	pal := Palette()
+	w, h := 62, 19
+	l := GameLayout(OWW, OWH, w, h)
+	st := NewOWState()
+	cx, cy := l.center(22, 6)
+	if got := RenderOverworld(w, h, st, 0, pal).C[cy*w+cx].R; got != '♥' {
+		t.Fatalf("unopened rotunda landmark = %q, want ♥", got)
+	}
+	st.BossReady = true
+	if got := RenderOverworld(w, h, st, 0, pal).C[cy*w+cx].R; got != '◉' {
+		t.Fatalf("unsealed rotunda landmark = %q, want ◉ (the portal)", got)
+	}
+}
+
+// A held lair changes its title and calms the circulation.
+func TestOWBossDoneTitle(t *testing.T) {
+	pal := Palette()
+	w, h := 62, 19
+	st := NewOWState()
+	if !strings.Contains(RenderOverworld(w, h, st, 0, pal).Text(), "THE LAIR") {
+		t.Fatal("title missing")
+	}
+	st.BossDone = true
+	if !strings.Contains(RenderOverworld(w, h, st, 0, pal).Text(), "THE LAIR — HELD") {
+		t.Fatal("held title missing")
+	}
+}
+
+// A memory-rich lair (records, hearts, an unsealed heart, scars) must still
+// render deterministically.
+func TestOverworldRichStateDeterministic(t *testing.T) {
+	pal := Palette()
+	st := NewOWState()
+	st.Unlocked["halls"] = true
+	st.Records["rift"] = OWRec{Cleared: true, BestWave: 20, LastWave: 20, LastWon: true}
+	st.Records["halls"] = OWRec{Cleared: false, BestWave: 9, LastWave: 9, LastWon: false}
+	st.Hearts = 2
+	st.BossReady = true
+	st.Tokens = 4
+	a := RenderOverworld(92, 32, st, 55, pal).Text()
+	b := RenderOverworld(92, 32, st, 55, pal).Text()
+	if a != b {
+		t.Fatal("rich-state RenderOverworld is not deterministic")
+	}
+}
+
+// OWFloorOf / OWFloorName expose each floor's identity; the boss door reads
+// "the Heart".
+func TestOWFloorIdentity(t *testing.T) {
+	fl, ok := OWFloorOf("garden")
+	if !ok || fl.Level != "garden" || fl.Name != "the Sunken Garden" {
+		t.Fatalf("OWFloorOf(garden) = %+v %v", fl, ok)
+	}
+	if _, ok := OWFloorOf("nope"); ok {
+		t.Error("OWFloorOf(unknown) reported a floor")
+	}
+	if got := OWFloorName(HeartFloorID); got != "the Heart" {
+		t.Errorf("OWFloorName(heart) = %q, want the Heart", got)
+	}
+	if got := OWFloorName("rift"); got != "the Rift" {
+		t.Errorf("OWFloorName(rift) = %q, want the Rift", got)
 	}
 }

@@ -1915,18 +1915,18 @@ func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Co
 
 // ---------------------------------------------------------------- menu
 
-// MenuItems is the main menu, in order.
-var MenuItems = []string{"Start", "Help", "High Scores", "Quit"}
+// MenuItems is the main menu, in order. Start is the lair itself: the
+// overworld, where Grak walks the floors and descends into one.
+var MenuItems = []string{"Start", "Quick Play", "Help", "High Scores", "Quit"}
 
-// menuLayout returns the item rows of the main menu. The 4-item block (7
+// menuLayout returns the item rows of the main menu. The item block (2*len-1
 // rows tall at 2-row stride) is centered in the content band so the menu
 // sits in the middle of the frame at any height.
 func menuLayout(h int) []int {
 	off := screenOff(h)
 	top, bottom := off+1, off+17
-	// Block height is 7 rows (4 items, 2-row stride); split the leftover
-	// rows as evenly as possible above and below it.
-	start := top + (bottom-top+1-7)/2
+	bh := 2*len(MenuItems) - 1
+	start := top + (bottom-top+1-bh)/2
 	if start < top {
 		start = top
 	}
@@ -1988,10 +1988,13 @@ func RenderHelp(w, h int, pal Colors) *Frame {
 		{"place", "1-7 pick · enter or click"},
 		{"upgrade", "u"},
 		{"sell", "x"},
-		{"target", "t"},
+		{"target", "t (game) · t relics (lair)"},
 		{"wave", "n (early = bonus gold)"},
 		{"pause", "p"},
 		{"speed", "f or wheel"},
+		{"descend", "enter, on a floor (the lair)"},
+		{"renown", "tab (the lair)"},
+		{"seed", "0-9 on the Depths (the lair)"},
 		{"cancel", "esc"},
 		{"quit", "q"},
 	}

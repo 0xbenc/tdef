@@ -19,6 +19,7 @@ const (
 	KeyLeft
 	KeyRight
 	KeyBackspace
+	KeyTab
 	KeyCtrlC
 	KeyCtrlL
 )
@@ -116,6 +117,8 @@ func (r *reader) step(data []byte) []byte {
 				r.emit(Event{Key: KeyEnter})
 			case b == 0x7f || b == 0x08:
 				r.emit(Event{Key: KeyBackspace})
+			case b == 0x09:
+				r.emit(Event{Key: KeyTab})
 			case b == 0x03:
 				r.emit(Event{Key: KeyCtrlC})
 			case b == 0x0c:

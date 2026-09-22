@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"tdef/game"
+	"tdef/hiscore"
 	"tdef/render"
 )
 
@@ -38,12 +39,14 @@ func TestMenuNavWraps(t *testing.T) {
 }
 
 func TestMenuTransitions(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // the lair's memory is read on Start
 	a := &App{screen: ScreenMenu, scores: map[string]int{"canyon": 1}}
 	// Each case re-enters the menu, since activating an item leaves it.
 	for sel, want := range map[int]Screen{
-		0: ScreenLevelSelect,
-		1: ScreenHelp,
-		2: ScreenHiscores,
+		0: ScreenOverworld,
+		1: ScreenLevelSelect,
+		2: ScreenHelp,
+		3: ScreenHiscores,
 	} {
 		a.screen = ScreenMenu
 		a.menuSel = sel
@@ -53,7 +56,7 @@ func TestMenuTransitions(t *testing.T) {
 		}
 	}
 	a.screen = ScreenMenu
-	a.menuSel = 3
+	a.menuSel = 4
 	a.handle(Event{Key: KeyEnter})
 	if !a.quitting {
 		t.Error("enter at Quit did not quit")
@@ -69,10 +72,11 @@ func TestMenuTransitions(t *testing.T) {
 // A click on a menu item must activate it, using the same geometry the
 // renderer draws with.
 func TestMenuClickActivates(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	a := &App{screen: ScreenMenu}
 	w, h := a.termSize()
 	rects := render.MenuRects(w, h)
-	a.handle(Event{Mouse: true, Btn: 0, Press: true, X: rects[1].X + 1, Y: rects[1].Y})
+	a.handle(Event{Mouse: true, Btn: 0, Press: true, X: rects[2].X + 1, Y: rects[2].Y})
 	if a.screen != ScreenHelp {
 		t.Errorf("click on Help row = %v, want help", a.screen)
 	}
@@ -263,24 +267,38 @@ func TestLevelSelectStartMaze(t *testing.T) {
 	}
 }
 
-// The full pre-game flow must be reachable: title -> menu -> level select ->
-// game, ending in a playable state.
+// The full pre-game flow must be reachable: title -> menu -> the lair ->
+// descend into a floor -> game, ending in a playable state.
 func TestScreenSequenceReachable(t *testing.T) {
-	a := &App{screen: ScreenTitle, ls: render.LSState{Levels: game.LevelNames()}, scores: map[string]int{}}
+	t.Setenv("HOME", t.TempDir())
+	a := &App{
+		screen: ScreenTitle,
+		ls:     render.LSState{Levels: game.LevelNames()},
+		scores: map[string]int{},
+		lair:   hiscore.LoadLair(),
+		ow:     render.NewOWState(),
+	}
 	a.handle(Event{Rune: ' '})
 	if a.screen != ScreenMenu {
 		t.Fatalf("title -> %v, want menu", a.screen)
 	}
-	a.handle(Event{Key: KeyEnter})
-	if a.screen != ScreenLevelSelect {
-		t.Fatalf("menu -> %v, want level select", a.screen)
+	a.handle(Event{Key: KeyEnter}) // Start: the lair
+	if a.screen != ScreenOverworld {
+		t.Fatalf("menu -> %v, want the lair", a.screen)
 	}
+	// Grak starts on the Rift: descend and let the transition play out.
 	a.handle(Event{Key: KeyEnter})
+	if a.ow.Descending != "rift" {
+		t.Fatalf("enter on the Rift = descending %q, want rift", a.ow.Descending)
+	}
+	for i := 0; i < render.OWDescendFrames && a.screen == ScreenOverworld; i++ {
+		a.owTick()
+	}
 	if a.screen != ScreenGame {
-		t.Fatalf("level select -> %v, want game", a.screen)
+		t.Fatalf("descent -> %v, want game", a.screen)
 	}
-	if a.g == nil || a.level == "" {
-		t.Fatal("game state missing after the sequence")
+	if a.g == nil || a.level != "canyon" || !a.fromOW {
+		t.Fatalf("game state after the sequence: level=%q fromOW=%v", a.level, a.fromOW)
 	}
 }
 
