@@ -31,6 +31,13 @@ type UI struct {
 	// ToLair marks a run that started from the overworld, so the game-over
 	// box offers "esc lair" (back to the map) as well as restart/quit.
 	ToLair bool
+
+	// EndAtFrame is the ambient frame the run ended (victory/defeat) at, set
+	// by the caller the moment the status flips; 0 while the run is going (or
+	// unknown — e.g. headless capture — in which case the end box shows at
+	// once). The end cinematics are pure functions of (frame - EndAtFrame),
+	// so they play to the end even though g.Time has frozen.
+	EndAtFrame int
 }
 
 const (
@@ -966,11 +973,115 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 			f.Set(x, y, cc)
 		}
 	}
+	drawBeats(f, g, pal, l, frame)
 	drawMenu(f, g, ui, pal)
-	if g.Status != game.StatusRunning {
-		drawGameOver(f, g, ui, pal)
-	}
+	drawEndSequence(f, g, ui, pal, l, frame)
 	return f
+}
+
+// endBeatFrames is how long the end cinematic plays before the stats box
+// settles in (3s at the 30fps ambient clock).
+const endBeatFrames = 90
+
+// drawBeats renders the in-run beats, all pure functions of the state: the
+// leak edge pulse, the wave-start banner, and the boss entrance. They play
+// while the run is going (the end cinematics are separate, in
+// drawEndSequence).
+func drawBeats(f *Frame, g *game.State, pal Colors, l Layout, frame int) {
+	if g.Status != game.StatusRunning {
+		return
+	}
+	midY := l.Oy + (g.Map.H*l.Scale)/2
+	if g.LeakFlash > 0 {
+		drawEdgePulse(f, 196) // the frame throbs red while the exit is struck
+	}
+	if g.WaveActive && g.Time-g.WaveStart < 1.8 {
+		text := fmt.Sprintf("WAVE %d", g.Wave)
+		if g.Wave == 1 {
+			text = "THE SIEGE BEGINS"
+		}
+		fg := pal.Bright
+		if g.Time-g.WaveStart > 1.1 {
+			fg = pal.Dim // the banner fades as the wave gets under way
+		}
+		drawCenterBanner(f, midY, text, fg)
+	}
+	for _, e := range g.Enemies {
+		if e.Kind == game.EnemyBoss && !e.Dead && !e.Leaked && e.Prog < 4 {
+			drawCenterBanner(f, midY, "THE PLAYER", 204)
+			drawEdgePulse(f, 204) // a regal purple pulse as the boss appears
+			break
+		}
+	}
+}
+
+// drawCenterBanner centers a beat banner on row y with a dark backing so it
+// reads over the terrain.
+func drawCenterBanner(f *Frame, y int, text string, fg int) {
+	w := len([]rune(text))
+	x := (f.W - w) / 2
+	if x < 1 {
+		x = 1
+	}
+	for i := 0; i < w; i++ {
+		f.Set(x+i, y, Cell{R: ' ', BG: 232})
+	}
+	putString(f, x, y, text, fg, 232, true)
+}
+
+// drawEdgePulse recolors the left/right frame edges (in the playfield region,
+// leaving the header and menu alone) in color — the "the lair is being hit"
+// and "the boss has arrived" pulses.
+func drawEdgePulse(f *Frame, color int) {
+	for y := ChromeTop; y < f.H-ChromeBot; y++ {
+		f.Set(0, y, Cell{R: '│', FG: color, Bold: true})
+		f.Set(f.W-1, y, Cell{R: '│', FG: color, Bold: true})
+	}
+}
+
+// drawEndSequence renders the end of the run. When the caller recorded the end
+// frame (ui.EndAtFrame > 0) a short cinematic plays — a sweep and the lair's
+// verdict — before the stats box settles in; otherwise (a headless capture,
+// where the end frame is unknown) the box shows at once.
+func drawEndSequence(f *Frame, g *game.State, ui *UI, pal Colors, l Layout, frame int) {
+	if g.Status == game.StatusRunning {
+		return
+	}
+	won := g.Status == game.StatusVictory
+	if ui.EndAtFrame <= 0 {
+		drawGameOver(f, g, ui, pal)
+		return
+	}
+	if beat := frame - ui.EndAtFrame; beat < endBeatFrames {
+		drawEndBeat(f, g, pal, l, beat, won)
+		return
+	}
+	drawGameOver(f, g, ui, pal)
+}
+
+// drawEndBeat is the end cinematic: a bright sweep races across the playfield
+// while the lair's verdict decodes in — gold for a hold, red and final for a
+// fall.
+func drawEndBeat(f *Frame, g *game.State, pal Colors, l Layout, beat int, won bool) {
+	mw := g.Map.W * l.Scale
+	sx := l.Ox + beat*mw/endBeatFrames
+	sweepCol := pal.Bright
+	if !won {
+		sweepCol = 167
+	}
+	for y := l.Oy; y < l.Oy+g.Map.H*l.Scale; y++ {
+		putOver(f, sx, y, '│', sweepCol)
+	}
+	text, fg := "THE LAIR HOLDS", pal.Gold
+	if !won {
+		text, fg = "THE LAIR FALLS", 167
+	}
+	reveal := beat * len(text) / 45
+	if reveal > len(text) {
+		reveal = len(text)
+	}
+	midY := l.Oy + (g.Map.H*l.Scale)/2
+	drawCenterBanner(f, midY, text[:reveal], fg)
 }
 
 // GameFrame renders the in-game frame for a tw×th terminal, or a centered

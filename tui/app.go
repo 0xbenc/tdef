@@ -288,6 +288,7 @@ func (a *App) stepGame(real float64) {
 	}
 	if a.g.Status != game.StatusRunning && !a.scored {
 		a.scored = true
+		a.ui.EndAtFrame = a.frameNo // the end cinematics run off this clock
 		won := a.g.Status == game.StatusVictory
 		if won && a.g.Lives == a.waveStartLives {
 			a.cleanWaves++ // the final expedition held clean
