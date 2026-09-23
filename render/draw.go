@@ -540,6 +540,8 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 		lore = "Malgrath has fallen. The lair is clean."
 	}
 	putString(f, bx+(bw-len([]rune(lore)))/2, by+8, lore, 244, bg, false)
+	verdict := endVerdict(g)
+	putString(f, bx+(bw-len([]rune(verdict)))/2, by+9, verdict, 245, bg, false)
 	parts := []struct {
 		s  string
 		fg int
@@ -573,9 +575,32 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 	x := bx + (bw-total)/2
 	for _, part := range parts {
 		for _, ch := range part.s {
-			f.Set(x, by+9, Cell{R: ch, FG: part.fg, BG: bg, Bold: part.fg == 167 || part.fg == 220})
+			f.Set(x, by+10, Cell{R: ch, FG: part.fg, BG: bg, Bold: part.fg == 167 || part.fg == 220})
 			x++
 		}
+	}
+}
+
+// endVerdict is the lair's assessment of the run, shown under the lore on the
+// end box — it reads the result the way the lair would.
+func endVerdict(g *game.State) string {
+	if g.Status == game.StatusVictory {
+		switch {
+		case g.TotalLeaks == 0:
+			return "A flawless hold — not one breach."
+		case g.TotalLeaks <= 5:
+			return "A steady hold. The lair endures."
+		default:
+			return "A hard-fought hold. The lair feels it."
+		}
+	}
+	switch {
+	case g.Wave >= 15:
+		return fmt.Sprintf("The lair fell late, on wave %d.", g.Wave)
+	case g.Wave >= 8:
+		return fmt.Sprintf("The lair held to wave %d. So close.", g.Wave)
+	default:
+		return fmt.Sprintf("The lair fell early, on wave %d.", g.Wave)
 	}
 }
 
