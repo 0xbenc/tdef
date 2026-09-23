@@ -708,6 +708,9 @@ func headerSegments(g *game.State, ui *UI, pal Colors) []headerSeg {
 		if g.Combo >= 5 {
 			wave = append(wave, headerRun{fmt.Sprintf(" ⚡%d", g.Combo), pal.Gold, true})
 		}
+	case g.Status == game.StatusRunning && g.Wave == 0 && len(g.Towers) == 0:
+		// the siege is held until the player commits their first tower
+		wave = []headerRun{{"build a tower", 220, true}}
 	case g.Status == game.StatusRunning: // inter-wave break
 		nw := g.Wave + 1
 		in := int(g.NextWaveAt-g.Time) + 1

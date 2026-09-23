@@ -1059,6 +1059,12 @@ func (a *App) startWave() {
 	if a.g.Wave >= game.MaxWaves {
 		return
 	}
+	// The siege waits for the player to commit a tower; the early-start key
+	// can't bypass that.
+	if a.g.Wave == 0 && len(a.g.Towers) == 0 {
+		a.msg("the siege waits — build a tower to begin")
+		return
+	}
 	a.g.StartWave()
 	a.msg("wave " + strconv.Itoa(a.g.Wave) + " incoming")
 }

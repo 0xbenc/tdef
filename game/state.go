@@ -150,11 +150,18 @@ func (s *State) CycleTarget(v Vec) (*Tower, TargetMode) {
 
 // StartWave begins the next wave. If it was started before the auto timer
 // expired, the player gets an early-start bonus. Returns bonus gold.
+//
+// The siege itself — the very first wave — will not open until the player has
+// committed to the defense: at least one tower must be placed before it may
+// start, whether by the auto timer or the early-start key.
 func (s *State) StartWave() int {
 	if s.WaveActive || s.Status != StatusRunning {
 		return 0
 	}
 	if s.Wave >= MaxWaves {
+		return 0
+	}
+	if s.Wave == 0 && len(s.Towers) == 0 {
 		return 0
 	}
 	bonus := 0

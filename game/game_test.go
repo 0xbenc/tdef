@@ -292,6 +292,9 @@ func TestFrostSlows(t *testing.T) {
 func TestWaveCompletion(t *testing.T) {
 	m := loadTestMap(t)
 	s := NewState(m)
+	if s.Build(findGrassCells(t, m, 1)[0], TowerGunner) == nil {
+		t.Fatal("expected to build a tower")
+	}
 	s.StartWave()
 	if !s.WaveActive {
 		t.Fatal("wave should be active")
@@ -303,8 +306,36 @@ func TestWaveCompletion(t *testing.T) {
 	if s.WaveActive {
 		t.Fatal("wave should be complete")
 	}
-	if s.Gold != StartingGold+bonus {
-		t.Errorf("gold = %d, want %d", s.Gold, StartingGold+bonus)
+	want := StartingGold - TowerSpecs[TowerGunner].Cost[0] + bonus
+	if s.Gold != want {
+		t.Errorf("gold = %d, want %d", s.Gold, want)
+	}
+}
+
+// The siege (the first wave) must not open until the player has committed a
+// tower — neither by the auto timer nor the early-start key. Placing a tower
+// releases it.
+func TestSiegeWaitsForTower(t *testing.T) {
+	m := loadTestMap(t)
+	s := NewState(m)
+	// Past the auto timer but with no tower: the siege stays held.
+	s.Time = s.NextWaveAt + 1
+	s.Step(0.1)
+	if s.WaveActive || s.Wave != 0 {
+		t.Fatalf("siege started with no towers: wave=%d active=%v", s.Wave, s.WaveActive)
+	}
+	// The early-start path is held too.
+	s.StartWave()
+	if s.WaveActive {
+		t.Fatal("manual start should be held without a tower")
+	}
+	// Committing a tower releases the siege.
+	if s.Build(findGrassCells(t, m, 1)[0], TowerGunner) == nil {
+		t.Fatal("expected to build a tower")
+	}
+	s.Step(0.1)
+	if !s.WaveActive || s.Wave != 1 {
+		t.Fatalf("siege should open after a tower: wave=%d active=%v", s.Wave, s.WaveActive)
 	}
 }
 
