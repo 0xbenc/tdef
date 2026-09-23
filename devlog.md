@@ -527,5 +527,18 @@
   the Depths' cold mist drifting down the room with runes (◈) waking on the
   walls. A test asserts each stinger's signature glyph renders (checked over a
   few frames, since the light animates). Eyeballed via `tdef capture` at 1x and
-  2x; the boss (heart) isn't reachable via `capture` (it's LoadBoss, not in the
-  level list), so its ring is covered by the test instead.
+   2x; the boss (heart) isn't reachable via `capture` (it's LoadBoss, not in the
+   level list), so its ring is covered by the test instead.
+- 2026-09-22 (siege waits for a tower, branch gameplay-lookdev)
+- The user: it's clunky that the siege just begins on a timer three seconds
+  after the map loads, before they've committed to a defense. Now the first wave
+  is held until at least one tower is placed — by auto timer or the early-start
+  key alike; later waves are unchanged. StartWave refuses to open wave 1 with no
+  towers (the rule lives with the wave-start logic, so both entry points respect
+  it); the header shows a gold "build a tower" while the siege is held (kept short
+  so it doesn't trip the header's elision at 80 cols), and the early-start key
+  answers "the siege waits — build a tower to begin" instead of faking a wave 0.
+  The autoplay AI builds on its first tick (before the first Step), so the bench
+  stays byte-identical (83% ALL). TestSiegeWaitsForTower locks the gate in;
+  TestWaveCompletion now commits a tower first (and its gold check accounts for
+  the build). a5f7a79.
