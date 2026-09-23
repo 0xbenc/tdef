@@ -212,20 +212,58 @@ func drawRange(f *Frame, g *game.State, ui *UI, pal Colors, l Layout) {
 	}
 }
 
-func drawLine(f *Frame, ax, ay, bx, by, color int) {
-	dx, dy := float64(bx-ax), float64(by-ay)
-	steps := int(math.Sqrt(dx*dx+dy*dy)*2) + 1
+// putOverBold is putOver with a bold flag, for overlay marks that should read
+// heavy (projectile shells, beam energy).
+func putOverBold(f *Frame, x, y int, r rune, fg int, bold bool) {
+	if x < 0 || y < 0 || x >= f.W || y >= f.H {
+		return
+	}
+	cc := f.C[y*f.W+x]
+	cc.R, cc.FG, cc.Bold = r, fg, bold
+	f.C[y*f.W+x] = cc
+}
+
+// projGlyph returns a projectile's glyph and whether it is bold: shells
+// (cannon, mortar) are heavy filled circles — mortar bolder still — while
+// gunner and flak fire light tracers.
+func projGlyph(k game.TowerKind) (rune, bool) {
+	switch k {
+	case game.TowerCannon:
+		return '●', false
+	case game.TowerMortar:
+		return '●', true
+	default:
+		return '·', false
+	}
+}
+
+// drawProjectile renders one projectile: a kind-specific glyph in its beam
+// colour with a short dim trail behind it so the motion reads.
+func drawProjectile(f *Frame, l Layout, pal Colors, p *game.Projectile) {
+	x, y := l.FX(p.Pos.X), l.FY(p.Pos.Y)
+	glyph, bold := projGlyph(p.Kind)
+	putOverBold(f, x, y, glyph, pal.Beam[p.Kind], bold)
+	dx, dy := p.LastPos.X-p.Pos.X, p.LastPos.Y-p.Pos.Y
+	if d := math.Hypot(dx, dy); d > 0.05 {
+		ux, uy := dx/d, dy/d
+		putOver(f, l.FX(p.Pos.X-ux*0.45), l.FY(p.Pos.Y-uy*0.45), '·', 240)
+	}
+}
+
+// drawBeamSeg draws one beam segment as a bright, continuous energy line. It
+// overwrites the terrain glyphs but preserves the background, so a bolt reads
+// cleanly over road and rock.
+func drawBeamSeg(f *Frame, l Layout, a, b game.Pos, color int) {
+	ax, ay := l.FX(a.X), l.FY(a.Y)
+	bx, by := l.FX(b.X), l.FY(b.Y)
+	dx, dy := bx-ax, by-ay
+	steps := int(math.Max(math.Abs(float64(dx)), math.Abs(float64(dy)))) * 2
+	if steps < 1 {
+		steps = 1
+	}
 	for i := 0; i <= steps; i++ {
 		t := float64(i) / float64(steps)
-		x := ax + int(dx*t)
-		y := ay + int(dy*t)
-		if x < 0 || y < 0 || x >= f.W || y >= f.H {
-			continue
-		}
-		if f.C[y*f.W+x].R != ' ' && f.C[y*f.W+x].R != 0 {
-			continue
-		}
-		f.Put(x, y, '·', color, 0)
+		putOverBold(f, ax+int(float64(dx)*t), ay+int(float64(dy)*t), '·', color, true)
 	}
 }
 
@@ -882,11 +920,11 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 		}
 	}
 	for _, p := range g.Projectiles {
-		f.Put(l.FX(p.Pos.X), l.FY(p.Pos.Y), '+', pal.Beam[p.Kind], 0)
+		drawProjectile(f, l, pal, p)
 	}
 	for _, bm := range g.Beams {
 		for i := 1; i < len(bm.From); i++ {
-			drawLine(f, l.FX(bm.From[i-1].X), l.FY(bm.From[i-1].Y), l.FX(bm.From[i].X), l.FY(bm.From[i].Y), pal.Beam[bm.Kind])
+			drawBeamSeg(f, l, bm.From[i-1], bm.From[i], pal.Beam[bm.Kind])
 		}
 	}
 	for _, e := range g.Enemies {
