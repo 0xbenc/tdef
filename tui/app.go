@@ -1124,12 +1124,22 @@ type pen struct {
 	bold bool
 }
 
+// blitWriter is the minimal sink the frame diff writes to: the terminal in
+// production, a capture buffer in tests.
+type blitWriter interface{ Write(p []byte) }
+
 func (a *App) blit(f *render.Frame) {
+	a.blitTo(f, a.term)
+}
+
+// blitTo diffs the frame against the previous one and writes only the changed
+// cells to w, as ANSI cursor-moves + 256-colour SGR + the rune.
+func (a *App) blitTo(f *render.Frame, w blitWriter) {
 	var buf []byte
 	const chunk = 8192
 	flush := func() {
 		if len(buf) > 0 {
-			a.term.Write(buf)
+			w.Write(buf)
 			buf = buf[:0]
 		}
 	}
