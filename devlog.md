@@ -529,23 +529,27 @@
   few frames, since the light animates). Eyeballed via `tdef capture` at 1x and
    2x; the boss (heart) isn't reachable via `capture` (it's LoadBoss, not in the
    level list), so its ring is covered by the test instead.
-- 2026-09-22 (tower level pedestal, branch gameplay-lookdev)
-- Upgraded towers showed their level as pips trailing to the LEFT of the glyph
-  (crowded a neighbour). First fix: a single badge centred ABOVE the glyph — but
-  the user's screenshot showed the flaw: the cell above a tower is usually the
-  ROAD, so the badge dropped a foreign object into the lane the horde walks.
-  Final fix: the level lives on the tower's OWN pedestal. The glyph goes white
-  and the base charges in the tower's colour — a dark tint at level 2, the full
-  colour once maxed — so it reads as part of the tower and never touches the
-  road. Selection is now purely the corner bracket, so a maxed tower's colours
-  (white glyph on the full tower colour) no longer have to avoid the selected
-  look; picking one just adds the bracket.
+- 2026-09-22 (tower level tile, branch gameplay-lookdev)
+- A long look at how a tower shows its level, driven by screenshots:
+  1. pips trailing LEFT crowded a neighbour -> 2. a badge ABOVE the glyph, but
+     the cell above a tower is usually the ROAD, so it dropped a foreign block
+     into the lane -> 3. the level on the tower's OWN pedestal (glyph white,
+     base = the full tower colour) -> 4. but a maxed tower was now a SOLID
+     bright block, so the G had nowhere to pop (green on green, hard to read).
+  Final: a tower is a dark TILE. A neutral dark body (235) keeps the glyph
+  readable at every scale; a frame in the tower's colour gives it shape (a cap
+  at 2x, a full ring at 3x+); and both step with level — frame brightens
+  dim->bright->full, glyph steps dim->full->white. A maxed tower reads as a
+  glowing white letter inside a full-colour frame. Level stays on the tower's
+  own block, never the road; selection is the corner bracket.
 - baseColor darkens a 256-colour toward black while keeping its hue (a naive
-  index halving drifts hue — gunner green 46 would become a dark blue, 25).
-  indexRGB/cubeLevel/rgbIndex support it; drawLevelPips + its pass are gone.
-  The two pedestal tests assert the exact L1(235)/L2(baseColor 55%)/L3(full)
-  base colours and the no-clobber neighbour invariant. Bench byte-identical
-  (83% ALL). 9dbc023 -> 1669db7.
+  index halving drifts hue — gunner green 46 would become a dark blue, 25);
+  indexRGB/cubeLevel/rgbIndex support it. A neutral body (not a tint) is used
+  so desaturated colours (cannon/gold) don't muddy into grey under the glyph.
+  drawLevelPips + its pass are gone. Tests: pedestal glyph-stepping, no-clobber
+  neighbour invariant, and TestTowerFrameChargesByLevel (frame ring at 3x).
+  Glyph-vs-body contrast holds >= 2.1, maxed towers 4.77. Bench byte-identical
+  (83% ALL). 9dbc023 -> 1669db7 -> f53db5c.
 - 2026-09-22 (siege waits for a tower, branch gameplay-lookdev)
 - The user: it's clunky that the siege just begins on a timer three seconds
   after the map loads, before they've committed to a defense. Now the first wave
