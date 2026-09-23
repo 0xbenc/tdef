@@ -409,6 +409,31 @@ func drawMuzzle(f *Frame, l Layout, pal Colors, t *game.Tower) {
 	}
 }
 
+// drawLevelPips marks an upgraded tower's level with a single badge centred
+// directly above its glyph — a pip at level 2, a diamond once maxed — so a
+// tower's upgrades read as part of the structure instead of a trail off to the
+// side (which crowded a neighbour). The badge keeps the menu-slot styling (a
+// bright mark on the tower's colour) and lands only on a ground cell, so it
+// never clobbers a tower, an enemy, or a stinger; sitting between the selection
+// bracket's corners, it never fights the bracket either.
+func drawLevelPips(f *Frame, l Layout, pal Colors, t *game.Tower) {
+	if t.Level < 2 {
+		return
+	}
+	top := l.Y(t.Cell.Y) - 1
+	cx := l.X(t.Cell.X) + l.Scale/2
+	if top < l.Oy || top >= f.H || cx < 0 || cx >= f.W {
+		return
+	}
+	r := '▪'
+	if t.Level >= 3 {
+		r = '◆'
+	}
+	if isGroundRune(f.C[top*f.W+cx].R) {
+		f.Set(cx, top, Cell{R: r, FG: pal.Bright, BG: pal.Tower[t.Kind], Bold: true})
+	}
+}
+
 // tankKind reports whether an enemy kind is a "tank" — high enough HP that its
 // health bar is worth showing even at full health, so the player can read how
 // much a Paladin/Centurion/boss/Necromancer can take before it breaks.
@@ -939,20 +964,12 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 	for _, t := range g.Towers {
 		drawTower(f, g, ui, pal, l, t)
 	}
-	// Level pips in a second pass, left of the tower. Pips skip cells that
-	// already hold an entity glyph (tower, enemy, spawn/exit), so adjacent
-	// upgraded towers can't erase each other — previously the pip pass ran
-	// interleaved with the glyph pass and clobbered the left neighbor.
+	// Level pips: an upgraded tower's level reads as pips centred above its
+	// glyph (not a trail to the side, which crowded neighbours). Drawn in a
+	// second pass over ground cells only, so a pip never clobbers an entity or
+	// a neighbouring tower.
 	for _, t := range g.Towers {
-		x, y := l.center(t.Cell.X, t.Cell.Y)
-		c := pal.Tower[t.Kind]
-		for i := 1; i < t.Level; i++ {
-			if px := x - i; px >= 0 {
-				if r := f.C[y*f.W+px].R; r == 0 || r == ' ' || r == '·' {
-					f.Set(px, y, Cell{R: '▪', FG: pal.Bright, BG: c, Bold: true})
-				}
-			}
-		}
+		drawLevelPips(f, l, pal, t)
 	}
 	for _, p := range g.Projectiles {
 		drawProjectile(f, l, pal, p)

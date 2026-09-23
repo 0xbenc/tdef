@@ -129,17 +129,22 @@ func TestUpgradePipsStyledLikeMenuSlot(t *testing.T) {
 	g.Gold = 1000
 	v := game.Vec{X: 7, Y: 2}
 	tw := g.Build(v, game.TowerGunner)
-	g.Upgrade(tw)
-	g.Upgrade(tw)
 	pal := Palette()
 	l := GameLayout(m.W, m.H, 62, 19)
-	f := Render(g, &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}, pal, 62, 19, 0)
 	x, y := l.center(v.X, v.Y)
-	want := Cell{R: '▪', FG: pal.Bright, BG: pal.Tower[game.TowerGunner], Bold: true}
-	for i := 1; i < 3; i++ {
-		if got := f.C[y*f.W+x-i]; got != want {
-			t.Errorf("pip %d = %+v, want %+v", i, got, want)
-		}
+	style := func(r rune) Cell { return Cell{R: r, FG: pal.Bright, BG: pal.Tower[game.TowerGunner], Bold: true} }
+	// Level 2: a pip badge centred above the glyph (menu-slot styling), not
+	// off to the side.
+	g.Upgrade(tw)
+	f := Render(g, &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}, pal, 62, 19, 0)
+	if got := f.C[(y-1)*f.W+x]; got != style('▪') {
+		t.Errorf("L2 badge = %+v, want a pip", got)
+	}
+	// Level 3 (maxed): a diamond badge.
+	g.Upgrade(tw)
+	f = Render(g, &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}, pal, 62, 19, 0)
+	if got := f.C[(y-1)*f.W+x]; got != style('◆') {
+		t.Errorf("L3 badge = %+v, want a diamond", got)
 	}
 }
 
@@ -170,10 +175,10 @@ func TestTowerInfoFitsFrame(t *testing.T) {
 	}
 }
 
-// A tower's level pips are drawn to its LEFT, so an upgraded tower sitting
-// right of a neighbor used to overwrite the neighbor's glyph (the pip pass
-// and glyph pass were interleaved in build order). Pips must skip occupied
-// cells so both towers stay visible.
+// A tower's level pips are drawn ABOVE its glyph, so an upgraded tower can no
+// longer overwrite a neighbour's glyph (the old left-hand trail used to, when
+// the pip and glyph passes were interleaved in build order). Pips must skip
+// occupied cells so both towers stay visible.
 func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
 	m, err := game.LoadLevel("winding")
 	if err != nil {
@@ -194,8 +199,6 @@ func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
 	}
 	g := game.NewState(m)
 	g.Gold = 1000
-	// Build the LEFT tower first: with the old interleaved pass the right
-	// tower's pip (drawn later) clobbered its glyph.
 	tl := g.Build(left, game.TowerGunner)
 	tr := g.Build(right, game.TowerCannon)
 	if tl == nil || tr == nil {
@@ -204,20 +207,21 @@ func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
 	for i := 0; i < 2; i++ { // left -> level 3 (2 pips)
 		g.Upgrade(tl)
 	}
-	g.Upgrade(tr) // right -> level 2 (1 pip, aimed at the left tower's cell)
+	g.Upgrade(tr) // right -> level 2 (1 pip)
 	l := GameLayout(m.W, m.H, 62, 19)
 	f := Render(g, &UI{Selected: NoSelection, Level: "winding"}, Palette(), 62, 19, 0)
 	lx, ly := l.center(left.X, left.Y)
 	rx, ry := l.center(right.X, right.Y)
 	if got := f.C[ly*f.W+lx].R; got != 'G' {
-		t.Errorf("left tower glyph = %q, want 'G' (clobbered by right tower's pip?)", got)
+		t.Errorf("left tower glyph = %q, want 'G' (clobbered?)", got)
 	}
 	if got := f.C[ry*f.W+rx].R; got != 'C' {
 		t.Errorf("right tower glyph = %q, want 'C'", got)
 	}
-	// The left tower's own pips still render on the empty cells to its left.
-	if got := f.C[ly*f.W+lx-1].R; got != '▪' {
-		t.Errorf("left tower pip = %q, want '▪'", got)
+	// The left tower (maxed) shows its diamond badge above its glyph (not off
+	// to the side), and the neighbour's glyph is untouched.
+	if got := f.C[(ly-1)*f.W+lx].R; got != '◆' {
+		t.Errorf("left tower badge = %q, want '◆'", got)
 	}
 }
 
