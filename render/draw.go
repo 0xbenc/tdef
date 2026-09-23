@@ -170,19 +170,27 @@ func (l Layout) block(f *Frame, mx, my int, c Cell) {
 func drawRange(f *Frame, g *game.State, ui *UI, pal Colors, l Layout) {
 	var center *game.Pos
 	var rng float64
+	var kind game.TowerKind
+	var haveKind bool
 	if ui.PlacingOn {
 		c := ui.Cursor.Center()
 		rng = game.TowerSpecs[ui.Placing].Range[0]
 		center = &c
+		kind, haveKind = ui.Placing, true
 	} else if ui.Selected >= 0 {
 		if t := g.Tower(ui.Selected); t != nil {
 			c := t.Pos()
 			rng = t.Range()
 			center = &c
+			kind, haveKind = t.Kind, true
 		}
 	}
 	if center == nil {
 		return
+	}
+	ringCol := pal.Dim
+	if haveKind {
+		ringCol = pal.Beam[kind]
 	}
 	for y := 0; y < g.Map.H; y++ {
 		for x := 0; x < g.Map.W; x++ {
@@ -191,9 +199,14 @@ func drawRange(f *Frame, g *game.State, ui *UI, pal Colors, l Layout) {
 			}
 			p := game.Pos{X: float64(x) + 0.5, Y: float64(y) + 0.5}
 			d := p.Dist(*center)
-			if d <= rng && d > rng-0.6 {
-				cx, cy := l.center(x, y)
-				f.Put(cx, cy, '·', pal.Dim, 0)
+			if d > rng {
+				continue
+			}
+			cx, cy := l.center(x, y)
+			if d > rng-0.55 {
+				putOver(f, cx, cy, '·', ringCol) // the boundary ring
+			} else if cellHash(x, y) < 0.22 {
+				putOver(f, cx, cy, '·', pal.Path) // a faint interior so the disc reads as an area
 			}
 		}
 	}
@@ -230,6 +243,20 @@ func isGroundRune(r rune) bool {
 		}
 	}
 	return false
+}
+
+// putOver sets a rune and its colour on the cell at (x,y) while PRESERVING the
+// cell's background — so overlay marks (range dots, muzzle tracers) sit on top
+// of the textured terrain instead of punching a black hole in it.
+func putOver(f *Frame, x, y int, r rune, fg int) {
+	if x < 0 || y < 0 || x >= f.W || y >= f.H {
+		return
+	}
+	cc := f.C[y*f.W+x]
+	cc.R = r
+	cc.FG = fg
+	cc.Bold = false
+	f.C[y*f.W+x] = cc
 }
 
 // drawHPBar renders a 3-segment health bar centered above (x,y).
@@ -277,6 +304,63 @@ func drawRing(f *Frame, l Layout, fx *game.Fx) {
 				f.Put(sx, sy, '·', fx.Color, 0)
 			}
 		}
+	}
+}
+
+// drawTower renders one tower: its glyph on a dark pad (the pad fills the whole
+// block at 2x+, so the tower reads as a structure set into the ground), corner
+// brackets when it is the selected tower, and a muzzle flash + tracer while it
+// is firing (t.Flash > 0).
+func drawTower(f *Frame, g *game.State, ui *UI, pal Colors, l Layout, t *game.Tower) {
+	sel := ui.Selected == t.ID
+	glyph := t.Spec().Short
+	fg, bg := pal.Tower[t.Kind], 235
+	if sel {
+		fg, bg = pal.Bright, pal.Tower[t.Kind]
+	}
+	l.block(f, t.Cell.X, t.Cell.Y, Cell{R: ' ', BG: bg})
+	cx, cy := l.center(t.Cell.X, t.Cell.Y)
+	f.Set(cx, cy, Cell{R: glyph, FG: fg, BG: bg, Bold: true})
+	if sel {
+		drawSelectionBracket(f, l, t.Cell)
+	}
+	if t.Flash > 0 {
+		drawMuzzle(f, l, pal, t)
+	}
+}
+
+// drawSelectionBracket draws bright corner brackets just outside the tower's
+// block so the active tower is unmistakable at a glance.
+func drawSelectionBracket(f *Frame, l Layout, v game.Vec) {
+	const c = 255
+	x0, y0 := l.X(v.X), l.Y(v.Y)
+	x1, y1 := x0+l.Scale-1, y0+l.Scale-1
+	f.Set(x0-1, y0-1, Cell{R: '╭', FG: c, Bold: true})
+	f.Set(x1+1, y0-1, Cell{R: '╮', FG: c, Bold: true})
+	f.Set(x0-1, y1+1, Cell{R: '╰', FG: c, Bold: true})
+	f.Set(x1+1, y1+1, Cell{R: '╯', FG: c, Bold: true})
+}
+
+// drawMuzzle renders a firing tower's muzzle flash: the glyph flares white and
+// a short tracer kicks out toward the target it is firing at (t.FlashTo). The
+// tracer preserves the terrain background so it reads over road and rock.
+func drawMuzzle(f *Frame, l Layout, pal Colors, t *game.Tower) {
+	cx, cy := l.center(t.Cell.X, t.Cell.Y)
+	f.Set(cx, cy, Cell{R: t.Spec().Short, FG: pal.Bright, Bold: true})
+	sx, sy := float64(t.Cell.X)+0.5, float64(t.Cell.Y)+0.5
+	dx, dy := t.FlashTo.X-sx, t.FlashTo.Y-sy
+	d := math.Hypot(dx, dy)
+	if d < 0.1 {
+		return
+	}
+	ux, uy := dx/d, dy/d
+	for i := 1; i <= 4; i++ {
+		off := 0.5 * float64(i) // 0.5..2 cells out
+		x, y := l.FX(sx+ux*off), l.FY(sy+uy*off)
+		if x == cx && y == cy {
+			continue // never overwrite the tower glyph itself
+		}
+		putOver(f, x, y, '·', pal.Beam[t.Kind])
 	}
 }
 
@@ -732,13 +816,10 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 	drawHeader(f, g, ui, pal)
 	drawMapPreview(f, g.Map, pal, l, frame)
 	drawRange(f, g, ui, pal, l)
+	// Towers: a colored glyph on a dark pad (a small pedestal at 2x+), corner
+	// brackets on the selected one, and a muzzle flash while it fires.
 	for _, t := range g.Towers {
-		x, y := l.center(t.Cell.X, t.Cell.Y)
-		c := pal.Tower[t.Kind]
-		f.Put(x, y, t.Spec().Short, c, 0)
-		if ui.Selected == t.ID {
-			f.Set(x, y, Cell{R: t.Spec().Short, FG: pal.Bright, BG: c, Bold: true})
-		}
+		drawTower(f, g, ui, pal, l, t)
 	}
 	// Level pips in a second pass, left of the tower. Pips skip cells that
 	// already hold an entity glyph (tower, enemy, spawn/exit), so adjacent
