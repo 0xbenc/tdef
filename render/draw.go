@@ -45,16 +45,22 @@ const (
 )
 
 type Colors struct {
-	Wall, Path, Grass int
-	Gold, Dim, Bright int
-	Tower             [game.TowerCount]int
-	Enemy             [game.EnemyCount]int
-	Beam              [game.TowerCount]int
+	Wall, WallHi, WallLo   int
+	Path, RoadBG, RoadLine int
+	Grass, GrassTuft       int
+	Spawn, Exit            int
+	Gold, Dim, Bright      int
+	Tower                  [game.TowerCount]int
+	Enemy                  [game.EnemyCount]int
+	Beam                   [game.TowerCount]int
 }
 
 func Palette() Colors {
 	return Colors{
-		Wall: 235, Path: 240, Grass: 234,
+		Wall: 235, WallHi: 237, WallLo: 233,
+		Path: 240, RoadBG: 238, RoadLine: 246,
+		Grass: 23, GrassTuft: 34,
+		Spawn: 51, Exit: 196,
 		Gold: 220, Dim: 245, Bright: 255,
 		Tower: [game.TowerCount]int{46, 203, 51, 171, 220, 130, 226},
 		Enemy: [game.EnemyCount]int{213, 214, 180, 204, 171, 199, 147, 75},
@@ -208,6 +214,22 @@ func drawLine(f *Frame, ax, ay, bx, by, color int) {
 		}
 		f.Put(x, y, '·', color, 0)
 	}
+}
+
+// isGroundRune reports whether a rendered rune is terrain (buildable/roamable
+// ground) rather than an entity: blank, a grass tuft, or one of the road
+// connectors. The cursor overlays a marker on ground but only bolds entities
+// (towers, enemies, the spawn rift and the lair heart).
+func isGroundRune(r rune) bool {
+	if r == 0 || r == ' ' || r == '·' {
+		return true
+	}
+	for _, c := range "─│┌┐└┘├┤┬┴┼" {
+		if r == c {
+			return true
+		}
+	}
+	return false
 }
 
 // drawHPBar renders a 3-segment health bar centered above (x,y).
@@ -708,7 +730,7 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
 	drawRoundedBox(f, 0, 0, l.W, l.H, pal.Path)
 	drawHeader(f, g, ui, pal)
-	drawMapPreview(f, g.Map, pal, l)
+	drawMapPreview(f, g.Map, pal, l, frame)
 	drawRange(f, g, ui, pal, l)
 	for _, t := range g.Towers {
 		x, y := l.center(t.Cell.X, t.Cell.Y)
@@ -776,7 +798,7 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 	}
 	if g.LeakFlash > 0 {
 		ex, ey := l.center(g.Map.Exit.X, g.Map.Exit.Y)
-		f.Set(ex, ey, Cell{R: 'E', FG: 231, BG: 196, Bold: true})
+		f.Set(ex, ey, Cell{R: '♥', FG: 231, BG: 196, Bold: true})
 	}
 	if ui.PlacingOn {
 		c := 196
@@ -789,9 +811,9 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 		x, y := l.X(ui.Cursor.X), l.Y(ui.Cursor.Y)
 		if x >= 0 && y >= 0 && x < f.W && y < f.H {
 			cc := f.C[y*f.W+x]
-			// Ground glyphs (grass/wall space, path dot) get the cursor
-			// marker; entity glyphs (towers, enemies, spawn/exit) just bold.
-			if cc.R == 0 || cc.R == ' ' || cc.R == '·' {
+			// Terrain (wall/grass/road) gets the cursor marker; entity glyphs
+			// (towers, enemies, the spawn rift, the lair heart) just bold.
+			if isGroundRune(cc.R) {
 				cc.R = '◻'
 				cc.FG = pal.Dim
 			} else {

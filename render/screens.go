@@ -109,23 +109,161 @@ func drawSubBox(f *Frame, x, y, bw, bh int, title string, pal Colors) {
 
 // drawMapPreview renders map terrain plus the spawn/exit markers at layout
 // l. Shared by the playfield and the level-select preview.
-func drawMapPreview(f *Frame, m *game.Map, pal Colors, l Layout) {
+// drawMapPreview renders the battlefield terrain: mottled rock walls, grassy
+// clearings, and the road — drawn as directional connectors so the route the
+// horde marches reads at a glance. The spawn rift and the lair heart sit on the
+// road's ends. Everything is scale-aware: at 1x each map cell is one terminal
+// cell; at 2x+ a block carries its own texture.
+func drawMapPreview(f *Frame, m *game.Map, pal Colors, l Layout, frame int) {
+	isRoad := func(x, y int) bool { return m.At(game.Vec{X: x, Y: y}) == game.CellPath }
 	for y := 0; y < m.H; y++ {
 		for x := 0; x < m.W; x++ {
 			switch m.At(game.Vec{X: x, Y: y}) {
 			case game.CellWall:
-				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Wall})
+				drawWallBlock(f, pal, l, x, y)
 			case game.CellPath:
-				l.block(f, x, y, Cell{R: '·', FG: pal.Path, BG: 0})
+				g := roadGlyph(isRoad(x, y-1), isRoad(x+1, y), isRoad(x, y+1), isRoad(x-1, y))
+				drawRoadBlock(f, pal, l, x, y, g)
 			case game.CellGrass:
-				l.block(f, x, y, Cell{R: ' ', FG: 0, BG: pal.Grass})
+				drawGrassBlock(f, pal, l, x, y)
 			}
 		}
 	}
-	sx, sy := l.center(m.Spawn.X, m.Spawn.Y)
-	f.Set(sx, sy, Cell{R: '▶', FG: 46, Bold: true})
-	ex, ey := l.center(m.Exit.X, m.Exit.Y)
-	f.Set(ex, ey, Cell{R: 'E', FG: 196, Bold: true})
+	drawSpawnRift(f, pal, l, m.Spawn, frame)
+	drawLairHeart(f, pal, l, m.Exit, frame)
+}
+
+// roadGlyph picks the box-drawing connector for a road cell from which of its
+// four neighbours are also road: a straight, a corner, a tee or a cross.
+func roadGlyph(n, e, s, w bool) rune {
+	switch {
+	case n && e && s && w:
+		return '┼'
+	case n && e && w:
+		return '┬'
+	case e && s && w:
+		return '┴'
+	case n && s && w:
+		return '├'
+	case n && s && e:
+		return '┤'
+	case n && s:
+		return '│'
+	case e && w:
+		return '─'
+	case n && w:
+		return '┐'
+	case n && e:
+		return '┌'
+	case s && w:
+		return '┘'
+	case s && e:
+		return '└'
+	case n || s:
+		return '│'
+	case e || w:
+		return '─'
+	}
+	return '·'
+}
+
+// cellHash is a stable per-cell value in [0,1) that drives ambient variation
+// (rock mottling, grass tufts). Deterministic, so renders reproduce exactly.
+func cellHash(x, y int) float64 {
+	h := uint32(x+0x9e37)*73856093 ^ uint32(y+0x27f0)*19349663
+	h ^= h >> 13
+	h *= 0x5bd1e995
+	h ^= h >> 15
+	return float64(h%1000) / 1000.0
+}
+
+// drawWallBlock fills one wall cell. At 1x a single mottled rock cell; at 2x+ a
+// block of stone with a few lighter/darker speckles so it reads as rock, not a
+// flat slab.
+func drawWallBlock(f *Frame, pal Colors, l Layout, x, y int) {
+	base := pal.Wall
+	if h := cellHash(x, y); h < 0.15 {
+		base = pal.WallHi
+	} else if h > 0.85 {
+		base = pal.WallLo
+	}
+	if l.Scale == 1 {
+		f.Set(l.X(x), l.Y(y), Cell{R: ' ', BG: base})
+		return
+	}
+	for dy := 0; dy < l.Scale; dy++ {
+		for dx := 0; dx < l.Scale; dx++ {
+			sh := base
+			if hs := cellHash(x*31+dx, y*17+dy); hs < 0.10 {
+				sh = pal.WallHi
+			} else if hs > 0.92 {
+				sh = pal.WallLo
+			}
+			f.Set(l.X(x)+dx, l.Y(y)+dy, Cell{R: ' ', BG: sh})
+		}
+	}
+}
+
+// drawGrassBlock fills one clearing cell: a dark-green floor with sparse
+// lighter tufts so it reads as grass set into the rock.
+func drawGrassBlock(f *Frame, pal Colors, l Layout, x, y int) {
+	if l.Scale == 1 {
+		c := Cell{R: ' ', BG: pal.Grass}
+		if cellHash(x, y) < 0.18 {
+			c = Cell{R: '·', FG: pal.GrassTuft, BG: pal.Grass}
+		}
+		f.Set(l.X(x), l.Y(y), c)
+		return
+	}
+	for dy := 0; dy < l.Scale; dy++ {
+		for dx := 0; dx < l.Scale; dx++ {
+			c := Cell{BG: pal.Grass}
+			if cellHash(x*13+dx, y*29+dy) < 0.12 {
+				c = Cell{R: '·', FG: pal.GrassTuft, BG: pal.Grass}
+			}
+			f.Set(l.X(x)+dx, l.Y(y)+dy, c)
+		}
+	}
+}
+
+// drawRoadBlock fills one road cell with the road surface and its directional
+// centerline connector. At 2x+ the whole block is road, so adjacent cells merge
+// into a continuous band with the connector marking the route.
+func drawRoadBlock(f *Frame, pal Colors, l Layout, x, y int, g rune) {
+	if l.Scale == 1 {
+		f.Set(l.X(x), l.Y(y), Cell{R: g, FG: pal.RoadLine, BG: pal.RoadBG})
+		return
+	}
+	for dy := 0; dy < l.Scale; dy++ {
+		for dx := 0; dx < l.Scale; dx++ {
+			f.Set(l.X(x)+dx, l.Y(y)+dy, Cell{BG: pal.RoadBG})
+		}
+	}
+	cx, cy := l.center(x, y)
+	f.Set(cx, cy, Cell{R: g, FG: pal.RoadLine, BG: pal.RoadBG})
+}
+
+// drawSpawnRift marks where the horde pours in: a bright rift glyph that
+// breathes on the ambient clock.
+func drawSpawnRift(f *Frame, pal Colors, l Layout, v game.Vec, frame int) {
+	x, y := l.center(v.X, v.Y)
+	fg := pal.Spawn
+	if (frame/16)%2 == 0 {
+		fg = pal.Bright
+	}
+	f.Set(x, y, Cell{R: '▶', FG: fg, Bold: true})
+}
+
+// drawLairHeart marks the lair the horde is marching on: a heart that beats — a
+// soft double-thump — on the ambient clock.
+func drawLairHeart(f *Frame, pal Colors, l Layout, v game.Vec, frame int) {
+	x, y := l.center(v.X, v.Y)
+	fg := pal.Exit
+	switch c := frame % 48; {
+	case c < 3, c >= 10 && c < 13:
+		fg = 203
+	}
+	f.Set(x, y, Cell{R: '♥', FG: fg, Bold: true})
 }
 
 // ---------------------------------------------------------------- title
@@ -2292,7 +2430,7 @@ func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
 			bx := (w - bw) / 2
 			drawSubBox(f, bx, p, bw, bh, "PREVIEW", pal)
 			l := Layout{Ox: bx + 1, Oy: p + 1, Scale: scale, W: w, H: h}
-			drawMapPreview(f, v.Preview, pal, l)
+			drawMapPreview(f, v.Preview, pal, l, 0)
 		} else if guard(p) {
 			centerPut(f, p, " (preview needs more room) ", 238, false)
 		}
