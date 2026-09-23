@@ -929,7 +929,7 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
 	drawRoundedBox(f, 0, 0, l.W, l.H, pal.Path)
 	drawHeader(f, g, ui, pal)
-	drawMapPreview(f, g.Map, pal, l, frame)
+	drawMapPreview(f, g.Map, pal, themeForLevel(ui.Level), l, frame)
 	drawRange(f, g, ui, pal, l)
 	// Towers: a colored glyph on a dark pad (a small pedestal at 2x+), corner
 	// brackets on the selected one, and a muzzle flash while it fires.

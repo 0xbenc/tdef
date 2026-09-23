@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"tdef/game"
 )
@@ -107,25 +108,111 @@ func drawSubBox(f *Frame, x, y, bw, bh int, title string, pal Colors) {
 	embedSegment(f, y, x+1, title, '┐', '┌', pal.Path, pal.Dim, true)
 }
 
-// drawMapPreview renders map terrain plus the spawn/exit markers at layout
-// l. Shared by the playfield and the level-select preview.
-// drawMapPreview renders the battlefield terrain: mottled rock walls, grassy
-// clearings, and the road — drawn as directional connectors so the route the
-// horde marches reads at a glance. The spawn rift and the lair heart sit on the
-// road's ends. Everything is scale-aware: at 1x each map cell is one terminal
-// cell; at 2x+ a block carries its own texture.
-func drawMapPreview(f *Frame, m *game.Map, pal Colors, l Layout, frame int) {
+// Theme is a level's look: its terrain palette, its accent colour, and the
+// stinger it wears. Each named floor has its own, so no two rooms of the lair
+// look alike. An unknown level (or "") falls back to the plain stone theme.
+type Theme struct {
+	Wall, WallHi, WallLo int
+	Grass, GrassTuft     int
+	RoadBG, RoadLine     int
+	Accent, AccentDim    int
+	Stinger              int
+}
+
+// Stinger ids: which landmark + light a level wears.
+const (
+	StingerNone    = iota // the plain stone theme (no landmark)
+	StingerHalls          // the Long Halls: flickering torch sconces on the walls
+	StingerRotunda        // the Rotunda: the dragon's glinting hoard at its heart
+	StingerGarden         // the Sunken Garden: a glowing pool and drifting fireflies
+	StingerRift           // the Rift: a burning fissure with rising embers
+	StingerHeart          // the heart chamber: a light that beats with the heart
+	StingerDepths         // the Unmapped Depths: cold drifting mist and lit runes
+)
+
+// defaultTheme is the plain stone look — the fallback for any level without a
+// theme (and what the title's empty battlefield wears).
+var defaultTheme = Theme{
+	Wall: 235, WallHi: 237, WallLo: 233,
+	Grass: 23, GrassTuft: 34,
+	RoadBG: 238, RoadLine: 246,
+	Accent: 240, AccentDim: 240,
+	Stinger: StingerNone,
+}
+
+// themeForLevel returns the theme a level id wears. The maze is seeded
+// (maze1234), so it matches by prefix; the heart is the boss floor.
+func themeForLevel(level string) Theme {
+	switch {
+	case level == "winding":
+		return Theme{ // the Long Halls: warm bronze stone, amber torches
+			Wall: 94, WallHi: 136, WallLo: 58,
+			Grass: 234, GrassTuft: 94,
+			RoadBG: 237, RoadLine: 136,
+			Accent: 214, AccentDim: 130,
+			Stinger: StingerHalls,
+		}
+	case level == "hub":
+		return Theme{ // the Rotunda: dragon's purple, a gold hoard at its heart
+			Wall: 53, WallHi: 96, WallLo: 233,
+			Grass: 234, GrassTuft: 96,
+			RoadBG: 236, RoadLine: 220,
+			Accent: 220, AccentDim: 178,
+			Stinger: StingerRotunda,
+		}
+	case level == "garden":
+		return Theme{ // the Sunken Garden: mossy green, a glowing pool
+			Wall: 22, WallHi: 28, WallLo: 233,
+			Grass: 28, GrassTuft: 34,
+			RoadBG: 236, RoadLine: 34,
+			Accent: 45, AccentDim: 23,
+			Stinger: StingerGarden,
+		}
+	case level == "canyon":
+		return Theme{ // the Rift: volcanic black-red, a burning fissure
+			Wall: 52, WallHi: 88, WallLo: 233,
+			Grass: 234, GrassTuft: 88,
+			RoadBG: 237, RoadLine: 203,
+			Accent: 201, AccentDim: 203,
+			Stinger: StingerRift,
+		}
+	case level == "heart":
+		return Theme{ // the heart chamber: deep blood, a light that beats
+			Wall: 89, WallHi: 91, WallLo: 52,
+			Grass: 52, GrassTuft: 89,
+			RoadBG: 236, RoadLine: 196,
+			Accent: 196, AccentDim: 124,
+			Stinger: StingerHeart,
+		}
+	case strings.HasPrefix(level, "maze"):
+		return Theme{ // the Unmapped Depths: cold teal stone, drifting mist
+			Wall: 24, WallHi: 31, WallLo: 233,
+			Grass: 234, GrassTuft: 31,
+			RoadBG: 236, RoadLine: 45,
+			Accent: 33, AccentDim: 24,
+			Stinger: StingerDepths,
+		}
+	}
+	return defaultTheme
+}
+
+// drawMapPreview renders the battlefield terrain in the level's theme: mottled
+// walls, the floor, and the road drawn as directional connectors so the route
+// the horde marches reads at a glance. The spawn rift and the lair heart sit on
+// the road's ends (always their own colours). Everything is scale-aware: at 1x
+// each map cell is one terminal cell; at 2x+ a block carries its own texture.
+func drawMapPreview(f *Frame, m *game.Map, pal Colors, th Theme, l Layout, frame int) {
 	isRoad := func(x, y int) bool { return m.At(game.Vec{X: x, Y: y}) == game.CellPath }
 	for y := 0; y < m.H; y++ {
 		for x := 0; x < m.W; x++ {
 			switch m.At(game.Vec{X: x, Y: y}) {
 			case game.CellWall:
-				drawWallBlock(f, pal, l, x, y)
+				drawWallBlock(f, th, l, x, y)
 			case game.CellPath:
 				g := roadGlyph(isRoad(x, y-1), isRoad(x+1, y), isRoad(x, y+1), isRoad(x-1, y))
-				drawRoadBlock(f, pal, l, x, y, g)
+				drawRoadBlock(f, th, l, x, y, g)
 			case game.CellGrass:
-				drawGrassBlock(f, pal, l, x, y)
+				drawGrassBlock(f, th, l, x, y)
 			}
 		}
 	}
@@ -180,12 +267,12 @@ func cellHash(x, y int) float64 {
 // drawWallBlock fills one wall cell. At 1x a single mottled rock cell; at 2x+ a
 // block of stone with a few lighter/darker speckles so it reads as rock, not a
 // flat slab.
-func drawWallBlock(f *Frame, pal Colors, l Layout, x, y int) {
-	base := pal.Wall
+func drawWallBlock(f *Frame, th Theme, l Layout, x, y int) {
+	base := th.Wall
 	if h := cellHash(x, y); h < 0.15 {
-		base = pal.WallHi
+		base = th.WallHi
 	} else if h > 0.85 {
-		base = pal.WallLo
+		base = th.WallLo
 	}
 	if l.Scale == 1 {
 		f.Set(l.X(x), l.Y(y), Cell{R: ' ', BG: base})
@@ -195,9 +282,9 @@ func drawWallBlock(f *Frame, pal Colors, l Layout, x, y int) {
 		for dx := 0; dx < l.Scale; dx++ {
 			sh := base
 			if hs := cellHash(x*31+dx, y*17+dy); hs < 0.10 {
-				sh = pal.WallHi
+				sh = th.WallHi
 			} else if hs > 0.92 {
-				sh = pal.WallLo
+				sh = th.WallLo
 			}
 			f.Set(l.X(x)+dx, l.Y(y)+dy, Cell{R: ' ', BG: sh})
 		}
@@ -206,20 +293,20 @@ func drawWallBlock(f *Frame, pal Colors, l Layout, x, y int) {
 
 // drawGrassBlock fills one clearing cell: a dark-green floor with sparse
 // lighter tufts so it reads as grass set into the rock.
-func drawGrassBlock(f *Frame, pal Colors, l Layout, x, y int) {
+func drawGrassBlock(f *Frame, th Theme, l Layout, x, y int) {
 	if l.Scale == 1 {
-		c := Cell{R: ' ', BG: pal.Grass}
+		c := Cell{R: ' ', BG: th.Grass}
 		if cellHash(x, y) < 0.18 {
-			c = Cell{R: '·', FG: pal.GrassTuft, BG: pal.Grass}
+			c = Cell{R: '·', FG: th.GrassTuft, BG: th.Grass}
 		}
 		f.Set(l.X(x), l.Y(y), c)
 		return
 	}
 	for dy := 0; dy < l.Scale; dy++ {
 		for dx := 0; dx < l.Scale; dx++ {
-			c := Cell{BG: pal.Grass}
+			c := Cell{BG: th.Grass}
 			if cellHash(x*13+dx, y*29+dy) < 0.12 {
-				c = Cell{R: '·', FG: pal.GrassTuft, BG: pal.Grass}
+				c = Cell{R: '·', FG: th.GrassTuft, BG: th.Grass}
 			}
 			f.Set(l.X(x)+dx, l.Y(y)+dy, c)
 		}
@@ -229,18 +316,18 @@ func drawGrassBlock(f *Frame, pal Colors, l Layout, x, y int) {
 // drawRoadBlock fills one road cell with the road surface and its directional
 // centerline connector. At 2x+ the whole block is road, so adjacent cells merge
 // into a continuous band with the connector marking the route.
-func drawRoadBlock(f *Frame, pal Colors, l Layout, x, y int, g rune) {
+func drawRoadBlock(f *Frame, th Theme, l Layout, x, y int, g rune) {
 	if l.Scale == 1 {
-		f.Set(l.X(x), l.Y(y), Cell{R: g, FG: pal.RoadLine, BG: pal.RoadBG})
+		f.Set(l.X(x), l.Y(y), Cell{R: g, FG: th.RoadLine, BG: th.RoadBG})
 		return
 	}
 	for dy := 0; dy < l.Scale; dy++ {
 		for dx := 0; dx < l.Scale; dx++ {
-			f.Set(l.X(x)+dx, l.Y(y)+dy, Cell{BG: pal.RoadBG})
+			f.Set(l.X(x)+dx, l.Y(y)+dy, Cell{BG: th.RoadBG})
 		}
 	}
 	cx, cy := l.center(x, y)
-	f.Set(cx, cy, Cell{R: g, FG: pal.RoadLine, BG: pal.RoadBG})
+	f.Set(cx, cy, Cell{R: g, FG: th.RoadLine, BG: th.RoadBG})
 }
 
 // drawSpawnRift marks where the horde pours in: a bright rift glyph that
@@ -2430,7 +2517,11 @@ func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
 			bx := (w - bw) / 2
 			drawSubBox(f, bx, p, bw, bh, "PREVIEW", pal)
 			l := Layout{Ox: bx + 1, Oy: p + 1, Scale: scale, W: w, H: h}
-			drawMapPreview(f, v.Preview, pal, l, 0)
+			lvlID := "maze"
+			if v.Cursor >= 0 && v.Cursor < len(v.Levels) {
+				lvlID = v.Levels[v.Cursor]
+			}
+			drawMapPreview(f, v.Preview, pal, themeForLevel(lvlID), l, 0)
 		} else if guard(p) {
 			centerPut(f, p, " (preview needs more room) ", 238, false)
 		}
