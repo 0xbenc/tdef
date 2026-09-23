@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"tdef/game"
-	"tdef/render"
+	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/tdef/render"
 )
 
 // A fresh game must start with no tower selected: the zero value of

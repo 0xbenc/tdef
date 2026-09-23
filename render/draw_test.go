@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"tdef/game"
+	"github.com/0xbenc/tdef/game"
 )
 
 func TestComputeScale(t *testing.T) {

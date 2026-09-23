@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"tdef/game"
+	"github.com/0xbenc/tdef/game"
 )
 
 // The overworld must use the exact playfield scale logic the game does: the

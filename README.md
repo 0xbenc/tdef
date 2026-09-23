@@ -1,207 +1,130 @@
 # tdef
 
-A tower defense game that runs entirely in your terminal. Heroes walk a
-fixed path; you place towers on the grass to stop them before they reach
-the heart. You are Grak, the Last Monster, holding the dying Dragon
-Malgrath's lair against the guild's twenty expeditions. Survive all 20.
+> — terminal tower defense —
 
-Built in Go with **zero external dependencies** — the engine, renderer,
-and terminal driver are all standard library. The engine is fully
-deterministic, so it can be simulated headlessly (used for balance
-tuning) or driven by the interactive TUI.
+You are **Grak, the Last Monster**. The Dragon **Malgrath** is dying at the
+bottom of his lair, and the guild has marked the hoard: **twenty
+expeditions** are marching in to put the beast down and take the gold. You
+took the hoard. Now hold the lair against all twenty — or watch the heart
+go cold.
+
+`tdef` is a tower defense game that runs entirely in your terminal. No
+engine, no assets, no dependencies — Go's standard library and a dying
+dragon.
 
 ## Build & play
 
 ```sh
 go build -o tdef .
 
-./tdef                           # title screen -> main menu -> level select
-./tdef overworld                 # the lair map (overworld): walk the floors, descend into one
-./tdef play -level canyon        # jump straight in: hub | winding | garden | canyon
-./tdef play -maze 123            # procedural maze (seeded, reproducible)
-./tdef play -diff easy           # easy | normal | hard
+./tdef                       # title screen → main menu → the lair
+./tdef overworld             # jump straight to the lair map
+./tdef play -level canyon    # skip the menus: hub | winding | garden | canyon
+./tdef play -maze 123        # a procedural maze (seeded, reproducible)
 ./tdef play -diff hard -maze 7
 ```
 
-Bare `./tdef` (or `play` with no level) starts at the animated title
-screen: **main menu** (Start / Quick Play / Help / High Scores / Quit) →
-**the lair**, the overworld map. You play Grak walking the lair's floors
-(the Rift, the Rotunda, the Long Halls, the Sunken Garden, the Unmapped
-Depths); the floors unseal as you hold them, and pressing `enter` on a
-floor descends into its defense. The result comes back to the map.
-**Quick Play** skips the lair and goes straight to **level select** with
-the built-in maps, a procedural maze row (type a seed, empty = random),
-and a difficulty pick; tall terminals get a live map preview. Explicit
-`-level`/`-maze` flags skip the menus and start the game directly;
-`-diff` preselects the difficulty.
+Needs a real TTY (raw mode, alternate screen, mouse).
 
-Requires a real TTY (raw mode, alternate screen, mouse).
+## Holding the lair
 
-## Controls
+Pick a tower with `1`–`7`, move the cursor with the arrows (or `wasd`), and
+place it on the grass with `enter`. Heroes walk a fixed path toward the
+heart; every one that gets through strikes the dying Dragon. If his HP
+reaches zero the lair falls. Hold all twenty expeditions and Malgrath
+endures.
 
 | key | action |
 |-----|--------|
-| `1`-`7` | select tower (Orc Gunner, Cannonier, Frost Mage, Ranger, Lightning Mage, Trebuchet, Gnoll Slingers) |
-| arrows / `wasd` | move cursor |
-| `enter` / click | place tower on grass |
-| `u` | upgrade the selected tower (on a tower) |
-| `x` | sell the selected tower (70% refund) |
-| `t` | cycle tower targeting: first / strongest / closest (on a tower) |
-| `n` | start the next wave early (bonus gold) |
-| `p` | pause |
-| `f` | cycle speed 1x / 2x / 4x |
-| `h` | toggle help |
-| `r` | restart (on game over) |
-| `esc` | cancel placement; back to the lair (lair runs) or level select (menu runs) on game over; back out of menus |
-| `q` | quit (any screen) |
+| `1`–`7` | pick a tower |
+| arrows / `wasd` | move the cursor |
+| `enter` / click | place a tower |
+| `u` / `x` | upgrade / sell the selected tower (70% refund) |
+| `t` | cycle targeting: first → strongest → closest |
+| `n` | call the next wave early (bonus gold) |
+| `p` / `f` | pause / cycle speed 1× – 2× – 4× |
+| `h` / `esc` / `q` | help / back out / quit |
 
-In the menus: `enter` activates, `1`-`5` pick a menu item, and the mouse
-works too (click items, wheel scrolls). Mouse in-game: click a tower in
-the menu, then click the map; scroll wheel cycles speed (1x/2x/4x, like
-`f`).
+The **lair** (overworld) is a map you walk. Hold a floor and it unseals;
+step onto it and press `enter` to descend into its defense, and the result
+comes back to the map. The four built-in floors are a difficulty ladder —
+**the Rotunda** (easiest), **the Long Halls**, **the Sunken Garden**,
+**the Rift** (tightest) — and holding all four opens **the Heart**, the
+endgame chamber behind the Rotunda. `tab` cycles the renown (easy / normal /
+hard); the lair remembers what you've held, and a held floor earns a
+**dragon heart** (+1 starting life on later defenses).
 
-### In the lair (overworld)
+## Your kin (towers)
 
-| key | action |
-|-----|--------|
-| arrows / `wasd` | walk Grak (one cell per keypress) |
-| `enter` | descend into the floor under Grak |
-| `tab` | cycle the renown (easy / normal / hard) — the lair is remembered per renown |
-| `0`-`9` / `backspace` / `c` | set the Unmapped Depths' maze seed (on the Depths; `c` clears, empty = uncharted) |
-| `t` | spend a relic at the Rotunda (+60 gold / a free Orc Gunner / +1♥ on the next defense) |
-| `r` | reveal the whole lair (look-dev) |
-| `esc` | back to the title |
-| mouse | click a floor to step onto it (click the floor you're on to descend); wheel hops between floors |
-
-The lair remembers each floor per renown: a ✓ and best wave once held, a
-✕ and the wave it broke at. Holding a floor earns a **dragon heart** (+1
-starting life on later defenses, up to four); holding every built-in floor
-unseals **the Heart** — the endgame chamber behind the Rotunda, which the
-Rotunda becomes once the heart is unsealed. Holding a wave without the
-heart being struck earns a **relic** to spend at the Rotunda.
-
-## Towers
+The last monster kin you command. Each has three levels; upgrading deepens
+the defense.
 
 | # | tower | cost | role |
 |---|-------|------|------|
-| 1 | Orc Gunner | 50 | cheap, fast, single-target |
-| 2 | Cannonier | 100 | slow, splash damage |
+| 1 | Orc Gunner | 50 | cheap, fast, single target |
+| 2 | Cannonier | 100 | slow, splash |
 | 3 | Frost Mage | 75 | slows enemies in range |
-| 4 | Ranger | 150 | long range, high single damage |
-| 5 | Lightning Mage | 200 | chains lightning to nearby enemies |
-| 6 | Trebuchet | 250 | very slow, huge splash, long range — crowd nuker |
-| 7 | Gnoll Slingers | 80 | very fast, short range — shreds fast enemies |
+| 4 | Ranger | 150 | long range, hard hits |
+| 5 | Lightning Mage | 200 | chains lightning to nearby heroes |
+| 6 | Trebuchet | 250 | huge splash, very slow — the crowd nuke |
+| 7 | Gnoll Slingers | 80 | very fast, short range — shreds the quick |
 
-The towers are the last monster kin you command (see LORE.md).
+By default a tower fires on the hero furthest along the path; `t` cycles it
+to strongest or closest.
 
-Each tower has 3 levels; upgrading increases damage/range.
+## The guild (heroes)
 
-By default a tower attacks the enemy **furthest along the path** (first).
-Press `t` on a tower to cycle its targeting priority to **strongest**
-(highest HP) or **closest** — useful for focusing tanks or finishing off
-stragglers. The current mode shows in the tower info line.
+Eight kinds of hero, introduced one at a time across the twenty expeditions
+then mixed in. Squires and rogues at first; necromancers (who rise again
+when they fall), warded centurions, and paladins later. On waves 15, 18, and
+20 the guild's champion arrives — **the Player**. Leaking one costs six of
+the Dragon's heart.
 
-## Enemies & waves
+## Under the hood
 
-Eight enemy types — the guild's heroes — introduced one at a time across 20
-hand-shaped expeditions (Bloons TD 3 style — a new type debuts in a legible
-near-solo wave, then gets mixed in):
+- **Zero dependencies.** The engine, renderer, and terminal driver are all
+  Go's standard library. No `go.sum`, no `vendor/`, no CGO.
 
-| type | role | debuts |
-|------|------|--------|
-| Squire | basic | wave 1 |
-| Rogue | fast | wave 3 |
-| Mercenary | tough | wave 6 |
-| Wizard | very fast, weak | wave 11 |
-| Necromancer | on death, two Squires rise | wave 12 |
-| Paladin | very tough, slow | wave 13 |
-| Centurion | warded (−40% damage) | wave 14 |
-| The Player | high HP; leaking one costs 6 lives | wave 15, 18, 20 (two) |
+- **Deterministic engine.** `game/` is pure — no I/O, no wall clock. The
+  whole game is a function of its map (or maze seed) and its input, so the
+  same seed and the same moves replay to the same frame. That's what makes
+  balance tuning and the headless tools below possible.
 
-Each wave has a theme (`scouts`, `raid`, `column`, `assault`, `the coven`,
-`the risen`, `the vanguard`, `the wall`, `the player`, `siege`, `the end`)
-shown in the HUD, and a one-line **telegraph** warns you before a
-mechanically new wave (e.g. "The Player has set out. If they reach the
-heart, it ends.").
-Early waves are light with breather dips at each introduction; the last
-five waves (W16–W20) are a back-loaded climax. Enemy HP and speed scale
-with the wave number; the boss gets stronger each time it appears.
+- **The terminal is the frame.** The whole screen is one rounded box, edge
+  to edge, with the playfield centered inside at the largest integer scale
+  (1×–4×) that fits. The HUD lives in the border itself — status segments in
+  the top edge, tower slots and the selected tower's stats in the bottom.
+  Resize any time and the board re-scales on the next frame; below 62×19 the
+  game pauses and asks you to enlarge the terminal.
 
-### Pacing
+- **Headless.** Drive the engine without a terminal:
 
-The inter-wave break tapers from 11s (after wave 1) down to ~4.5s (after
-wave 19), so tempo rises as the game escalates. Starting a wave early
-(`n`) pays a small bonus gold — a tempo choice, not a dominant income
-source. Clearing a wave pays a bonus that grows with the wave number.
+  ```sh
+  ./tdef bench -n 40 -maze 60        # 40 autoplay games per level + 60 mazes
+  ./tdef headless -level garden      # simulate one game, print the result
+  ./tdef capture -level canyon -text # dump rendered frames to files
+  ./tdef maps                        # list the built-in maps
+  ```
 
-## Maps
+  `bench` plays many games with a simple greedy AI and reports win rate,
+  average wave, leaks, and towers built per map — the tool behind the
+  per-map HP and economy tuning. `capture -scale 1–4` pins the render to a
+  fixed virtual terminal size, so frame dumps are byte-identical in any
+  environment.
 
-The floors of the lair. Four hand-crafted 45×13 maps form a difficulty
-ladder — `hub` (the Rotunda, easiest, open central pocket), `winding`
-(the Long Halls), `garden` (the Sunken Garden), `canyon` (the Rift,
-tightest). Each has a different path layout and buildable pockets, so the
-right tower placement differs per map. `-maze` generates a random-but-
-solvable maze from a seed (the Unmapped Depths in-game); the generator
-biases toward long, snake-like chokepoints. The CLI level ids stay the
-short forms; the display names are presentation only (hiscore keys use
-the ids).
+- **Layout.**
 
-Beyond the four floors is **the Heart** (`heart`, the heart chamber): a
-fifth 45×13 map, a long serpentine that the level select never lists. It
-unseals in the lair once all four built-in floors are held at a renown,
-and the Rotunda becomes its door. It is tuned harder than the ladder —
-the final expedition a passive player loses — but a player who arrives
-carrying dragon hearts (+lives) and relics can hold it.
+  ```
+  main.go            CLI (play / bench / headless / capture / overworld / maps)
+  game/              pure, deterministic engine (no I/O)
+  render/            pure frame model + ANSI/text exporters
+  tui/               terminal driver, input parser, app loop
+  hiscore/           persistent high scores + the lair's memory
+  ```
 
-## Rendering
+  High scores live in `~/.tdef-hiscores.json`; the lair's memory (floors
+  held, hearts, relics) in `~/.tdef-lair.json`.
 
-The whole terminal is the frame: one rounded box edge to edge, with the
-playfield centered inside at the largest integer scale (1×–4×) that fits.
-Resize the window any time and the board re-scales and re-centers on the
-next frame. The UI lives in the frame chrome — status segments (level,
-wave, gold, lives, score) embedded in the top border, and the seven tower
-slots, a context hint, and the selected tower's stats embedded in the
-bottom border. Minimum size is 62×19 (a 1× board); below that the game
-forces a pause and asks you to enlarge the terminal (`p` resumes). When
-a game ends, a stats box summarizes the run (waves, kills, leaks, towers,
-score, best combo, time) and your best score for that map.
+## License
 
-## Balance / headless tools
-
-The engine is deterministic, so it can be driven without a terminal:
-
-```sh
-./tdef bench -n 40 -maze 60   # run autoplay (greedy AI) games, report stats
-./tdef headless -level garden # simulate one game, print result
-./tdef capture -level canyon -text -out /tmp/frames   # dump frames
-./tdef capture -level canyon -scale 2 -text           # 92x32 virtual terminal
-./tdef maps                   # list built-in maps
-```
-
-`bench` plays many games with a simple greedy AI and reports win rate,
-average wave reached, leaks, and towers built per map — used to tune the
-per-map HP multipliers and economy so that a competent player can win
-while a passive one loses. `capture -scale 1-4` pins the render to the
-virtual terminal size that yields that scale (62×19, 92×32, 137×45,
-182×58), so frame dumps are byte-identical regardless of the environment
-the dump runs in.
-
-High scores are stored per-map in `~/.tdef-hiscores.json`; the lair's
-memory (floor results, hearts, relics, the held heart) is stored
-separately in `~/.tdef-lair.json`, so the hiscore table stays a plain
-map.
-
-## Layout
-
-```
-main.go            CLI (play / bench / headless / capture / overworld / maps)
-game/              pure, deterministic engine (no I/O)
-  balance.go       tower/enemy specs, wave scaling, difficulty
-  mapgen.go        procedural maze generator
-  sim.go           autoplay AI + headless simulation
-  levels/          built-in .txt maps
-  levels/boss/     the heart chamber (endgame, unsealed by the lair)
-render/            pure frame model + ANSI/text exporters (incl. the lair)
-tui/               terminal driver, input parser, app loop (incl. the lair)
-hiscore/           persistent high scores + the lair's memory
-```
+MIT — see [LICENSE](LICENSE).

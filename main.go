@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"tdef/game"
-	"tdef/render"
-	"tdef/tui"
+	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/tdef/render"
+	"github.com/0xbenc/tdef/tui"
 )
 
 func main() {

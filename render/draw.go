@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"tdef/game"
+	"github.com/0xbenc/tdef/game"
 )
 
 // NoSelection is "no tower selected". UI.Selected must be initialized to it

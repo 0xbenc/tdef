@@ -6,8 +6,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"tdef/game"
-	"tdef/render"
+	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/tdef/render"
 )
 
 // capWriter captures the bytes a blit writes, so a test can replay them on a

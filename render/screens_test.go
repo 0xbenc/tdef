@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"tdef/game"
+	"github.com/0xbenc/tdef/game"
 )
 
 // titleAt renders the title at attract-battle internal frame fr

@@ -3,7 +3,7 @@ package render
 import (
 	"testing"
 
-	"tdef/game"
+	"github.com/0xbenc/tdef/game"
 )
 
 // The keyboard cursor must be visible on every ground cell — grass, road,

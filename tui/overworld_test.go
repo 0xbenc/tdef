@@ -3,9 +3,9 @@ package tui
 import (
 	"testing"
 
-	"tdef/game"
-	"tdef/hiscore"
-	"tdef/render"
+	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/tdef/hiscore"
+	"github.com/0xbenc/tdef/render"
 )
 
 // owTestApp builds an App standing on the lair map, with an isolated lair file.

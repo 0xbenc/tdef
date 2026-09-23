@@ -4,3 +4,4 @@ tdef
 # editor/OS cruft
 .*.swp
 .DS_Store
+.ruff_cache/

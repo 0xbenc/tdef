@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"tdef/game"
+	"github.com/0xbenc/tdef/game"
 )
 
 // Rect is a frame-space rectangle used for mouse hit-testing. The renderers

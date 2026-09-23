@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"tdef/game"
-	"tdef/hiscore"
-	"tdef/render"
+	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/tdef/hiscore"
+	"github.com/0xbenc/tdef/render"
 )
 
 // RunOverworld starts on the lair map directly (CLI entry point).

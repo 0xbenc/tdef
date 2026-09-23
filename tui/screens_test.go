@@ -3,9 +3,9 @@ package tui
 import (
 	"testing"
 
-	"tdef/game"
-	"tdef/hiscore"
-	"tdef/render"
+	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/tdef/hiscore"
+	"github.com/0xbenc/tdef/render"
 )
 
 // lsApp builds an App on the level-select screen with the built-in level
