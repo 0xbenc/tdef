@@ -529,18 +529,23 @@
   few frames, since the light animates). Eyeballed via `tdef capture` at 1x and
    2x; the boss (heart) isn't reachable via `capture` (it's LoadBoss, not in the
    level list), so its ring is covered by the test instead.
-- 2026-09-22 (tower level badge, branch gameplay-lookdev)
-- Upgraded towers showed their level as pips trailing to the LEFT of the glyph,
-  which crowded a neighbour and read as clutter. The user wanted it off the side
-  — on the letter or above. Now the level is a single badge centred directly
-  above the glyph: a pip at level 2, a diamond once maxed, in the menu-slot
-  styling (a bright mark on the tower's own colour). drawLevelPips replaces the
-  left-pip pass; the badge lands only on a ground cell (isGroundRune, so it sits
-  on road too, not just grass/wall) and, being centred on the glyph, it lands
-  between the selection bracket's corners — a selected maxed tower reads as
-  ╭◆╮ rather than the old second pip fighting the ╮ corner. The two pip tests now
-  assert the above placement (L2 pip, L3 diamond) and the no-clobber neighbour
-  invariant. Bench byte-identical (83% ALL). 9dbc023.
+- 2026-09-22 (tower level pedestal, branch gameplay-lookdev)
+- Upgraded towers showed their level as pips trailing to the LEFT of the glyph
+  (crowded a neighbour). First fix: a single badge centred ABOVE the glyph — but
+  the user's screenshot showed the flaw: the cell above a tower is usually the
+  ROAD, so the badge dropped a foreign object into the lane the horde walks.
+  Final fix: the level lives on the tower's OWN pedestal. The glyph goes white
+  and the base charges in the tower's colour — a dark tint at level 2, the full
+  colour once maxed — so it reads as part of the tower and never touches the
+  road. Selection is now purely the corner bracket, so a maxed tower's colours
+  (white glyph on the full tower colour) no longer have to avoid the selected
+  look; picking one just adds the bracket.
+- baseColor darkens a 256-colour toward black while keeping its hue (a naive
+  index halving drifts hue — gunner green 46 would become a dark blue, 25).
+  indexRGB/cubeLevel/rgbIndex support it; drawLevelPips + its pass are gone.
+  The two pedestal tests assert the exact L1(235)/L2(baseColor 55%)/L3(full)
+  base colours and the no-clobber neighbour invariant. Bench byte-identical
+  (83% ALL). 9dbc023 -> 1669db7.
 - 2026-09-22 (siege waits for a tower, branch gameplay-lookdev)
 - The user: it's clunky that the siege just begins on a timer three seconds
   after the map loads, before they've committed to a defense. Now the first wave
