@@ -135,24 +135,69 @@ func TestUpgradePedestalChargesByLevel(t *testing.T) {
 	pal := Palette()
 	l := GameLayout(m.W, m.H, 62, 19)
 	x, y := l.center(v.X, v.Y)
-	// The level lives on the tower's own pedestal, never above it (the cell
-	// above a tower is usually the road — the lane the horde walks). The base
-	// charges in the tower's colour and the glyph goes white as it levels up.
-	want := func(fg, bg int) Cell { return Cell{R: 'G', FG: fg, BG: bg, Bold: true} }
+	// The level lives on the tower's own tile, never above it (the cell above a
+	// tower is usually the road — the lane the horde walks). The glyph steps
+	// dim -> full -> white across the levels on a constant dark body.
+	col := pal.Tower[game.TowerGunner]
+	want := func(fg int) Cell { return Cell{R: 'G', FG: fg, BG: 235, Bold: true} }
 	ui := &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}
 	f := Render(g, ui, pal, 62, 19, 0)
-	if got := f.C[y*f.W+x]; got != want(pal.Tower[game.TowerGunner], 235) {
-		t.Errorf("L1 pedestal = %+v, want a plain base", got)
+	if got := f.C[y*f.W+x]; got != want(baseColor(col, 70)) {
+		t.Errorf("L1 glyph = %+v, want a dim gunner glyph", got)
 	}
 	g.Upgrade(tw)
 	f = Render(g, ui, pal, 62, 19, 0)
-	if got := f.C[y*f.W+x]; got != want(pal.Bright, baseColor(pal.Tower[game.TowerGunner], 55)) {
-		t.Errorf("L2 pedestal = %+v, want a dark charged base", got)
+	if got := f.C[y*f.W+x]; got != want(col) {
+		t.Errorf("L2 glyph = %+v, want the full gunner colour", got)
 	}
 	g.Upgrade(tw)
 	f = Render(g, ui, pal, 62, 19, 0)
-	if got := f.C[y*f.W+x]; got != want(pal.Bright, pal.Tower[game.TowerGunner]) {
-		t.Errorf("L3 pedestal = %+v, want the full tower colour", got)
+	if got := f.C[y*f.W+x]; got != want(pal.Bright) {
+		t.Errorf("L3 glyph = %+v, want a white maxed glyph", got)
+	}
+}
+
+// At 2x+ a tower wears a frame in its colour that brightens with level (dim at
+// 1, brighter at 2, the full colour once maxed), giving the tile a shape while
+// the glyph on the dark body stays readable. Verify the frame ring at 3x.
+func TestTowerFrameChargesByLevel(t *testing.T) {
+	m, err := game.LoadLevel("winding")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := game.NewState(m)
+	g.Gold = 1000
+	v := game.Vec{X: 7, Y: 2}
+	tw := g.Build(v, game.TowerGunner)
+	if tw == nil {
+		t.Fatal("build failed")
+	}
+	col := Palette().Tower[game.TowerGunner]
+	fw, fh := CaptureSize(m.W, m.H, 3)
+	l := GameLayout(m.W, m.H, fw, fh)
+	if l.Scale != 3 {
+		t.Fatalf("scale = %d, want 3", l.Scale)
+	}
+	fx0, fy0 := l.X(v.X), l.Y(v.Y) // top-left corner of the block = a frame cell
+	ui := &UI{Selected: NoSelection, Cursor: game.Vec{X: 2, Y: 8}, Level: "winding"}
+	f := Render(g, ui, Palette(), fw, fh, 0)
+	if got := f.C[fy0*f.W+fx0].BG; got != baseColor(col, 40) {
+		t.Errorf("L1 frame = %d, want %d", got, baseColor(col, 40))
+	}
+	g.Upgrade(tw)
+	f = Render(g, ui, Palette(), fw, fh, 0)
+	if got := f.C[fy0*f.W+fx0].BG; got != baseColor(col, 78) {
+		t.Errorf("L2 frame = %d, want %d", got, baseColor(col, 78))
+	}
+	g.Upgrade(tw)
+	f = Render(g, ui, Palette(), fw, fh, 0)
+	if got := f.C[fy0*f.W+fx0].BG; got != col {
+		t.Errorf("L3 frame = %d, want the full colour %d", got, col)
+	}
+	// The centre stays the dark body with the (now white) maxed glyph.
+	cx, cy := l.center(v.X, v.Y)
+	if c := f.C[cy*f.W+cx]; c.R != 'G' || c.FG != Palette().Bright || c.BG != 235 {
+		t.Errorf("L3 centre = %+v, want a white G on the dark body", c)
 	}
 }
 
@@ -221,16 +266,15 @@ func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
 	f := Render(g, &UI{Selected: NoSelection, Level: "winding"}, pal, 62, 19, 0)
 	lx, ly := l.center(left.X, left.Y)
 	rx, ry := l.center(right.X, right.Y)
-	// Each tower writes only its own pedestal; both glyphs and both level bases
-	// are intact and distinct. The expected cells are built via a helper so the
-	// assertion stays a plain value compare (a raw T{...} as the operand of !=
-	// does not parse).
-	want := func(glyph rune, bg int) Cell { return Cell{R: glyph, FG: pal.Bright, BG: bg, Bold: true} }
-	if got := f.C[ly*f.W+lx]; got != want('G', pal.Tower[game.TowerGunner]) {
-		t.Errorf("left (L3) pedestal = %+v, want the full gunner colour", got)
+	// Each tower writes only its own tile; both glyphs are intact and distinct.
+	// The expected cells are built via a helper so the assertion stays a plain
+	// value compare (a raw T{...} as the operand of != does not parse).
+	want := func(glyph rune, fg int) Cell { return Cell{R: glyph, FG: fg, BG: 235, Bold: true} }
+	if got := f.C[ly*f.W+lx]; got != want('G', pal.Bright) {
+		t.Errorf("left (L3) glyph = %+v, want a white maxed gunner glyph", got)
 	}
-	if got := f.C[ry*f.W+rx]; got != want('C', baseColor(pal.Tower[game.TowerCannon], 55)) {
-		t.Errorf("right (L2) pedestal = %+v, want a dark charged cannon base", got)
+	if got := f.C[ry*f.W+rx]; got != want('C', pal.Tower[game.TowerCannon]) {
+		t.Errorf("right (L2) glyph = %+v, want the full cannon colour", got)
 	}
 }
 

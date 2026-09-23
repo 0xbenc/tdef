@@ -359,28 +359,52 @@ func drawRing(f *Frame, l Layout, fx *game.Fx) {
 func drawTower(f *Frame, g *game.State, ui *UI, pal Colors, l Layout, t *game.Tower) {
 	sel := ui.Selected == t.ID
 	glyph := t.Spec().Short
-	// An upgraded tower's level lives on its own pedestal, never above it (the
-	// cell above a tower is usually the road — the lane the horde walks). The
-	// glyph goes white and the base charges in the tower's own colour: a dark
-	// tint at level 2, the full colour once maxed. A selected tower just adds
-	// its corner bracket — the colours are not what mark selection.
-	fg, bg := pal.Tower[t.Kind], 235
-	if t.Level >= 3 {
-		fg, bg = pal.Bright, pal.Tower[t.Kind]
-	} else if t.Level == 2 {
-		fg, bg = pal.Bright, baseColor(pal.Tower[t.Kind], 55)
+	color := pal.Tower[t.Kind]
+	// A tower is a dark tile, not a solid bright block. A neutral dark body
+	// keeps the glyph readable at every scale; a frame in the tower's colour
+	// rings the block for shape and brightens with level; the glyph itself
+	// whitens once maxed. The level lives on the tower's own block (never above
+	// it — that's the road). Selection is the corner bracket, never the colours.
+	body := 235
+	// The glyph steps dim -> full -> white across the levels (so the level reads
+	// even at 1x, where there is no room for a frame); the frame rings the block
+	// at 2x+ and steps dim -> bright -> the full colour. The dark body keeps the
+	// glyph readable at every level.
+	frame, glyphCol := baseColor(color, 40), baseColor(color, 70)
+	if t.Level == 2 {
+		frame, glyphCol = baseColor(color, 78), color
+	} else if t.Level >= 3 {
+		frame, glyphCol = color, pal.Bright
 	}
-	if sel {
-		fg, bg = pal.Bright, pal.Tower[t.Kind]
+	l.block(f, t.Cell.X, t.Cell.Y, Cell{R: ' ', BG: body})
+	if l.Scale >= 3 {
+		towerFrame(f, l, t.Cell, frame)
+	} else if l.Scale == 2 {
+		cx0, cy0 := l.X(t.Cell.X), l.Y(t.Cell.Y)
+		f.Set(cx0, cy0, Cell{R: ' ', BG: frame})
+		f.Set(cx0+1, cy0, Cell{R: ' ', BG: frame})
 	}
-	l.block(f, t.Cell.X, t.Cell.Y, Cell{R: ' ', BG: bg})
 	cx, cy := l.center(t.Cell.X, t.Cell.Y)
-	f.Set(cx, cy, Cell{R: glyph, FG: fg, BG: bg, Bold: true})
+	f.Set(cx, cy, Cell{R: glyph, FG: glyphCol, BG: body, Bold: true})
 	if sel {
 		drawSelectionBracket(f, l, t.Cell)
 	}
 	if t.Flash > 0 {
 		drawMuzzle(f, l, pal, t)
+	}
+}
+
+// towerFrame rings the tower's Scale×Scale block with its frame colour (the
+// outer edge), so at 3x+ a tower reads as a shaped tile rather than a solid
+// block. The centre is left for the dark body + glyph.
+func towerFrame(f *Frame, l Layout, v game.Vec, col int) {
+	x0, y0 := l.X(v.X), l.Y(v.Y)
+	s := l.Scale
+	for i := 0; i < s; i++ {
+		f.Set(x0+i, y0, Cell{R: ' ', BG: col})
+		f.Set(x0+i, y0+s-1, Cell{R: ' ', BG: col})
+		f.Set(x0, y0+i, Cell{R: ' ', BG: col})
+		f.Set(x0+s-1, y0+i, Cell{R: ' ', BG: col})
 	}
 }
 
