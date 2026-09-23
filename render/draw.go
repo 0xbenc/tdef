@@ -48,7 +48,7 @@ type Colors struct {
 	Wall, WallHi, WallLo   int
 	Path, RoadBG, RoadLine int
 	Grass, GrassTuft       int
-	Spawn, Exit            int
+	Spawn, Exit, Frost     int
 	Gold, Dim, Bright      int
 	Tower                  [game.TowerCount]int
 	Enemy                  [game.EnemyCount]int
@@ -60,7 +60,7 @@ func Palette() Colors {
 		Wall: 235, WallHi: 237, WallLo: 233,
 		Path: 240, RoadBG: 238, RoadLine: 246,
 		Grass: 23, GrassTuft: 34,
-		Spawn: 51, Exit: 196,
+		Spawn: 201, Exit: 196, Frost: 51,
 		Gold: 220, Dim: 245, Bright: 255,
 		Tower: [game.TowerCount]int{46, 203, 51, 171, 220, 130, 226},
 		Enemy: [game.EnemyCount]int{213, 214, 180, 204, 171, 199, 147, 75},
@@ -361,6 +361,51 @@ func drawMuzzle(f *Frame, l Layout, pal Colors, t *game.Tower) {
 			continue // never overwrite the tower glyph itself
 		}
 		putOver(f, x, y, '·', pal.Beam[t.Kind])
+	}
+}
+
+// tankKind reports whether an enemy kind is a "tank" — high enough HP that its
+// health bar is worth showing even at full health, so the player can read how
+// much a Paladin/Centurion/boss/Necromancer can take before it breaks.
+func tankKind(k game.EnemyKind) bool {
+	switch k {
+	case game.EnemyTank, game.EnemyShield, game.EnemyBoss, game.EnemySplitter:
+		return true
+	}
+	return false
+}
+
+// drawEnemy renders one enemy. Its glyph keeps its own kind colour (identity is
+// the point — HP is read off the bar, not the glyph); it tints cyan while frost
+// slowed, flashes white when hit, and the boss gets a caged presence. Tanks
+// always show their HP bar; everyone else only when wounded.
+func drawEnemy(f *Frame, g *game.State, pal Colors, l Layout, e *game.Enemy) {
+	x, y := l.FX(e.Pos.X), l.FY(e.Pos.Y)
+	if x < 0 || y < 0 || x >= f.W || y >= f.H {
+		return
+	}
+	hp := e.HP / e.MaxHP
+	kind := e.Kind
+	fg, bold := pal.Enemy[kind], kind == game.EnemyBoss
+	switch {
+	case e.HitTTL > g.Time:
+		fg, bold = 231, true // hit flash: brief white
+	case e.Slowed(g.Time):
+		fg, bold = pal.Frost, true // frost slowed: cyan
+	}
+	bg := 0
+	if kind == game.EnemyBoss {
+		bg = 53 // the boss sits on a dark pad for presence
+	}
+	f.Set(x, y, Cell{R: game.EnemySpecs[kind].Short, FG: fg, BG: bg, Bold: bold})
+	if kind == game.EnemyBoss {
+		// a cage of rails either side of the boss (never over the HP bar above)
+		putOver(f, x-1, y, '│', 204)
+		putOver(f, x+1, y, '│', 204)
+	}
+	showBar := hp < 1 || tankKind(kind)
+	if showBar && y-1 >= l.Oy {
+		drawHPBar(f, x, y-1, hp)
 	}
 }
 
@@ -845,27 +890,7 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 		}
 	}
 	for _, e := range g.Enemies {
-		x, y := l.FX(e.Pos.X), l.FY(e.Pos.Y)
-		if x < 0 || y < 0 || x >= f.W || y >= f.H {
-			continue
-		}
-		hp := e.HP / e.MaxHP
-		fg := pal.Enemy[e.Kind]
-		if hp < 0.34 {
-			fg = 196
-		} else if hp < 0.67 {
-			fg = 214
-		}
-		bold := e.Kind == game.EnemyBoss
-		if e.HitTTL > g.Time {
-			fg = 231 // hit flash: brief white
-			bold = true
-		}
-		f.Set(x, y, Cell{R: game.EnemySpecs[e.Kind].Short, FG: fg, Bold: bold})
-		// Skip the bar when it would land on the chrome above the map.
-		if hp < 1 && y-1 >= l.Oy {
-			drawHPBar(f, x, y-1, hp)
-		}
+		drawEnemy(f, g, pal, l, e)
 	}
 	for _, fx := range g.Fx {
 		if fx.Ring > 0 {
