@@ -152,13 +152,13 @@ func roadGlyph(n, e, s, w bool) rune {
 	case e && w:
 		return '─'
 	case n && w:
-		return '┐'
+		return '┘' // up + left
 	case n && e:
-		return '┌'
+		return '└' // up + right
 	case s && w:
-		return '┘'
+		return '┐' // down + left
 	case s && e:
-		return '└'
+		return '┌' // down + right
 	case n || s:
 		return '│'
 	case e || w:
