@@ -494,6 +494,38 @@
   changed, and the invariants (scale stepping, header elision, slot layout,
   footer fit, pip no-clobber, frame corners) are preserved. Bench pass results
   byte-identical to baseline (canyon/garden/hub/winding 100%, heart 0%, maze
-  100%, ALL 83%). Every beat, the boss entrance, the frost tint and the end
-  cinematics were eyeballed via `tdef capture` at 1x and 2x and via temporary
-  eyeball harnesses (deleted after use).
+   100%, ALL 83%). Every beat, the boss entrance, the frost tint and the end
+   cinematics were eyeballed via `tdef capture` at 1x and 2x and via temporary
+   eyeball harnesses (deleted after use).
+- Road-corner fix (762b613): the user spotted that the road's corner connectors
+  (┌┐└┘) read "backwards" and didn't form one continuous line. roadGlyph had
+  mapped all four corners to the diagonally-opposite box-drawing glyph (n+w->┐
+  instead of ┘, etc.), so every turn kinked. Each corner now connects the two
+  directions the road actually goes (n+w->┘, n+e->└, s+w->┐, s+e->┌); straights,
+  tees and the cross were already correct. Bench byte-identical.
+- 2026-09-22 (per-level theming pass, branch gameplay-lookdev)
+- The user: the maps shouldn't all share one background colour scheme, and each
+  should have its own stinger/fascination and light animation. Two commits, each
+  green; render-only, so the bench stays byte-identical (83% ALL).
+- Each floor wears its own stone (C8, b75c2a5): a `Theme` (terrain palette,
+  accent, stinger id) + `themeForLevel(id)` give each level a distinct look —
+  warm bronze torchlit Long Halls, dragon-purple Rotunda with a gold road, mossy
+  green Sunken Garden, volcanic black-red Rift, blood-soaked heart chamber, and
+  cold teal Unmapped Depths (maze by prefix; heart is the boss floor). The
+  drawMapPreview wall/grass/road block helpers now take a Theme; the level-select
+  preview themes off the selected row (the maze row -> Depths). A test asserts
+  no two levels share a wall colour.
+- Each floor has a stinger and its own light (C9, 6257ed1): `drawTheme`
+  dispatches on Theme.Stinger and paints a landmark + animated light over the
+  terrain but under every entity (Render draws towers/enemies/cursor/spawn/exit
+  after), so a stinger never hides gameplay. All are pure functions of (map,
+  frame) — deterministic and scale-aware (placed at block centres): the Halls'
+  amber torch sconces flickering on the road walls; the Rotunda's pile of dragon
+  gold with a glint rolling across it; the Garden's glowing pool + drifting
+  fireflies; the Rift's wall-splitting fissure with sparks rising out; the heart
+  chamber's light beating (two staggered rings swelling out of the lair, ○); and
+  the Depths' cold mist drifting down the room with runes (◈) waking on the
+  walls. A test asserts each stinger's signature glyph renders (checked over a
+  few frames, since the light animates). Eyeballed via `tdef capture` at 1x and
+  2x; the boss (heart) isn't reachable via `capture` (it's LoadBoss, not in the
+  level list), so its ring is covered by the test instead.
