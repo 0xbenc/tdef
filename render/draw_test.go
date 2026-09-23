@@ -120,7 +120,7 @@ func TestDrawGameOver(t *testing.T) {
 	}
 }
 
-func TestUpgradePipsStyledLikeMenuSlot(t *testing.T) {
+func TestUpgradePedestalChargesByLevel(t *testing.T) {
 	m, err := game.LoadLevel("winding")
 	if err != nil {
 		t.Fatal(err)
@@ -129,22 +129,30 @@ func TestUpgradePipsStyledLikeMenuSlot(t *testing.T) {
 	g.Gold = 1000
 	v := game.Vec{X: 7, Y: 2}
 	tw := g.Build(v, game.TowerGunner)
+	if tw == nil {
+		t.Fatal("build failed")
+	}
 	pal := Palette()
 	l := GameLayout(m.W, m.H, 62, 19)
 	x, y := l.center(v.X, v.Y)
-	style := func(r rune) Cell { return Cell{R: r, FG: pal.Bright, BG: pal.Tower[game.TowerGunner], Bold: true} }
-	// Level 2: a pip badge centred above the glyph (menu-slot styling), not
-	// off to the side.
-	g.Upgrade(tw)
-	f := Render(g, &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}, pal, 62, 19, 0)
-	if got := f.C[(y-1)*f.W+x]; got != style('▪') {
-		t.Errorf("L2 badge = %+v, want a pip", got)
+	// The level lives on the tower's own pedestal, never above it (the cell
+	// above a tower is usually the road — the lane the horde walks). The base
+	// charges in the tower's colour and the glyph goes white as it levels up.
+	want := func(fg, bg int) Cell { return Cell{R: 'G', FG: fg, BG: bg, Bold: true} }
+	ui := &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}
+	f := Render(g, ui, pal, 62, 19, 0)
+	if got := f.C[y*f.W+x]; got != want(pal.Tower[game.TowerGunner], 235) {
+		t.Errorf("L1 pedestal = %+v, want a plain base", got)
 	}
-	// Level 3 (maxed): a diamond badge.
 	g.Upgrade(tw)
-	f = Render(g, &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}, pal, 62, 19, 0)
-	if got := f.C[(y-1)*f.W+x]; got != style('◆') {
-		t.Errorf("L3 badge = %+v, want a diamond", got)
+	f = Render(g, ui, pal, 62, 19, 0)
+	if got := f.C[y*f.W+x]; got != want(pal.Bright, baseColor(pal.Tower[game.TowerGunner], 55)) {
+		t.Errorf("L2 pedestal = %+v, want a dark charged base", got)
+	}
+	g.Upgrade(tw)
+	f = Render(g, ui, pal, 62, 19, 0)
+	if got := f.C[y*f.W+x]; got != want(pal.Bright, pal.Tower[game.TowerGunner]) {
+		t.Errorf("L3 pedestal = %+v, want the full tower colour", got)
 	}
 }
 
@@ -175,10 +183,10 @@ func TestTowerInfoFitsFrame(t *testing.T) {
 	}
 }
 
-// A tower's level pips are drawn ABOVE its glyph, so an upgraded tower can no
-// longer overwrite a neighbour's glyph (the old left-hand trail used to, when
-// the pip and glyph passes were interleaved in build order). Pips must skip
-// occupied cells so both towers stay visible.
+// An upgraded tower's level reads on its own pedestal (a charged base in the
+// tower's colour), not off to the side or above it, so each tower writes only
+// its own block and can never clobber a neighbour's glyph — the old left-hand
+// pip trail used to, when the pip and glyph passes interleaved in build order.
 func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
 	m, err := game.LoadLevel("winding")
 	if err != nil {
@@ -204,24 +212,25 @@ func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
 	if tl == nil || tr == nil {
 		t.Fatal("build failed")
 	}
-	for i := 0; i < 2; i++ { // left -> level 3 (2 pips)
+	for i := 0; i < 2; i++ { // left -> level 3 (maxed)
 		g.Upgrade(tl)
 	}
-	g.Upgrade(tr) // right -> level 2 (1 pip)
+	g.Upgrade(tr) // right -> level 2
+	pal := Palette()
 	l := GameLayout(m.W, m.H, 62, 19)
-	f := Render(g, &UI{Selected: NoSelection, Level: "winding"}, Palette(), 62, 19, 0)
+	f := Render(g, &UI{Selected: NoSelection, Level: "winding"}, pal, 62, 19, 0)
 	lx, ly := l.center(left.X, left.Y)
 	rx, ry := l.center(right.X, right.Y)
-	if got := f.C[ly*f.W+lx].R; got != 'G' {
-		t.Errorf("left tower glyph = %q, want 'G' (clobbered?)", got)
+	// Each tower writes only its own pedestal; both glyphs and both level bases
+	// are intact and distinct. The expected cells are built via a helper so the
+	// assertion stays a plain value compare (a raw T{...} as the operand of !=
+	// does not parse).
+	want := func(glyph rune, bg int) Cell { return Cell{R: glyph, FG: pal.Bright, BG: bg, Bold: true} }
+	if got := f.C[ly*f.W+lx]; got != want('G', pal.Tower[game.TowerGunner]) {
+		t.Errorf("left (L3) pedestal = %+v, want the full gunner colour", got)
 	}
-	if got := f.C[ry*f.W+rx].R; got != 'C' {
-		t.Errorf("right tower glyph = %q, want 'C'", got)
-	}
-	// The left tower (maxed) shows its diamond badge above its glyph (not off
-	// to the side), and the neighbour's glyph is untouched.
-	if got := f.C[(ly-1)*f.W+lx].R; got != '◆' {
-		t.Errorf("left tower badge = %q, want '◆'", got)
+	if got := f.C[ry*f.W+rx]; got != want('C', baseColor(pal.Tower[game.TowerCannon], 55)) {
+		t.Errorf("right (L2) pedestal = %+v, want a dark charged cannon base", got)
 	}
 }
 

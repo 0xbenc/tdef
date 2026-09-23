@@ -359,7 +359,17 @@ func drawRing(f *Frame, l Layout, fx *game.Fx) {
 func drawTower(f *Frame, g *game.State, ui *UI, pal Colors, l Layout, t *game.Tower) {
 	sel := ui.Selected == t.ID
 	glyph := t.Spec().Short
+	// An upgraded tower's level lives on its own pedestal, never above it (the
+	// cell above a tower is usually the road — the lane the horde walks). The
+	// glyph goes white and the base charges in the tower's own colour: a dark
+	// tint at level 2, the full colour once maxed. A selected tower just adds
+	// its corner bracket — the colours are not what mark selection.
 	fg, bg := pal.Tower[t.Kind], 235
+	if t.Level >= 3 {
+		fg, bg = pal.Bright, pal.Tower[t.Kind]
+	} else if t.Level == 2 {
+		fg, bg = pal.Bright, baseColor(pal.Tower[t.Kind], 55)
+	}
 	if sel {
 		fg, bg = pal.Bright, pal.Tower[t.Kind]
 	}
@@ -406,31 +416,6 @@ func drawMuzzle(f *Frame, l Layout, pal Colors, t *game.Tower) {
 			continue // never overwrite the tower glyph itself
 		}
 		putOver(f, x, y, '·', pal.Beam[t.Kind])
-	}
-}
-
-// drawLevelPips marks an upgraded tower's level with a single badge centred
-// directly above its glyph — a pip at level 2, a diamond once maxed — so a
-// tower's upgrades read as part of the structure instead of a trail off to the
-// side (which crowded a neighbour). The badge keeps the menu-slot styling (a
-// bright mark on the tower's colour) and lands only on a ground cell, so it
-// never clobbers a tower, an enemy, or a stinger; sitting between the selection
-// bracket's corners, it never fights the bracket either.
-func drawLevelPips(f *Frame, l Layout, pal Colors, t *game.Tower) {
-	if t.Level < 2 {
-		return
-	}
-	top := l.Y(t.Cell.Y) - 1
-	cx := l.X(t.Cell.X) + l.Scale/2
-	if top < l.Oy || top >= f.H || cx < 0 || cx >= f.W {
-		return
-	}
-	r := '▪'
-	if t.Level >= 3 {
-		r = '◆'
-	}
-	if isGroundRune(f.C[top*f.W+cx].R) {
-		f.Set(cx, top, Cell{R: r, FG: pal.Bright, BG: pal.Tower[t.Kind], Bold: true})
 	}
 }
 
@@ -959,17 +944,11 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 	drawHeader(f, g, ui, pal)
 	drawMapPreview(f, g.Map, pal, themeForLevel(ui.Level), l, frame)
 	drawRange(f, g, ui, pal, l)
-	// Towers: a colored glyph on a dark pad (a small pedestal at 2x+), corner
-	// brackets on the selected one, and a muzzle flash while it fires.
+	// Towers: a colored glyph on a dark pad (a small pedestal at 2x+); an
+	// upgraded tower's pedestal charges in its colour and the glyph goes white,
+	// corner brackets on the selected one, and a muzzle flash while it fires.
 	for _, t := range g.Towers {
 		drawTower(f, g, ui, pal, l, t)
-	}
-	// Level pips: an upgraded tower's level reads as pips centred above its
-	// glyph (not a trail to the side, which crowded neighbours). Drawn in a
-	// second pass over ground cells only, so a pip never clobbers an entity or
-	// a neighbouring tower.
-	for _, t := range g.Towers {
-		drawLevelPips(f, l, pal, t)
 	}
 	for _, p := range g.Projectiles {
 		drawProjectile(f, l, pal, p)

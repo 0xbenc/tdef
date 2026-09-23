@@ -802,6 +802,53 @@ func dim(c int) int {
 	return c - (c-232)/2 - 1
 }
 
+// indexRGB expands a 256-colour index to (r,g,b) in 0..255: the 16 base
+// colours are left as-is (callers here only pass cube/grey indices), the
+// 6x6x6 cube, and the 232..255 grey ramp.
+func indexRGB(c int) (r, g, b int) {
+	if c < 16 {
+		return 0, 0, 0
+	}
+	if c < 232 {
+		n := c - 16
+		return cubeLevel(n / 36), cubeLevel((n / 6) % 6), cubeLevel(n % 6)
+	}
+	v := 8 + 10*(c-232)
+	return v, v, v
+}
+
+func cubeLevel(i int) int {
+	switch {
+	case i == 0:
+		return 0
+	case i == 1:
+		return 95
+	default:
+		return 135 + 40*(i-2)
+	}
+}
+
+// rgbIndex picks the nearest 256-colour to (r,g,b) by squared distance.
+func rgbIndex(r, g, b int) int {
+	best, bd := 0, 1<<30
+	for c := 0; c < 256; c++ {
+		cr, cg, cb := indexRGB(c)
+		d := (r-cr)*(r-cr) + (g-cg)*(g-cg) + (b-cb)*(b-cb)
+		if d < bd {
+			bd, best = d, c
+		}
+	}
+	return best
+}
+
+// baseColor darkens a 256-colour toward black while keeping its hue (a naive
+// index halving drifts hue — e.g. gunner green 46 -> 25, a dark blue). lit is
+// the retained lightness, 0..100; it is the "charged" base for a level-2 tower.
+func baseColor(c, lit int) int {
+	r, g, b := indexRGB(c)
+	return rgbIndex(r*lit/100, g*lit/100, b*lit/100)
+}
+
 // owInterior is a room's dark floor colour.
 func owInterior(n *owNode) int {
 	switch {
