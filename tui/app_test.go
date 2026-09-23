@@ -24,7 +24,7 @@ func TestFreshUIHasNoSelection(t *testing.T) {
 		t.Errorf("fresh UI defaults wrong: %+v", ui)
 	}
 	// The cursor glyph must be visible in the rendered frame.
-	f := render.Render(game.NewState(m), &ui, render.Palette(), 80, 24)
+	f := render.Render(game.NewState(m), &ui, render.Palette(), 80, 24, 0)
 	if !strings.Contains(f.Text(), "◻") {
 		t.Error("cursor glyph not drawn for a fresh UI")
 	}
@@ -180,7 +180,7 @@ func TestFooterHelpMode(t *testing.T) {
 	if tw == nil {
 		t.Fatal("build failed")
 	}
-	f := render.Render(g, &render.UI{Placing: game.TowerGunner, Selected: tw.ID, Help: true, Level: "winding"}, render.Palette(), 62, 19)
+	f := render.Render(g, &render.UI{Placing: game.TowerGunner, Selected: tw.ID, Help: true, Level: "winding"}, render.Palette(), 62, 19, 0)
 	lines := strings.Split(f.Text(), "\n")
 	if !strings.Contains(lines[17], "↑↓/wasd") {
 		t.Errorf("help hint row missing: %q", lines[17])
@@ -188,7 +188,7 @@ func TestFooterHelpMode(t *testing.T) {
 	if strings.Contains(lines[18], "▸") {
 		t.Errorf("bottom border must stay plain in help mode: %q", lines[18])
 	}
-	f = render.Render(g, &render.UI{Placing: game.TowerGunner, Selected: tw.ID, Level: "winding"}, render.Palette(), 62, 19)
+	f = render.Render(g, &render.UI{Placing: game.TowerGunner, Selected: tw.ID, Level: "winding"}, render.Palette(), 62, 19, 0)
 	lines = strings.Split(f.Text(), "\n")
 	if !strings.Contains(lines[18], "▸") {
 		t.Errorf("selected-tower info missing from bottom border: %q", lines[18])

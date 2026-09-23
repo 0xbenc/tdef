@@ -133,7 +133,7 @@ func TestUpgradePipsStyledLikeMenuSlot(t *testing.T) {
 	g.Upgrade(tw)
 	pal := Palette()
 	l := GameLayout(m.W, m.H, 62, 19)
-	f := Render(g, &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}, pal, 62, 19)
+	f := Render(g, &UI{Placing: game.TowerGunner, Selected: NoSelection, Level: "winding"}, pal, 62, 19, 0)
 	x, y := l.center(v.X, v.Y)
 	want := Cell{R: '▪', FG: pal.Bright, BG: pal.Tower[game.TowerGunner], Bold: true}
 	for i := 1; i < 3; i++ {
@@ -206,7 +206,7 @@ func TestAdjacentUpgradedTowersDontEraseEachOther(t *testing.T) {
 	}
 	g.Upgrade(tr) // right -> level 2 (1 pip, aimed at the left tower's cell)
 	l := GameLayout(m.W, m.H, 62, 19)
-	f := Render(g, &UI{Selected: NoSelection, Level: "winding"}, Palette(), 62, 19)
+	f := Render(g, &UI{Selected: NoSelection, Level: "winding"}, Palette(), 62, 19, 0)
 	lx, ly := l.center(left.X, left.Y)
 	rx, ry := l.center(right.X, right.Y)
 	if got := f.C[ly*f.W+lx].R; got != 'G' {
@@ -243,7 +243,7 @@ func TestFooterLinesFitFrame(t *testing.T) {
 	tower := &game.Tower{Kind: game.TowerMortar, Level: 3, TargetMode: game.TargetStrongest}
 	g.Towers = []*game.Tower{tower}
 	check := func(ui *UI, rows ...int) {
-		f := Render(g, ui, Palette(), 62, 19)
+		f := Render(g, ui, Palette(), 62, 19, 0)
 		for _, y := range rows {
 			if w := rowWidth(f, y); w > 62 {
 				t.Errorf("footer row %d is %d cols, want <= 62", y, w)
@@ -355,7 +355,7 @@ func TestHeaderSegmentsAt62(t *testing.T) {
 	}
 	ui := &UI{Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "canyon"}
 	check := func(tw, th int, present, absent []string) {
-		f := Render(g, ui, Palette(), tw, th)
+		f := Render(g, ui, Palette(), tw, th, 0)
 		var b strings.Builder
 		for x := 0; x < f.W; x++ {
 			b.WriteRune(f.C[x].R)
@@ -375,7 +375,7 @@ func TestHeaderSegmentsAt62(t *testing.T) {
 	check(62, 19, []string{"tdef", "wave 5/20", "⛁"}, []string{"the Rift", "normal"})
 	// At 80 everything fits.
 	check(80, 24, []string{"tdef", "the Rift", "normal", "wave 5/20", "⛁"}, nil)
-	if f := Render(g, ui, Palette(), 62, 19); f.C[0].R != '╭' || f.C[f.W-1].R != '╮' {
+	if f := Render(g, ui, Palette(), 62, 19, 0); f.C[0].R != '╭' || f.C[f.W-1].R != '╮' {
 		t.Errorf("top border corners missing: %q %q", f.C[0].R, f.C[f.W-1].R)
 	}
 }
@@ -397,7 +397,7 @@ func TestHeaderNoOverflow(t *testing.T) {
 					Gold: 9999, Lives: 15, Score: 999999,
 				}
 				ui := &UI{Speed: 4, Paused: paused, Message: msg, Level: "winding"}
-				f := Render(g, ui, Palette(), tw, 24)
+				f := Render(g, ui, Palette(), tw, 24, 0)
 				if w := rowWidth(f, 0); w != tw {
 					t.Errorf("wave-active off paused=%v msg=%q: header row %d cols, want %d", paused, msg, w, tw)
 				}
@@ -406,7 +406,7 @@ func TestHeaderNoOverflow(t *testing.T) {
 				}
 				g.WaveActive = true
 				g.Combo = 123
-				f = Render(g, ui, Palette(), tw, 24)
+				f = Render(g, ui, Palette(), tw, 24, 0)
 				if w := rowWidth(f, 0); w != tw {
 					t.Errorf("wave-active paused=%v msg=%q: header row %d cols, want %d", paused, msg, w, tw)
 				}
@@ -425,7 +425,7 @@ func TestRenderSmoke(t *testing.T) {
 	}
 	g := game.NewState(m)
 	ui := &UI{Cursor: game.Vec{X: m.W / 2, Y: m.H / 2}, Placing: game.TowerGunner, Selected: NoSelection, Speed: 1, Level: "canyon"}
-	f := Render(g, ui, Palette(), 80, 24)
+	f := Render(g, ui, Palette(), 80, 24, 0)
 	if f.W != 80 || f.H != 24 {
 		t.Fatalf("frame = %dx%d, want 80x24", f.W, f.H)
 	}

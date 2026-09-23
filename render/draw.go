@@ -700,8 +700,10 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 }
 
 // Render draws the full terminal-sized in-game frame (see the section
-// comment above).
-func Render(g *game.State, ui *UI, pal Colors, tw, th int) *Frame {
+// comment above). frame is the ambient 30fps tick (it keeps advancing while
+// paused and after game-over, unlike g.Time, which freezes); the beats and
+// cinematics are pure functions of it so they always play to the end.
+func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 	l := GameLayout(g.Map.W, g.Map.H, tw, th)
 	f := &Frame{W: l.W, H: l.H, C: make([]Cell, l.W*l.H)}
 	drawRoundedBox(f, 0, 0, l.W, l.H, pal.Path)
@@ -807,12 +809,12 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th int) *Frame {
 
 // GameFrame renders the in-game frame for a tw×th terminal, or a centered
 // "enlarge" notice when the terminal is smaller than MinFrame.
-func GameFrame(g *game.State, ui *UI, pal Colors, tw, th int) *Frame {
+func GameFrame(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 	minW, minH := MinFrame(g.Map.W, g.Map.H)
 	if tw > 0 && th > 0 && (tw < minW || th < minH) {
 		return RenderTooSmall(tw, th, minW, minH)
 	}
-	return Render(g, ui, pal, tw, th)
+	return Render(g, ui, pal, tw, th, frame)
 }
 
 // CaptureSize is the minimum terminal size that yields the given playfield

@@ -26,7 +26,7 @@ func TestCursorVisibleOnAllGround(t *testing.T) {
 	}
 	for _, c := range cases {
 		ui := &UI{Cursor: c.v, Placing: game.TowerGunner, Selected: NoSelection}
-		f := Render(g, ui, pal, 62, 19)
+		f := Render(g, ui, pal, 62, 19, 0)
 		x, y := l.X(c.v.X), l.Y(c.v.Y)
 		got := f.C[y*f.W+x]
 		if got.R != '◻' {
@@ -45,7 +45,7 @@ func TestCursorDoesNotClobberGlyphs(t *testing.T) {
 	pal := Palette()
 	l := GameLayout(m.W, m.H, 62, 19)
 	ui := &UI{Cursor: m.Spawn, Placing: game.TowerGunner, Selected: NoSelection}
-	f := Render(g, ui, pal, 62, 19)
+	f := Render(g, ui, pal, 62, 19, 0)
 	x, y := l.X(m.Spawn.X), l.Y(m.Spawn.Y)
 	if got := f.C[y*f.W+x].R; got != '▶' {
 		t.Errorf("spawn cell = %q, want '▶'", got)

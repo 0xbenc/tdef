@@ -419,7 +419,7 @@ func (a *App) drawGame() {
 		a.blit(render.RenderTooSmall(tw, th, mw, mh))
 		return
 	}
-	a.blit(render.Render(a.g, &a.ui, a.pal, tw, th))
+	a.blit(render.Render(a.g, &a.ui, a.pal, tw, th, a.frameNo))
 }
 
 // tooSmall reports whether a tw×th terminal cannot show the playfield at

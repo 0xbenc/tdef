@@ -272,7 +272,7 @@ func capture(args []string) {
 		s.Step(dt)
 		tick++
 		if tick%int64(*every) == 0 {
-			f := render.Render(s, &ui, pal, tw, th)
+			f := render.Render(s, &ui, pal, tw, th, int(tick))
 			p := filepath.Join(*out, fmt.Sprintf("%s_%06d", name, tick))
 			var content string
 			if *text {
