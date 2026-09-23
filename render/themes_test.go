@@ -19,6 +19,47 @@ func firstWall(m *game.Map) game.Vec {
 	return game.Vec{}
 }
 
+// Each floor's stinger must actually render — its signature glyph appears
+// somewhere on the map (checked over a few frames, since the light animates).
+func TestStingerSignatureGlyphs(t *testing.T) {
+	cases := []struct {
+		level string
+		load  func() (*game.Map, error)
+		glyph rune
+	}{
+		{"winding", func() (*game.Map, error) { return game.LoadLevel("winding") }, '✦'},
+		{"hub", func() (*game.Map, error) { return game.LoadLevel("hub") }, '●'},
+		{"garden", func() (*game.Map, error) { return game.LoadLevel("garden") }, '≈'},
+		{"canyon", func() (*game.Map, error) { return game.LoadLevel("canyon") }, '║'},
+		{"maze1", func() (*game.Map, error) { return game.MazeFromSeed(7) }, '░'},
+		{"heart", func() (*game.Map, error) { return game.LoadBoss() }, '○'},
+	}
+	pal := Palette()
+	for _, c := range cases {
+		m, err := c.load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		g := game.NewState(m)
+		seen := false
+		for _, frame := range []int{0, 15, 30, 45, 60} {
+			f := Render(g, &UI{Level: c.level}, pal, 62, 19, frame)
+			for i := range f.C {
+				if f.C[i].R == c.glyph {
+					seen = true
+					break
+				}
+			}
+			if seen {
+				break
+			}
+		}
+		if !seen {
+			t.Errorf("%s: stinger glyph %q never rendered", c.level, c.glyph)
+		}
+	}
+}
+
 // No two rooms of the lair may wear the same stone: each named level (plus the
 // seeded maze and the heart) must render its walls in its own theme's palette,
 // and no two levels may share a wall colour.

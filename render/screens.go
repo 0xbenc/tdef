@@ -216,6 +216,7 @@ func drawMapPreview(f *Frame, m *game.Map, pal Colors, th Theme, l Layout, frame
 			}
 		}
 	}
+	drawTheme(f, m, th, l, frame)
 	drawSpawnRift(f, pal, l, m.Spawn, frame)
 	drawLairHeart(f, pal, l, m.Exit, frame)
 }
@@ -351,6 +352,319 @@ func drawLairHeart(f *Frame, pal Colors, l Layout, v game.Vec, frame int) {
 		fg = 203
 	}
 	f.Set(x, y, Cell{R: '♥', FG: fg, Bold: true})
+}
+
+// drawTheme renders the level's stinger — the landmark and light that make a
+// floor its own place: the Halls' torches, the Rotunda's hoard, the Garden's
+// pool, the Rift's fissure, the heart's beat, the Depths' mist. It is drawn
+// over the terrain but under every entity (Render paints towers, enemies, the
+// cursor, and the spawn/exit afterwards), so a stinger never hides gameplay.
+// Every stinger is a pure function of (map, frame), so it is deterministic and
+// scale-aware.
+func drawTheme(f *Frame, m *game.Map, th Theme, l Layout, frame int) {
+	switch th.Stinger {
+	case StingerHalls:
+		drawStingerHalls(f, m, th, l, frame)
+	case StingerRotunda:
+		drawStingerRotunda(f, m, th, l, frame)
+	case StingerGarden:
+		drawStingerGarden(f, m, th, l, frame)
+	case StingerRift:
+		drawStingerRift(f, m, th, l, frame)
+	case StingerHeart:
+		drawStingerHeart(f, m, th, l, frame)
+	case StingerDepths:
+		drawStingerDepths(f, m, th, l, frame)
+	}
+}
+
+// inMap reports whether (x,y) is a cell of the map.
+func inMap(m *game.Map, x, y int) bool { return x >= 0 && y >= 0 && x < m.W && y < m.H }
+
+// abs is the integer absolute value.
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+// cell reports the kind of map cell at (x,y); out-of-bounds reads as wall
+// (matching game.Map.At), so edge queries are safe.
+func cell(m *game.Map, x, y int) game.CellKind { return m.At(game.Vec{X: x, Y: y}) }
+
+// overlay paints a glyph over a cell, keeping whatever background the terrain
+// already laid down there.
+func overlay(f *Frame, x, y int, r rune, fg int, bold bool) {
+	if x < 0 || y < 0 || x >= f.W || y >= f.H {
+		return
+	}
+	c := f.C[y*f.W+x]
+	c.R, c.FG, c.Bold = r, fg, bold
+	f.Set(x, y, c)
+}
+
+// bestPoolCell finds the grass cell best suited to a pool: the one with the
+// most grass around it (so a 3×2 pool fits in a real clearing), breaking ties
+// by closeness to the map centre.
+func bestPoolCell(m *game.Map) (int, int, bool) {
+	cx, cy := m.W/2, m.H/2
+	best, bx, by, found := -1, 0, 0, false
+	for y := 0; y < m.H; y++ {
+		for x := 0; x < m.W; x++ {
+			if cell(m, x, y) != game.CellGrass {
+				continue
+			}
+			n := 0
+			for dx := -2; dx <= 2; dx++ {
+				for dy := -1; dy <= 1; dy++ {
+					if cell(m, x+dx, y+dy) == game.CellGrass {
+						n++
+					}
+				}
+			}
+			if score := n*1000 - ((x-cx)*(x-cx) + (y-cy)*(y-cy)); score > best {
+				best, bx, by, found = score, x, y, true
+			}
+		}
+	}
+	return bx, by, found
+}
+
+// nearestGrass returns the grass cell closest to (cx,cy).
+func nearestGrass(m *game.Map, cx, cy int) (int, int, bool) {
+	bd, fx, fy, found := 1<<30, 0, 0, false
+	for y := 0; y < m.H; y++ {
+		for x := 0; x < m.W; x++ {
+			if cell(m, x, y) != game.CellGrass {
+				continue
+			}
+			if d := (x-cx)*(x-cx) + (y-cy)*(y-cy); d < bd {
+				bd, fx, fy, found = d, x, y, true
+			}
+		}
+	}
+	return fx, fy, found
+}
+
+// StingerHalls: amber torch sconces on the walls that border the road, each
+// flickering on its own phase.
+func drawStingerHalls(f *Frame, m *game.Map, th Theme, l Layout, frame int) {
+	for y := 0; y < m.H; y++ {
+		for x := 0; x < m.W; x++ {
+			if cell(m, x, y) != game.CellWall {
+				continue
+			}
+			if cell(m, x, y-1) != game.CellPath && cell(m, x, y+1) != game.CellPath &&
+				cell(m, x-1, y) != game.CellPath && cell(m, x+1, y) != game.CellPath {
+				continue
+			}
+			h := cellHash(x*7, y*11)
+			if h >= 0.06 {
+				continue
+			}
+			cyc := (frame + int(h*211)) % 17
+			lit := cyc != 0 && cyc != 1 // mostly lit, a quick dip per torch
+			fg := th.Accent
+			if !lit {
+				fg = th.AccentDim
+			}
+			cx, cy := l.center(x, y)
+			overlay(f, cx, cy, '✦', fg, lit)
+		}
+	}
+}
+
+// StingerRotunda: a pile of the dragon's gold at the room's heart — coins and
+// gems, with a glint rolling across them.
+func drawStingerRotunda(f *Frame, m *game.Map, th Theme, l Layout, frame int) {
+	bx, by, ok := nearestGrass(m, m.W/2, m.H/2)
+	if !ok {
+		return
+	}
+	for dy := -1; dy <= 0; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			x, y := bx+dx, by+dy
+			if !inMap(m, x, y) || cell(m, x, y) != game.CellGrass {
+				continue
+			}
+			r := '●'
+			if cellHash(x, y) < 0.34 {
+				r = '◆'
+			}
+			fg := th.Accent
+			if (frame/5+x*3+y*5)%13 == 0 {
+				fg = 255 // a coin catches the light
+			}
+			cx, cy := l.center(x, y)
+			overlay(f, cx, cy, r, fg, true)
+		}
+	}
+}
+
+// StingerGarden: a glowing pool in the clearing, with fireflies drifting around
+// it.
+func drawStingerGarden(f *Frame, m *game.Map, th Theme, l Layout, frame int) {
+	bx, by, ok := bestPoolCell(m)
+	if !ok {
+		return
+	}
+	for dy := -1; dy <= 0; dy++ {
+		for dx := -1; dx <= 1; dx++ {
+			x, y := bx+dx, by+dy
+			if !inMap(m, x, y) || cell(m, x, y) != game.CellGrass {
+				continue
+			}
+			fg := th.Accent
+			if (frame/6+x+y*2)%3 == 0 {
+				fg = 46 // a ripple glint
+			}
+			cx, cy := l.center(x, y)
+			overlay(f, cx, cy, '≈', fg, false)
+		}
+	}
+	for i := 0; i < 4; i++ {
+		ph := float64(i) * 1.7
+		px := int(float64(bx) + 3.0*math.Sin(float64(frame)*0.04+ph) + 0.5)
+		py := int(float64(by) + 2.0*math.Cos(float64(frame)*0.031+ph*1.3) + 0.5)
+		if !inMap(m, px, py) {
+			continue
+		}
+		if c := cell(m, px, py); c != game.CellGrass && c != game.CellWall {
+			continue
+		}
+		if (frame/4+i)%6 == 0 {
+			continue // blink off
+		}
+		cx, cy := l.center(px, py)
+		overlay(f, cx, cy, '·', 46, true)
+	}
+}
+
+// longestWallRun returns the centre of the map's longest interior vertical run
+// of wall — where the Rift's fissure cracks the rock.
+func longestWallRun(m *game.Map) (int, int) {
+	bestLen, bestX, bestY := 0, 1, m.H/2
+	for x := 1; x < m.W-1; x++ {
+		start := -1
+		for y := 1; y < m.H; y++ {
+			if cell(m, x, y) == game.CellWall {
+				if start < 0 {
+					start = y
+				}
+				if run := y - start + 1; run > bestLen {
+					bestLen, bestX, bestY = run, x, start+run/2
+				}
+			} else {
+				start = -1
+			}
+		}
+	}
+	return bestX, bestY
+}
+
+// StingerRift: a fissure splitting the wall, glowing magenta-ember, with sparks
+// rising out of it.
+func drawStingerRift(f *Frame, m *game.Map, th Theme, l Layout, frame int) {
+	bx, by := longestWallRun(m)
+	half := 4
+	for dy := -half; dy <= half; dy++ {
+		y := by + dy
+		if !inMap(m, bx, y) || cell(m, bx, y) != game.CellWall {
+			continue
+		}
+		fg := th.Accent
+		if (frame/8+abs(dy))%2 == 0 {
+			fg = th.AccentDim // the crack shivers
+		}
+		cx, cy := l.center(bx, y)
+		overlay(f, cx, cy, '║', fg, true)
+	}
+	for i := 0; i < 7; i++ {
+		t := (frame + i*7) % 12
+		side := -1
+		if i%2 != 0 {
+			side = 1
+		}
+		ex := bx + side
+		ey := by - t
+		if !inMap(m, ex, ey) || cell(m, ex, ey) != game.CellWall {
+			continue
+		}
+		cx, cy := l.center(ex, ey)
+		overlay(f, cx, cy, '·', th.AccentDim, t < 4)
+	}
+}
+
+// StingerHeart: light that beats with the heart — two staggered rings that
+// swell out from the lair and fade, one per thump.
+func drawStingerHeart(f *Frame, m *game.Map, th Theme, l Layout, frame int) {
+	ex, ey := m.Exit.X, m.Exit.Y
+	for k := 0; k < 2; k++ {
+		p := float64((frame-k*12)%24) / 24.0
+		rad := 1 + int(p*5)
+		for a := 0; a < 16; a++ {
+			ang := float64(a) / 16.0 * 2 * math.Pi
+			x := ex + int(math.Round(math.Cos(ang)*float64(rad)))
+			y := ey + int(math.Round(math.Sin(ang)*float64(rad)*0.7)) // squish: cells are tall
+			if !inMap(m, x, y) || (x == ex && y == ey) {
+				continue
+			}
+			if cell(m, x, y) == game.CellPath {
+				continue // keep the road clear
+			}
+			fg := th.AccentDim
+			if p < 0.5 {
+				fg = th.Accent
+			}
+			cx, cy := l.center(x, y)
+			overlay(f, cx, cy, '○', fg, false)
+		}
+	}
+}
+
+// StingerDepths: a cold band of mist drifting down the room, and lit runes
+// waking on the walls.
+func drawStingerDepths(f *Frame, m *game.Map, th Theme, l Layout, frame int) {
+	band := int(float64(frame)*0.06) % (m.H + 4)
+	for y := 0; y < m.H; y++ {
+		d := abs(y - (band - 2))
+		if d > 2 {
+			continue
+		}
+		for x := 0; x < m.W; x++ {
+			if cell(m, x, y) == game.CellPath || cellHash(x*3, y*5) >= 0.5 {
+				continue
+			}
+			cx, cy := l.center(x, y)
+			c := f.C[cy*f.W+cx]
+			if c.R != ' ' {
+				continue
+			}
+			fg := th.AccentDim
+			if d == 0 {
+				fg = th.Accent
+			}
+			c.R, c.FG = '░', fg
+			f.Set(cx, cy, c)
+		}
+	}
+	n := 0
+	for y := 0; y < m.H && n < 5; y++ {
+		for x := 0; x < m.W && n < 5; x++ {
+			if cell(m, x, y) != game.CellWall || cellHash(x*13, y*17) >= 0.015 {
+				continue
+			}
+			n++
+			on := (frame/10+n*3)%5 != 0
+			fg := th.Accent
+			if on {
+				fg = 45
+			}
+			cx, cy := l.center(x, y)
+			overlay(f, cx, cy, '◈', fg, on)
+		}
+	}
 }
 
 // ---------------------------------------------------------------- title
