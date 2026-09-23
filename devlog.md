@@ -419,6 +419,81 @@
   TestOWGlowClamped, TestOWSealedDim, TestOWFirstRunHint, TestOwLedgerAccents,
   TestOWTrailFade, TestOWBootPhases, TestOWBootSeam, TestOWInputGateDuringBoot,
   TestOWBootArmedOnce, TestOWHeartBlastCheck, TestOWLandmarkNotOccluded,
-  TestOWRotundaHoard, TestOWProcession, TestOWReturnFX, TestOWBlast,
-  TestOWBlastDecay, TestOWRichDeterministic. Bench pass results byte-identical
-  to baseline (canyon/garden/hub/winding 100%, heart 0%, maze 100%, ALL 83%).
+   TestOWRotundaHoard, TestOWProcession, TestOWReturnFX, TestOWBlast,
+   TestOWBlastDecay, TestOWRichDeterministic. Bench pass results byte-identical
+   to baseline (canyon/garden/hub/winding 100%, heart 0%, maze 100%, ALL 83%).
+- 2026-09-22 (gameplay look-dev pass, branch gameplay-lookdev)
+- The in-game defense screen — the actual tower-defense playfield — got a
+  massive imagineer-grade look-dev pass, bigger than the overworld one: the
+  user asked to reconsider everything, including how towers, enemies and maps
+  look, while keeping the integer scaling system (ComputeScale/GameLayout/
+  MinFrame/CaptureSize, scales 1-4) intact. One commit per concern, each green;
+  Render stays a pure function of (state, ui, palette, size, frame) and the
+  whole pass touches only render/ + tui/ (the game/ engine is untouched, so the
+  bench pass results stay byte-identical).
+- NOTE: as with the overworld pass, the user wanted parallel subagents for the
+  design (the repo's design->contract->implement culture). The subagent API was
+  unreachable for the whole session ("Cannot connect to API" on every launch,
+  including a connectivity probe), so the design contract was written solo to
+  /tmp and implementation proceeded solo.
+- Frame clock (C0, 97a353e): Render/GameFrame gained a `frame` int — the 30fps
+  ambient tick that keeps advancing while paused and after game-over (unlike
+  g.Time, which freezes). This is the clock the beats and end cinematics run
+  off. Callers: tui (a.frameNo), capture (tick), all tests. Verified visually
+  inert (captured frames byte-identical).
+- The battlefield as a place (C1, 76ace3c): the terrain rework. The road is
+  now drawn as directional box-drawing connectors (straight/corner/tee/cross
+  from neighbour connectivity) on a distinct surface, so the route reads at a
+  glance instead of a dotted line; walls are mottled rock (a stable per-cell
+  hash picks a light/base/dark shade + speckles at 2x+); grass clearings are
+  dark green with sparse tufts; the spawn is a breathing rift (magenta) and the
+  exit is the lair's beating heart (a double-thump on the frame clock). The
+  cursor treats road connectors as ground (isGroundRune). Scale-aware: 1x = one
+  glyph/cell, 2x+ = textured blocks.
+- Towers with presence (C2, 7b7d659): each tower is its coloured glyph on a
+  dark pad (the pad fills the block at 2x+, so a tower reads as a structure,
+  not a floating letter); the selected tower gets bright corner brackets in
+  addition to the inverted glyph; firing towers flare their glyph white and kick
+  a short tracer toward the target (t.Flash/t.FlashTo — the tracer preserves the
+  terrain background and never overwrites the tower glyph); the range indicator
+  is the tower's own beam colour on the boundary ring with a faint interior,
+  sitting on the terrain instead of punching black holes. Level pips and their
+  no-clobber invariant are unchanged.
+- Enemies with identity (C3, d815544): an enemy's glyph keeps its own kind
+  colour (identity over the old 3-step HP recolor that made every wounded enemy
+  look the same); HP is read off the bar. Frost-slowed enemies tint bright cyan
+  (e.Slowed), hit flashes stay white (hit wins the brief flash, then cyan
+  shows). The boss sits on a dark pad with a cage of rails either side. Tanks
+  (Paladin, Centurion, Necromancer, boss) always show their HP bar; lighter
+  enemies only when wounded. The spawn rift moved to magenta to stay distinct
+  from the frost cyan.
+- Projectiles & beams with weight (C4, 022d08b): projectiles are no longer a
+  uniform '+' — cannon and mortar fire heavy filled shells (●, mortar bolder)
+  while gunner and flak fire light tracers (·), each in its tower's beam colour
+  with a short dim trail so the motion reads; beams (sniper/frost/tesla chain)
+  are bright continuous energy lines that overwrite terrain glyphs but preserve
+  the background.
+- The beats (C5, 5072f77): all pure functions of (state, frame). The leak — the
+  frame's left/right edges throb red while the lair heart is struck (g.LeakFlash);
+  a wave start — a centred banner ("THE SIEGE BEGINS" for wave 1, else "WAVE N")
+  that fades as the wave gets under way; the boss entrance — a "THE PLAYER"
+  banner and a regal purple edge pulse while the boss is young; the end — when
+  the caller records the end frame (UI.EndAtFrame, set by the tui the moment the
+  status flips) a cinematic plays before the stats box: a bright sweep races the
+  playfield while the lair's verdict decodes in (gold "THE LAIR HOLDS" / red
+  "THE LAIR FALLS"). Headless captures, which don't record the end frame, show
+  the box at once as before. The end cinematics run off the ambient frame clock
+  (g.Time is frozen at game over), so they play to the end.
+- The end box reads like the lair (C6, 20ffbd5): the game-over box gains a
+  verdict line (the lair's assessment, keyed off leaks for a hold and how far
+  the defense got for a fall) under the existing lore, with the restart/quit
+  hint moved down a row. The box keeps the VICTORY/DEFEAT titles, stats and lore
+  the tests assert and still fits the minimum frame.
+- Verification: gofmt+vet+test -race+build green on every commit; the existing
+  render/tui tests were updated to the new glyphs/colours where the look
+  changed, and the invariants (scale stepping, header elision, slot layout,
+  footer fit, pip no-clobber, frame corners) are preserved. Bench pass results
+  byte-identical to baseline (canyon/garden/hub/winding 100%, heart 0%, maze
+  100%, ALL 83%). Every beat, the boss entrance, the frost tint and the end
+  cinematics were eyeballed via `tdef capture` at 1x and 2x and via temporary
+  eyeball harnesses (deleted after use).
