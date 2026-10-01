@@ -45,9 +45,13 @@ endures.
 | `p` / `f` | pause / cycle speed 1× – 2× – 4× |
 | `h` / `esc` / `q` | help / back out / quit |
 
-The **lair** (overworld) is a map you walk. Hold a floor and it unseals;
-step onto it and press `enter` to descend into its defense, and the result
-comes back to the map. The four built-in floors are a difficulty ladder —
+The **lair** (overworld) is a wide cavern you walk, with a scrolling view
+that follows Grak along stone walkways and bridges, past Malgrath's hoard,
+vaulted halls, and a sunken temple. The crossing forks into an upper stair
+and a lower waterside approach. The ledger and controls stay in place as
+the world moves. Sealed rooms block entry at the doorway until they open.
+Hold a floor and it unseals; step onto it and press `enter` to descend into
+its defense, and the result comes back to the map. The four built-in floors are a difficulty ladder —
 **the Rotunda** (easiest), **the Long Halls**, **the Sunken Garden**,
 **the Rift** (tightest) — and holding all four opens **the Heart**, the
 endgame chamber behind the Rotunda. `tab` cycles the renown (easy / normal /
@@ -70,7 +74,9 @@ the defense.
 | 7 | Gnoll Slingers | 80 | very fast, short range — shreds the quick |
 
 By default a tower fires on the hero furthest along the path; `t` cycles it
-to strongest or closest.
+to strongest or closest. The Lightning Mage needs only its first target
+inside that range: each bounce searches within 2.6 cells of the last hero hit,
+so a chain can reach beyond the mage's range.
 
 ## The guild (heroes)
 

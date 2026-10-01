@@ -7,20 +7,19 @@ import (
 	"github.com/0xbenc/tdef/game"
 )
 
-// The overworld must use the exact playfield scale logic the game does: the
-// same grid size (45x13) drives ComputeScale/GameLayout, so a landmark lands
-// where GameLayout says it will at every scale step.
+// The overworld keeps the battlefield's scale steps while the horizontal
+// viewport handles its larger world. Landmarks share the camera transform.
 func TestOverworldReusesPlayfieldScale(t *testing.T) {
 	pal := Palette()
 	st := NewOWState()
 	sizes := []struct {
 		w, h, wantScale int
-	}{{62, 19, 1}, {92, 32, 2}, {137, 45, 3}, {182, 58, 4}}
+	}{{62, 19, 1}, {158, 32, 2}, {236, 45, 3}, {314, 58, 4}}
 	for _, s := range sizes {
-		if got := ComputeScale(OWW, OWH, s.w, s.h); got != s.wantScale {
+		if got := ComputeScale(45, OWH, s.w, s.h); got != s.wantScale {
 			t.Fatalf("ComputeScale(%d,%d,%d,%d) = %d, want %d", OWW, OWH, s.w, s.h, got, s.wantScale)
 		}
-		l := GameLayout(OWW, OWH, s.w, s.h)
+		l := OverworldLayout(s.w, s.h, st)
 		if l.Scale != s.wantScale {
 			t.Fatalf("GameLayout scale = %d, want %d at %dx%d", l.Scale, s.wantScale, s.w, s.h)
 		}
@@ -33,9 +32,9 @@ func TestOverworldReusesPlayfieldScale(t *testing.T) {
 	}
 }
 
-// A 45x13 overworld must fit the minimum 62x19 frame, exactly like a level.
+// The viewport still fits the minimum 62x19 frame despite the wider world.
 func TestOverworldFitsMinFrame(t *testing.T) {
-	mw, mh := MinFrame(OWW, OWH)
+	mw, mh := MinFrame(45, OWH)
 	if mw != FrameW || mh != ChromeTop+OWH+ChromeBot {
 		t.Fatalf("MinFrame(%d,%d) = %dx%d, want %dx%d", OWW, OWH, mw, mh, FrameW, ChromeTop+OWH+ChromeBot)
 	}
@@ -96,9 +95,9 @@ func TestOverworldAllNodesReachable(t *testing.T) {
 // OWRects must return one rect per node, sized to the pad at the current
 // scale, so mouse clicks cannot drift from the rendered pads.
 func TestOWRectsMatchNodes(t *testing.T) {
-	w, h := 92, 32
+	w, h := 158, 32
 	l := GameLayout(OWW, OWH, w, h)
-	rects := OWRects(w, h)
+	rects := OWRects(w, h, NewOWState())
 	if len(rects) != len(owNodes) {
 		t.Fatalf("got %d rects, want %d", len(rects), len(owNodes))
 	}
@@ -139,7 +138,7 @@ func TestOWNodeStatus(t *testing.T) {
 	if got := owNodeStatus(st, "rotunda"); got != OWOpen {
 		t.Errorf("rotunda status = %v, want open", got)
 	}
-	st.Cursor = game.Vec{X: 35, Y: 3} // stand on the (sealed) halls
+	st.Cursor = game.Vec{X: 63, Y: 3} // stand on the (sealed) halls
 	if got := owNodeStatus(st, "halls"); got != OWSealed {
 		t.Errorf("standing on a sealed floor = %v, want still sealed", got)
 	}
@@ -157,7 +156,7 @@ func TestOWNodeStatus(t *testing.T) {
 // no locks at all.
 func TestOWSealedLock(t *testing.T) {
 	pal := Palette()
-	w, h := 62, 19
+	w, h := 80, 19
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
 	f := RenderOverworld(w, h, st, 0, pal) // frame 0: the lock is lit
@@ -182,7 +181,7 @@ func TestOWSealedLock(t *testing.T) {
 // (◉) instead of the heart (♥).
 func TestOWBossDoor(t *testing.T) {
 	pal := Palette()
-	w, h := 62, 19
+	w, h := 80, 19
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
 	cx, cy := l.center(22, 6)
@@ -198,7 +197,7 @@ func TestOWBossDoor(t *testing.T) {
 // A held lair changes its title and calms the circulation.
 func TestOWBossDoneTitle(t *testing.T) {
 	pal := Palette()
-	w, h := 62, 19
+	w, h := 80, 19
 	st := NewOWState()
 	if !strings.Contains(RenderOverworld(w, h, st, 0, pal).Text(), "THE LAIR") {
 		t.Fatal("title missing")
@@ -249,7 +248,7 @@ func owStateAllHeld() OWState {
 // the ledger row (h-4), and the Depths touches row 0, its glow the voice row.
 func TestOWGlowClamped(t *testing.T) {
 	pal := Palette()
-	w, h := 182, 58
+	w, h := 314, 58
 	l := GameLayout(OWW, OWH, w, h)
 	f := RenderOverworld(w, h, owStateAllHeld(), 0, pal)
 	// The Rift's bottom glow point: its centre column, the first row below
@@ -270,13 +269,13 @@ func TestOWGlowClamped(t *testing.T) {
 // chrome reads as dark green against the void, not black.
 func TestOWSealedDim(t *testing.T) {
 	pal := Palette()
-	w, h := 62, 19
+	w, h := 80, 19
 	l := GameLayout(OWW, OWH, w, h)
 	f := RenderOverworld(w, h, NewOWState(), 0, pal)
 	n := owNodeByID("garden")
-	c := f.C[l.Y(n.Y-n.PH/2)*f.W+l.X(n.X-n.PW/2)]
-	if c.R != '╔' || c.FG != dim(45) {
-		t.Fatalf("sealed garden corner = %q/%d, want ╔/%d", c.R, c.FG, dim(45))
+	c := f.C[(l.Y(n.Y-n.PH/2)+2)*f.W+l.X(n.X-n.PW/2)+2]
+	if c.R != '═' || c.FG != dim(45) {
+		t.Fatalf("sealed garden corner = %q/%d, want ═/%d", c.R, c.FG, dim(45))
 	}
 	if dim(45) < 24 {
 		t.Fatalf("dim(45) = %d, want >= 24 (sealed rooms must stay legible)", dim(45))
@@ -288,7 +287,7 @@ func TestOWSealedDim(t *testing.T) {
 // out across the map, and the last frame is the steady state (seam).
 func TestOWBootPhases(t *testing.T) {
 	pal := Palette()
-	w, h := 137, 45
+	w, h := 236, 45
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
 
@@ -305,20 +304,18 @@ func TestOWBootPhases(t *testing.T) {
 		t.Fatalf("boot frame 1: heart = %q, want ♥ (the ignition source)", c.R)
 	}
 
-	// Mid-sweep (frame 65): the light has crossed the Rift's pad — a corner
-	// of the pad is lit (its interior, not the unlit void's 233). Grak starts
-	// on the Rift's centre landmark, so the landmark itself is occluded until
-	// he walks off it (the C4 lantern addresses that).
+	// Mid-sweep (frame 65): the light has reached the Rift's landmark.
+	// It sits just beside Grak, who starts at the centre.
 	st.BootTTL = OWBootFrames - 65
 	f2 := RenderOverworld(w, h, st, 0, pal)
-	rx, ry := l.center(5, 8)
-	if c := f2.C[ry*f2.W+rx]; c.BG == 233 {
-		t.Fatalf("boot frame 65: rift pad corner still unlit (bg 233)")
+	rx, ry := l.center(5, 10)
+	if c := f2.C[ry*f2.W+rx]; c.R != '◈' || c.FG != 255 {
+		t.Fatalf("boot frame 65: rift landmark still masked (%q/%d)", c.R, c.FG)
 	}
-	// The front itself is a white dot at the cell 18 units from the heart.
-	fx, fy := l.center(4, 6)
+	// The front has crossed the expanded world to the Halls' corridor.
+	fx, fy := l.center(63, 6)
 	if c := f2.C[fy*f2.W+fx]; c.R != '·' || c.FG != 255 {
-		t.Fatalf("boot frame 65: front at (4,6) = %q/%d, want ·/255", c.R, c.FG)
+		t.Fatalf("boot frame 65: front at (63,6) = %q/%d, want ·/255", c.R, c.FG)
 	}
 }
 
@@ -342,7 +339,7 @@ func TestOWBootSeam(t *testing.T) {
 // and a zero-age step is gone.
 func TestOWTrailFade(t *testing.T) {
 	pal := Palette()
-	w, h := 92, 32
+	w, h := 158, 32
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
 	st.Cursor = game.Vec{X: 14, Y: 6}
@@ -390,7 +387,7 @@ func TestOWFirstRunHint(t *testing.T) {
 // garden 45, rotunda 178, heart 220), so the ledger reads as the map.
 func TestOwLedgerAccents(t *testing.T) {
 	pal := Palette()
-	w, h := 62, 19
+	w, h := 80, 19
 	f := RenderOverworld(w, h, NewOWState(), 0, pal)
 	seen := map[int]bool{}
 	for x := 0; x < w; x++ {
@@ -410,7 +407,7 @@ func TestOwLedgerAccents(t *testing.T) {
 // interior cell so the player never occludes it; off the centre it stays put.
 func TestOWLandmarkNotOccluded(t *testing.T) {
 	pal := Palette()
-	w, h := 92, 32
+	w, h := 158, 32
 	l := GameLayout(OWW, OWH, w, h)
 
 	// Grak on the Rift's centre: the landmark shifts off him to (5,10).
@@ -449,23 +446,23 @@ func TestOWLandmarkNotOccluded(t *testing.T) {
 	}
 }
 
-// The Rotunda's hoard: gold glints on either side of the heart when the room
-// is open.
+// The Rotunda's gold banks flank the sleeping dragon when the room is open.
 func TestOWRotundaHoard(t *testing.T) {
 	pal := Palette()
-	w, h := 92, 32
+	w, h := 158, 32
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
 	st.Cursor = game.Vec{X: 14, Y: 6} // Grak elsewhere
 	f := RenderOverworld(w, h, st, 0, pal)
-	for _, v := range []game.Vec{{X: 21, Y: 6}, {X: 23, Y: 6}} {
-		cx, cy := l.center(v.X, v.Y)
+	for _, v := range []game.Vec{{X: 16, Y: 9}, {X: 28, Y: 9}} {
+		cx, _ := l.center(v.X, v.Y)
+		cy := l.Y(v.Y)
 		c := f.C[cy*f.W+cx]
 		if c.R != '·' {
 			t.Fatalf("hoard cell (%d,%d) = %q, want ·", v.X, v.Y, c.R)
 		}
-		if c.FG != 220 && c.FG != 230 {
-			t.Fatalf("hoard cell (%d,%d) FG = %d, want 220 or 230 (gold)", v.X, v.Y, c.FG)
+		if c.FG != 178 && c.FG != 179 {
+			t.Fatalf("hoard cell (%d,%d) FG = %d, want 178 or 179 (gold)", v.X, v.Y, c.FG)
 		}
 	}
 }
@@ -474,7 +471,7 @@ func TestOWRotundaHoard(t *testing.T) {
 // when the halls are open, inside its window, and fades out between passes.
 func TestOWProcession(t *testing.T) {
 	pal := Palette()
-	w, h := 92, 32
+	w, h := 158, 32
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
 	st.RevealAll = true // open the halls
@@ -508,7 +505,7 @@ func TestOWProcession(t *testing.T) {
 // floor's route and the room's chrome flashes toward the result colour.
 func TestOWReturnFX(t *testing.T) {
 	pal := Palette()
-	w, h := 92, 32
+	w, h := 158, 32
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
 	st.ReturnFX = OWReturnFX{Floor: "rift", Won: true}
@@ -523,8 +520,9 @@ func TestOWReturnFX(t *testing.T) {
 	}
 	// The rift's chrome flashes toward the held colour (220).
 	found := false
-	for gy := 8; gy <= 12 && !found; gy++ {
-		for gx := 5; gx <= 7 && !found; gx++ {
+	n := owNodeByID("rift")
+	for gy := n.Y - n.PH/2; gy <= n.Y+n.PH/2 && !found; gy++ {
+		for gx := n.X - n.PW/2; gx <= n.X+n.PW/2 && !found; gx++ {
 			for sy := 0; sy < l.Scale && !found; sy++ {
 				for sx := 0; sx < l.Scale; sx++ {
 					if f.C[(l.Y(gy)+sy)*f.W+l.X(gx)+sx].FG == 220 {
@@ -543,20 +541,20 @@ func TestOWReturnFX(t *testing.T) {
 // from the heart.
 func TestOWBlast(t *testing.T) {
 	pal := Palette()
-	w, h := 92, 32
+	w, h := 158, 32
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
-	st.BlastTTL = 36 // p=0.5, R=12, k=1
+	st.BlastTTL = 36 // halfway across the expanded cavern
 	f := RenderOverworld(w, h, st, 0, pal)
-	// The front: a bright bold dot 12 units from the heart.
-	fx, fy := l.center(10, 6)
+	// The front: a bright bold dot at the halfway radius.
+	fx, fy := l.center(53, 6)
 	if c := f.C[fy*f.W+fx]; c.R != '·' || c.FG != 255 || !c.Bold {
-		t.Fatalf("blast front (10,6) = %q/%d/bold=%v, want ·/255/bold", c.R, c.FG, c.Bold)
+		t.Fatalf("blast front (53,6) = %q/%d/bold=%v, want ·/255/bold", c.R, c.FG, c.Bold)
 	}
-	// The trail: a warm dot ~10 units out.
-	tx, ty := l.center(12, 6)
+	// The warm trail follows just behind the front.
+	tx, ty := l.center(50, 6)
 	if c := f.C[ty*f.W+tx]; c.R != '·' || (c.FG != 214 && c.FG != 208 && c.FG != 196) {
-		t.Fatalf("blast trail (12,6) = %q/%d, want ·/warm", c.R, c.FG)
+		t.Fatalf("blast trail (50,6) = %q/%d, want ·/warm", c.R, c.FG)
 	}
 	// The far corner (d=22.8) is well outside the band: untouched.
 	cx, cy := l.center(0, 0)
@@ -570,7 +568,7 @@ func TestOWBlast(t *testing.T) {
 // is compared).
 func TestOWBlastDecay(t *testing.T) {
 	pal := Palette()
-	w, h := 92, 32
+	w, h := 158, 32
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
 	st.BlastTTL = 1
@@ -592,7 +590,7 @@ func TestOWBlastDecay(t *testing.T) {
 // render identically twice.
 func TestOWRichDeterministic(t *testing.T) {
 	pal := Palette()
-	w, h := 137, 45
+	w, h := 236, 45
 	st := NewOWState()
 	st.BootTTL = 40
 	st.BlastTTL = 30

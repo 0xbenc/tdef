@@ -85,7 +85,7 @@ func TestOWDescendLaunchesLevel(t *testing.T) {
 // A sealed floor refuses the descent with a message and does not launch.
 func TestOWSealedRefusesDescent(t *testing.T) {
 	a := owTestApp(t)
-	a.ow.Cursor = game.Vec{X: 35, Y: 3} // the (sealed) Long Halls
+	a.ow.Cursor = game.Vec{X: 63, Y: 3} // the (sealed) Long Halls
 	a.owEnter()
 	if a.ow.Descending != "" {
 		t.Fatalf("sealed floor descended: %q", a.ow.Descending)
@@ -295,5 +295,151 @@ func TestLevelSelectGameOverReturnsToSelect(t *testing.T) {
 	a.handle(Event{Key: KeyEscape})
 	if a.screen != ScreenLevelSelect {
 		t.Fatalf("esc on a menu game-over = %v, want the level select", a.screen)
+	}
+}
+
+func TestOWCameraFollowsWithoutMovingPlayer(t *testing.T) {
+	a := owTestApp(t)
+	a.owTick() // establish the camera at the Rift
+	a.ow.Cursor = game.Vec{X: 45, Y: 6}
+	before := a.ow.CameraX
+	a.owTick()
+	if a.ow.CameraX <= before || a.ow.CameraX >= 45 {
+		t.Fatalf("camera did not ease toward Grak: %f -> %f", before, a.ow.CameraX)
+	}
+	for i := 0; i < 40; i++ {
+		a.owTick()
+	}
+	if a.ow.CameraX != 45 || a.ow.Cursor != (game.Vec{X: 45, Y: 6}) {
+		t.Fatalf("camera did not settle or moved player: camera=%f cursor=%v", a.ow.CameraX, a.ow.Cursor)
+	}
+	// Browser shortcuts reveal their destination immediately.
+	a.owWheel(false)
+	if a.ow.CameraX != float64(a.ow.Cursor.X) {
+		t.Fatal("wheel jump left the camera at the previous floor")
+	}
+}
+
+func TestOWMouseAfterScrolling(t *testing.T) {
+	a := owTestApp(t)
+	a.ow.Unlocked["garden"] = true
+	a.ow.Cursor = game.Vec{X: 63, Y: 3}
+	a.ow.CameraSet, a.ow.CameraX = true, 60.5
+	w, h := a.termSize()
+	l := render.OverworldLayout(w, h, a.ow)
+	fl, _ := render.OWFloorOf("garden")
+	x := l.X(fl.Center.X) + l.Scale/2
+	y := l.Y(fl.Center.Y) + l.Scale/2
+	a.handleOWMouse(Event{Mouse: true, Press: true, X: x, Y: y})
+	if a.ow.Cursor != fl.Center {
+		t.Fatalf("scrolled click went to %v, want %v", a.ow.Cursor, fl.Center)
+	}
+}
+
+func TestOWWalkingFollowsTheFork(t *testing.T) {
+	a := owTestApp(t)
+	a.ow.Cursor = game.Vec{X: 45, Y: 6}
+	a.handleOverworld(Event{Key: KeyRight})
+	if a.ow.Cursor != (game.Vec{X: 45, Y: 6}) {
+		t.Fatal("walked off the bridge along the old straight route")
+	}
+	a.handleOverworld(Event{Key: KeyUp})
+	a.handleOverworld(Event{Key: KeyUp})
+	a.handleOverworld(Event{Key: KeyRight})
+	if a.ow.Cursor != (game.Vec{X: 46, Y: 4}) {
+		t.Fatalf("upper approach ended at %v", a.ow.Cursor)
+	}
+	a.ow.Cursor = game.Vec{X: 45, Y: 6}
+	a.handleOverworld(Event{Key: KeyDown})
+	a.handleOverworld(Event{Key: KeyDown})
+	a.handleOverworld(Event{Key: KeyRight})
+	if a.ow.Cursor != (game.Vec{X: 46, Y: 8}) {
+		t.Fatalf("lower approach ended at %v", a.ow.Cursor)
+	}
+}
+
+func TestOWWalkingStopsAtSealedDoorway(t *testing.T) {
+	for _, id := range []string{"halls", "garden", "depths"} {
+		a := owTestApp(t)
+		fl, _ := render.OWFloorOf(id)
+		approach, _ := render.OWFloorApproach(id)
+		a.ow.Cursor = approach
+		dx, dy := 0, 0
+		if fl.Center.X > approach.X {
+			dx = 1
+		}
+		if fl.Center.X < approach.X {
+			dx = -1
+		}
+		if fl.Center.Y > approach.Y {
+			dy = 1
+		}
+		if fl.Center.Y < approach.Y {
+			dy = -1
+		}
+		a.owWalk(dx, dy)
+		if a.ow.Cursor != approach || len(a.ow.Trail) != 0 || a.ow.Msg == "" {
+			t.Fatalf("%s: crossed a sealed doorway or failed to explain it", id)
+		}
+		a.owEnter()
+		if a.ow.Descending != "" {
+			t.Fatalf("%s: descended from a sealed doorstep", id)
+		}
+		a.ow.Unlocked[id], a.ow.Unsealing[id] = true, 1
+		a.owWalk(dx, dy)
+		if a.ow.Cursor != approach {
+			t.Fatalf("%s: entered mid-unseal", id)
+		}
+		a.owTick()
+		a.owWalk(dx, dy)
+		if a.owCursorFloor() != id {
+			t.Fatalf("%s: could not enter after unsealing", id)
+		}
+	}
+}
+
+func TestOWShortcutsRespectSeals(t *testing.T) {
+	a := owTestApp(t)
+	for _, id := range []string{"rotunda", "halls", "garden", "depths", "rift"} {
+		a.owWheel(false)
+		if a.owBrowseFloor() != id {
+			t.Fatalf("wheel stopped at %q, want %q", a.owBrowseFloor(), id)
+		}
+		if !a.ow.Unlocked[id] {
+			approach, _ := render.OWFloorApproach(id)
+			if a.ow.Cursor != approach || a.owCursorFloor() != "" {
+				t.Fatalf("wheel entered sealed %s", id)
+			}
+		}
+	}
+	for _, id := range []string{"halls", "garden", "depths"} {
+		fl, _ := render.OWFloorOf(id)
+		a.ow.CameraSet, a.ow.CameraX = true, float64(fl.Center.X)
+		w, h := a.termSize()
+		l := render.OverworldLayout(w, h, a.ow)
+		x, y := l.X(fl.Center.X)+l.Scale/2, l.Y(fl.Center.Y)+l.Scale/2
+		a.handleOWMouse(Event{Mouse: true, Press: true, X: x, Y: y})
+		approach, _ := render.OWFloorApproach(id)
+		if a.ow.Cursor != approach {
+			t.Fatalf("mouse entered sealed %s", id)
+		}
+	}
+}
+
+func TestOWRenownChangeReturnsPlayerToDoorway(t *testing.T) {
+	a := owTestApp(t)
+	a.lair.Record("rift", 1, 20, true)
+	a.owRefresh()
+	fl, _ := render.OWFloorOf("halls")
+	a.ow.Cursor = fl.Center
+	a.ow.Unsealing["garden"] = 1
+	a.owCycleDiff(1) // hard has no cleared floors
+	approach, _ := render.OWFloorApproach("halls")
+	if a.ow.Cursor != approach {
+		t.Fatal("renown change left Grak inside a sealed room")
+	}
+	a.owTick()
+	if a.ow.Unlocked["garden"] {
+		t.Fatal("old renown's unseal opened a hard floor")
 	}
 }

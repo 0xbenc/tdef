@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -136,9 +137,11 @@ func (a *App) owWalk(dx, dy int) {
 func (a *App) owStep(dx, dy int) {
 	a.ow.Msg = ""
 	n := game.Vec{X: a.ow.Cursor.X + dx, Y: a.ow.Cursor.Y + dy}
-	if render.OWWalkable(n.X, n.Y) {
+	if render.OWCanWalk(n.X, n.Y, a.ow) {
 		a.ow.PushTrail(a.ow.Cursor)
 		a.ow.Cursor = n
+	} else if fl, room := render.OWFloorAt(n.X, n.Y); room && !render.OWFloorOpen(fl.ID, a.ow) {
+		a.owSealedMessage(fl.ID)
 	}
 }
 
@@ -146,6 +149,14 @@ func (a *App) owStep(dx, dy int) {
 // walk. Called once per 30fps frame from the app loop.
 func (a *App) owTick() {
 	st := &a.ow
+	if !st.CameraSet {
+		st.CameraX, st.CameraSet = float64(st.Cursor.X), true
+	}
+	// Ease the viewport toward Grak without adding extra walking steps.
+	st.CameraX += (float64(st.Cursor.X) - st.CameraX) * 0.25
+	if math.Abs(float64(st.Cursor.X)-st.CameraX) < 0.02 {
+		st.CameraX = float64(st.Cursor.X)
+	}
 	if st.BootTTL > 0 {
 		st.BootTTL--
 	}
@@ -208,14 +219,17 @@ func (a *App) owEnter() {
 	}
 	fl, ok := render.OWFloorAt(st.Cursor.X, st.Cursor.Y)
 	if !ok {
+		if id := a.owBrowseFloor(); id != "" && !render.OWFloorOpen(id, *st) {
+			a.owSealedMessage(id)
+		}
 		return
 	}
 	id := fl.ID
 	if id == "rotunda" && st.BossReady {
 		id = render.HeartFloorID
 	}
-	if id != render.HeartFloorID && !st.Unlocked[id] && st.Unsealing[id] == 0 {
-		st.Msg = fl.Name + " is sealed — hold the lair to break it open"
+	if id != render.HeartFloorID && !render.OWFloorOpen(id, *st) {
+		a.owSealedMessage(id)
 		return
 	}
 	st.RelicMenu = false
@@ -295,6 +309,7 @@ func (a *App) owCycleDiff(dir int) {
 	st := &a.ow
 	n := len(render.Difficulties)
 	st.Diff = (st.Diff + dir + n) % n
+	st.Unsealing = map[string]int{} // another renown owns different seals
 	a.diff = render.Difficulties[st.Diff]
 	a.owRefresh()
 }
@@ -388,11 +403,14 @@ func (a *App) owRefresh() {
 	if !a.lair.AnyRecord() {
 		st.FirstRun = true
 	}
+	if fl, room := render.OWFloorAt(st.Cursor.X, st.Cursor.Y); room && !render.OWFloorOpen(fl.ID, *st) {
+		a.owVisitFloor(fl.ID)
+	}
 }
 
 // handleOWMouse: the wheel hops between floors in the lair's depth order; a
-// click steps Grak onto the floor pad under it — or descends, if he is
-// already on that pad.
+// click visits an open floor or a sealed floor's doorstep; a second click
+// on an occupied open pad descends.
 func (a *App) handleOWMouse(e Event) {
 	if !e.Press {
 		return
@@ -409,20 +427,20 @@ func (a *App) handleOWMouse(e Event) {
 		return
 	}
 	w, h := a.termSize()
-	if c, ok := render.OWFloorAtFrame(w, h, e.X, e.Y); ok {
+	if c, ok := render.OWFloorAtFrame(w, h, e.X, e.Y, a.ow); ok {
 		if hit, fok := render.OWFloorAt(c.X, c.Y); fok {
 			if on, ok := render.OWFloorAt(a.ow.Cursor.X, a.ow.Cursor.Y); ok && on.ID == hit.ID {
 				a.owEnter()
 				return
 			}
 		}
-		a.ow.Msg = ""
-		a.ow.Cursor = c
+		if fl, ok := render.OWFloorAt(c.X, c.Y); ok {
+			a.owVisitFloor(fl.ID)
+		}
 	}
 }
 
-// owWheel hops Grak to the next/previous floor pad in the lair's depth order
-// (a shortcut, not a walk).
+// owWheel visits floors in depth order, stopping at sealed doorways.
 func (a *App) owWheel(up bool) {
 	st := &a.ow
 	if st.Descending != "" {
@@ -433,14 +451,14 @@ func (a *App) owWheel(up bool) {
 		dir = -1
 	}
 	cur := -1
-	if fl, ok := render.OWFloorAt(st.Cursor.X, st.Cursor.Y); ok {
-		for i, id := range owFloorOrder {
-			if fl.ID == id {
-				cur = i
-				break
-			}
+	id := a.owBrowseFloor()
+	for i, floor := range owFloorOrder {
+		if floor == id {
+			cur = i
+			break
 		}
 	}
+
 	n := len(owFloorOrder)
 	var idx int
 	if cur < 0 {
@@ -451,8 +469,48 @@ func (a *App) owWheel(up bool) {
 	} else {
 		idx = (cur + dir + n) % n
 	}
-	if fl, ok := render.OWFloorOf(owFloorOrder[idx]); ok {
-		st.Cursor = fl.Center
-		st.Msg = ""
+	a.owVisitFloor(owFloorOrder[idx])
+}
+
+// A closed floor is visited at its doorstep; every shortcut shares this rule.
+func (a *App) owVisitFloor(id string) {
+	fl, ok := render.OWFloorOf(id)
+	if !ok {
+		return
+	}
+	st := &a.ow
+	target := fl.Center
+	st.Msg = ""
+	if !render.OWFloorOpen(id, *st) {
+		approach, ok := render.OWFloorApproach(id)
+		if !ok {
+			return
+		}
+		target = approach
+		a.owSealedMessage(id)
+	}
+	st.Cursor = target
+	st.CameraX, st.CameraSet = float64(target.X), true
+}
+
+// Include doorsteps in the wheel's floor order without making them interiors
+// for descent, relic spending, or seed entry.
+func (a *App) owBrowseFloor() string {
+	if id := a.owCursorFloor(); id != "" {
+		return id
+	}
+	for _, id := range owFloorOrder {
+		if approach, ok := render.OWFloorApproach(id); ok && approach == a.ow.Cursor {
+			return id
+		}
+	}
+	return ""
+}
+
+func (a *App) owSealedMessage(id string) {
+	if a.ow.Unsealing[id] > 0 {
+		a.ow.Msg = render.OWFloorName(id) + " is opening — wait at the doorway"
+	} else {
+		a.ow.Msg = render.OWFloorName(id) + " is sealed — hold the lair to break it open"
 	}
 }

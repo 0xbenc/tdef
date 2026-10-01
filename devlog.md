@@ -563,3 +563,69 @@
   stays byte-identical (83% ALL). TestSiegeWaitsForTower locks the gate in;
   TestWaveCompletion now commits a tower first (and its gold check accounts for
   the build). a5f7a79.
+
+- 2026-10-01 (a wider, figurative lair)
+- Expanded the overworld from 45×13 to 78×13, with larger room footprints and
+  a bridge between the hoard and the far floors. Each floor has its own
+  architectural silhouette: a broken basalt breach, Malgrath asleep over gold,
+  vaulted halls, a temple with a submerged lower basin, and a timbered mine
+  mouth with converging rails. The roof and floor enclose the cavern.
+- The viewport uses the existing 1×–4× scale steps, following Grak horizontally
+  with an eased camera. World-space rendering is cropped before the fixed
+  voice, ledger, controls and frame are drawn. Mouse picking shares the camera
+  transform; wheel jumps reveal their destination immediately. Minimum window
+  remains 62×19. Arrival and heart-unseal sweeps now cover the wider world.
+- Kept terrain shades inside the ANSI grayscale ramp: extending the old
+  falloff reached index 231 (white), creating bright patches at the far edge.
+  Warm/cool accents now live in the grain over dark stone. The Heart descent
+  also resolves to the Rotunda artwork so its transition plays.
+- Verification: existing progression and presentation tests adapted to the
+  wider world; added camera/resize/picking, fixed-chrome clipping, small-window,
+  distant-stone, camera-settling and scrolled-mouse regression coverage.
+  Inspected rendered views at the Rift, Rotunda, Halls and Garden.
+
+- 2026-10-01 (walkways and figurative scenery)
+- Replaced the straight dotted crossing with a connected stone walkway. The
+  route rises before the bridge, returns to its deck, then forks into an upper
+  approach to the Halls and a lower waterside route to the Garden. The Rift
+  approaches from its side. Paving, exposed edges, turns and forks all derive
+  from the walkable corridor cells; overlapping branches are drawn once.
+- Replaced scattered grain and outcrop tiles with composed cave silhouettes,
+  dark arches on the distant wall, bridge piers, a waterfall, and an underground
+  river. Torches, a fork signpost and a fallen expedition's bones give the
+  crossing concrete landmarks. Stone shades remain within the grayscale ramp.
+- Refined the rooms into material-based illustrations: masonry towers with
+  banners, a broad temple roof and ivy over its basin, timber mine supports
+  with a cart and lantern, and basalt around the Rift's lava. Malgrath has
+  treasure chests beside the gold. Sparse fog and ripples replace block-sized
+  texture glyphs. Grak gets horns, shoulders and stepping feet at 2×+, and the
+  Halls' ghosts get heads and feet. One-cell glyphs remain readable at 1×.
+- The mine's sign sits over its entrance; compact labels avoid covering the
+  walkway. Regression tests check the final composed path at every scale and
+  walking through both branches of the fork, alongside camera, picking,
+  progression and transition coverage.
+- Verification: go vet, go test -race, build and diff checks pass; inspected
+  the composed scenes at 62×19 and 92×32.
+
+- 2026-10-01 (single-character Grak)
+- Returned Grak to one terminal character at every scale. He idles as @ and
+  briefly alternates @ / & after walking; the extra head, shoulders and feet
+  are removed. The existing lantern and fading footprints remain.
+
+- 2026-10-01 (verify lightning's per-bounce reach)
+- Confirmed that Lightning Mage targeting already uses tower range only for
+  the opening target, then searches within ChainRange (2.6 cells) of the last
+  hero hit. Added normal-firing regressions at all three levels with every
+  bounce target outside the tower's range, verifying damage falloff, beam
+  endpoints and bounce limits. A second case verifies that an oversized gap
+  stops the chain. Documented the two distinct ranges in the README.
+
+- 2026-10-01 (sealed rooms block entry)
+- Movement now checks progression before entering any room footprint, even
+  where a corridor continues through it. A sealed room remains blocked until
+  its unseal finishes. Door approaches come from the route geometry; clicks
+  and wheel visits stop there instead of teleporting inside. A portcullis
+  marks the boundary. The reveal preview changes appearance only.
+- Switching renown moves Grak out of newly sealed rooms and cancels the old
+  renown's unfinished unseals. Tests cover all sealed interiors, doorway
+  walking, opening completion, mouse/wheel shortcuts and renown changes.
