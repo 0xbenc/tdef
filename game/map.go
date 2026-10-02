@@ -19,6 +19,17 @@ type Map struct {
 
 	// HPMul is a per-map enemy health multiplier used to tune difficulty.
 	HPMul float64
+	// GoldMul scales starting gold and income, allowing spacious floors to
+	// support broader defenses without changing tower prices. Zero means 1.
+	GoldMul float64
+}
+
+// ScaleGold applies the floor's economy to a gold amount, rounded to a coin.
+func (m *Map) ScaleGold(gold int) int {
+	if m.GoldMul <= 0 {
+		return gold
+	}
+	return int(float64(gold)*m.GoldMul + 0.5)
 }
 
 const SampleStep = 0.25

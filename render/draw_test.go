@@ -497,6 +497,19 @@ func TestRenderSmoke(t *testing.T) {
 	}
 }
 
+func TestHeaderShowsFloorEarlyBonus(t *testing.T) {
+	m, err := game.LoadLevel("garden")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := game.NewState(m)
+	g.Wave, g.NextWaveAt = 1, 10
+	f := Render(g, &UI{Speed: 1, Selected: NoSelection}, Palette(), 62, 19, 0)
+	if header := strings.Split(f.Text(), "\n")[0]; !strings.Contains(header, "+11g)") {
+		t.Errorf("header should show the garden's scaled early bonus: %s", header)
+	}
+}
+
 func TestANSIPositionsRowsWithCUP(t *testing.T) {
 	f := &Frame{W: 4, H: 3, C: make([]Cell, 12)}
 	f.Put(0, 0, 'a', 220, 0)

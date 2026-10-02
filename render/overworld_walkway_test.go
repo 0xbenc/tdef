@@ -7,6 +7,33 @@ import (
 	"github.com/0xbenc/tdef/game"
 )
 
+func TestOWWaterfallFlowsDown(t *testing.T) {
+	for scale := 1; scale <= 4; scale++ {
+		w, h := OWW*scale+2, OWH*scale+ChromeTop+ChromeBot
+		l := OverworldLayout(w, h, NewOWState())
+		draw := func(frame int) *Frame {
+			f := &Frame{W: w, H: h, C: make([]Cell, w*h)}
+			drawOWCavern(f, l, frame)
+			return f
+		}
+		for frame := 0; frame < 30; frame += 3 {
+			before, after := draw(frame), draw(frame+3)
+			for dx := 0; dx < scale; dx++ {
+				x := l.X(40) + dx
+				for y := l.Y(2) + 1; y < l.Y(12); y++ {
+					// Each drop and gap moves one terminal row DOWN per tick,
+					// including when the repeating pattern wraps around.
+					wasWater := before.C[(y-1)*w+x].R == '┊'
+					isWater := after.C[y*w+x].R == '┊'
+					if wasWater != isWater {
+						t.Fatalf("scale %d frame %d: waterfall did not move down at %d,%d", scale, frame, x, y)
+					}
+				}
+			}
+		}
+	}
+}
+
 // Every step in a route must be an orthogonal step that Grak can actually
 // take, including the bridge's turns and the upper/lower approaches.
 func TestOWRoutesFollowWalkableCells(t *testing.T) {

@@ -629,3 +629,77 @@
 - Switching renown moves Grak out of newly sealed rooms and cancels the old
   renown's unfinished unseals. Tests cover all sealed interiors, doorway
   walking, opening completion, mouse/wheel shortcuts and renown changes.
+
+- 2026-10-02 (floors with distinct routes and room to build)
+- Replaced all five built-in defense layouts, borrowing the procedural maps'
+  irregular bends and return passes instead of repeating horizontal lanes.
+  The Rotunda coils around a broad inner court; the Long Halls step through
+  unequal chambers with pillars; the Garden loops around planted islands and
+  rounded clearings; the Rift climbs narrow ledges around rock masses; the
+  Heart spirals inward through shared firing lanes. All remain 45x13, fitting
+  the existing minimum 62x19 terminal and integer scales.
+- Build tiles: hub 114 -> 231, winding 40 -> 234, garden 45 -> 230,
+  canyon 32 -> 170, heart 60 -> 189. Each has over 100 useful placements
+  within a level-one Slinger's range of the route. Bends offer shared coverage,
+  while separated stretches, inner courts and ledges vary tower utility.
+- Added per-map GoldMul, independently of HPMul, to fund wider defenses.
+  Starting gold, enemy bounties (including necromancer children), wave-clear
+  income and early-start bonuses scale and round to a whole coin. Tower and
+  upgrade prices, refund percentage, lives and wave compositions stay the
+  same. Unconfigured/custom maps and procedural mazes retain their economy.
+  The HUD and wave-clear messages display the actual scaled rewards.
+- Normal floor tuning (HP / gold multipliers): hub .65 / 1,
+  winding .77 / 1.25, garden 1.02 / 1.4, canyon 1.04 / 1.3,
+  heart 2.20 / 1.4. Autoplay finishes the four progression floors with
+  20 / 14 / 12 / 5 lives respectively; the Heart falls on wave 20 without
+  earned hearts, but holds with four earned hearts and four lives remaining.
+  Autoplay builds 132 / 168 / 188 / 169 towers on the progression floors,
+  compared with 114 / 40 / 45 / 32 before this pass. This is a deterministic
+  balance proxy, not a substitute for human playtesting.
+- Checked all floors on easy/normal/hard: easy holds all five, hard holds
+  the Rotunda and falls on the later floors. The same 20 benchmark mazes
+  retain their 60% win rate and identical results.
+- Verification: new tests check unbranched routes, every painted road being
+  used (no BFS shortcuts), useful build space, scaled spawn/split income,
+  wave rewards, early bonuses, unchanged prices/refunds and visible payouts.
+  Inspected text-rendered empty floors at 1x and 2x. gofmt, go vet,
+  go test -race, build and diff checks pass; rebuilt ./tdef for play.
+
+- 2026-10-02 (scenery in the nonfunctional terrain)
+- Added a dedicated wall-only scenery pass shared by gameplay and map previews.
+  The Rotunda wears vault cornices, a dragon relief and treasure vaults; the
+  Halls get bonded masonry, fluted pillars, roof arches and hanging banners;
+  the Garden's blocked ground becomes a flooded basin with reeds, composed
+  trees and drowned arches; the Rift gets basalt terraces, peaks and an
+  animated lava seam; the Heart gets ribbed edges, suspended chains, an altar
+  and bone masks; seeded Depths get buried masonry and crystal seams.
+- Authored illustrations find a solid wall footprint near their desired
+  anchor, reserve it against overlapping scenery, and use compact drawings at
+  1x and detailed drawings at 2x+. Materials join in terminal coordinates.
+  Drawing is clipped to blocked cells and the playfield; no roads, build pads,
+  map geometry or economy values change. Existing ambient floor effects remain.
+- Darkened the Halls' and Heart's wall shadows and kept material accents dim
+  enough that units and roads retain priority. The cursor now stays visible
+  over wall illustrations, even where their glyph is not a ground glyph.
+- Inspected all six environments in a coloured 2x contact sheet, and generated
+  previews at 1x through 4x. Added exhaustive scenery checks for functional
+  terrain/chrome preservation, deterministic output and unchanged map data,
+  including two maze seeds and a small generated map. Added cropped-preview
+  and decorated-wall cursor coverage. Tests, vet, race checks and build pass;
+  autoplay results remain identical to the preceding geometry/economy pass.
+
+- 2026-10-02 (waterfall direction)
+- Reversed the waterfall's animation phase: its drops and gaps now travel
+  downward rather than upward. Regression coverage follows the rendered
+  pattern through two cycles at all four scales. Waterfall and walkway checks
+  pass; rebuilt ./tdef.
+
+- 2026-10-02 (start in the hub)
+- Grak now starts at the Rotunda, the only initially open overworld floor.
+  Holding it unseals the Rift; the existing Rift -> Halls -> Garden chain,
+  two-floor Depths gate and four-floor Heart gate continue from there.
+- Updated fresh-state and title-to-defense coverage for the hub start, added
+  the Rift to sealed doorway/walking/mouse coverage, and checked that a loss
+  leaves it sealed while a hub win opens it only after the unseal completes.
+  Existing render fixtures explicitly choose their player position and open
+  floors. Tests with the race detector, vet and build pass; rebuilt ./tdef.

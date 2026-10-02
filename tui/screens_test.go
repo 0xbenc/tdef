@@ -286,14 +286,14 @@ func TestScreenSequenceReachable(t *testing.T) {
 	if a.screen != ScreenOverworld {
 		t.Fatalf("menu -> %v, want the lair", a.screen)
 	}
-	// Grak starts on the Rift: wait for the lair to wake (the boot gates
+	// Grak starts on the Rotunda: wait for the lair to wake (the boot gates
 	// input), then descend and let the transition play out.
 	for a.ow.BootTTL > 0 {
 		a.owTick()
 	}
 	a.handle(Event{Key: KeyEnter})
-	if a.ow.Descending != "rift" {
-		t.Fatalf("enter on the Rift = descending %q, want rift", a.ow.Descending)
+	if a.ow.Descending != "rotunda" {
+		t.Fatalf("enter on the Rotunda = descending %q, want rotunda", a.ow.Descending)
 	}
 	for i := 0; i < render.OWDescendFrames && a.screen == ScreenOverworld; i++ {
 		a.owTick()
@@ -301,7 +301,7 @@ func TestScreenSequenceReachable(t *testing.T) {
 	if a.screen != ScreenGame {
 		t.Fatalf("descent -> %v, want game", a.screen)
 	}
-	if a.g == nil || a.level != "canyon" || !a.fromOW {
+	if a.g == nil || a.level != "hub" || !a.fromOW {
 		t.Fatalf("game state after the sequence: level=%q fromOW=%v", a.level, a.fromOW)
 	}
 }

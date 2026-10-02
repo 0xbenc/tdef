@@ -134,7 +134,7 @@ func drawOWCavern(f *Frame, l Layout, frame int) {
 	// A waterfall behind the bridge, broken into drops by the draft.
 	for y := l.Y(2); y < l.Y(12); y++ {
 		for dx := 0; dx < max(1, l.Scale); dx++ {
-			if (y+frame/3+dx)%5 == 0 {
+			if (y-frame/3+dx)%5 == 0 {
 				continue
 			}
 			f.Put(l.X(40)+dx, y, '┊', 24+dx%2, 233)

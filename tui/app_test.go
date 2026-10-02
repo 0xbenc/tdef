@@ -8,6 +8,21 @@ import (
 	"github.com/0xbenc/tdef/render"
 )
 
+func TestWaveClearMessageShowsFloorReward(t *testing.T) {
+	m, err := game.LoadLevel("garden")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := game.NewState(m)
+	g.Wave, g.WaveActive = 1, true
+	// The last enemy has died and all spawns are complete.
+	a := &App{g: g, ui: render.UI{Speed: 1}, waveStartLives: g.Lives}
+	a.stepGame(1.0 / tickRate)
+	if a.ui.Message != "wave 1 cleared +49g" || g.Gold != 357 {
+		t.Errorf("wave clear: message=%q gold=%d", a.ui.Message, g.Gold)
+	}
+}
+
 // A fresh game must start with no tower selected: the zero value of
 // UI.Selected is tower ID 0, which would hide the cursor and, once the
 // first tower exists, highlight it as selected.

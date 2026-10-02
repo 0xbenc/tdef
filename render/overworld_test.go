@@ -12,6 +12,8 @@ import (
 func TestOverworldReusesPlayfieldScale(t *testing.T) {
 	pal := Palette()
 	st := NewOWState()
+	st.Cursor = game.Vec{X: 6, Y: 10}
+	st.Unlocked["rift"] = true
 	sizes := []struct {
 		w, h, wantScale int
 	}{{62, 19, 1}, {158, 32, 2}, {236, 45, 3}, {314, 58, 4}}
@@ -110,17 +112,17 @@ func TestOWRectsMatchNodes(t *testing.T) {
 	}
 }
 
-// NewOWState must start Grak on the Rift with the Rift and Rotunda open.
+// NewOWState starts Grak in the Rotunda with every other floor sealed.
 func TestNewOWStateStart(t *testing.T) {
 	st := NewOWState()
 	floor, ok := OWFloorAt(st.Cursor.X, st.Cursor.Y)
-	if !ok || floor.ID != "rift" {
-		t.Fatalf("cursor starts at (%d,%d), not on the Rift", st.Cursor.X, st.Cursor.Y)
+	if !ok || floor.ID != "rotunda" {
+		t.Fatalf("cursor starts at (%d,%d), not on the Rotunda", st.Cursor.X, st.Cursor.Y)
 	}
-	if !st.Unlocked["rift"] || !st.Unlocked["rotunda"] {
-		t.Fatal("Rift and Rotunda must be unlocked at start")
+	if !st.Unlocked["rotunda"] {
+		t.Fatal("Rotunda must be unlocked at start")
 	}
-	if st.Unlocked["halls"] || st.Unlocked["garden"] || st.Unlocked["depths"] {
+	if st.Unlocked["rift"] || st.Unlocked["halls"] || st.Unlocked["garden"] || st.Unlocked["depths"] {
 		t.Fatal("the far floors must be sealed at start")
 	}
 }
@@ -132,11 +134,11 @@ func TestOWNodeStatus(t *testing.T) {
 	if got := owNodeStatus(st, "halls"); got != OWSealed {
 		t.Errorf("halls status = %v, want sealed", got)
 	}
-	if got := owNodeStatus(st, "rift"); got != OWCurrent {
-		t.Errorf("rift status (Grak is there) = %v, want current", got)
+	if got := owNodeStatus(st, "rift"); got != OWSealed {
+		t.Errorf("rift status = %v, want sealed", got)
 	}
-	if got := owNodeStatus(st, "rotunda"); got != OWOpen {
-		t.Errorf("rotunda status = %v, want open", got)
+	if got := owNodeStatus(st, "rotunda"); got != OWCurrent {
+		t.Errorf("rotunda status (Grak is there) = %v, want current", got)
 	}
 	st.Cursor = game.Vec{X: 63, Y: 3} // stand on the (sealed) halls
 	if got := owNodeStatus(st, "halls"); got != OWSealed {
@@ -184,6 +186,8 @@ func TestOWBossDoor(t *testing.T) {
 	w, h := 80, 19
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
+	st.Cursor = game.Vec{X: 6, Y: 10}
+	st.Unlocked["rift"] = true
 	cx, cy := l.center(22, 6)
 	if got := RenderOverworld(w, h, st, 0, pal).C[cy*w+cx].R; got != '♥' {
 		t.Fatalf("unopened rotunda landmark = %q, want ♥", got)
@@ -230,7 +234,9 @@ func TestOverworldRichStateDeterministic(t *testing.T) {
 // cleared, all corridors open, the heart unsealed.
 func owStateAllHeld() OWState {
 	st := NewOWState()
+	st.Cursor = game.Vec{X: 6, Y: 10}
 	for _, id := range []string{"rift", "halls", "garden", "rotunda"} {
+		st.Unlocked[id] = true
 		st.Records[id] = OWRec{Cleared: true, BestWave: 20, LastWave: 20, LastWon: true}
 		st.Scores[id] = 9000
 	}
@@ -290,6 +296,8 @@ func TestOWBootPhases(t *testing.T) {
 	w, h := 236, 45
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
+	st.Cursor = game.Vec{X: 6, Y: 10}
+	st.Unlocked["rift"] = true
 
 	// First frame of the waking: the far corner is unlit dark; the heart,
 	// the ignition source, is already lit.
@@ -508,6 +516,8 @@ func TestOWReturnFX(t *testing.T) {
 	w, h := 158, 32
 	l := GameLayout(OWW, OWH, w, h)
 	st := NewOWState()
+	st.Cursor = game.Vec{X: 6, Y: 10}
+	st.Unlocked["rift"] = true
 	st.ReturnFX = OWReturnFX{Floor: "rift", Won: true}
 	st.ReturnTTL = 180 // q=0: full flash, ring front at the start of the route
 	f := RenderOverworld(w, h, st, 0, pal)

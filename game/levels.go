@@ -30,24 +30,34 @@ func LevelNames() []string {
 }
 
 var levelHP = map[string]float64{
-	// Tuned so the autoplay (weak-player) proxy wins each hand-crafted map at
-	// ~100% with a spread of leaks: hub easiest -> canyon hardest.
-	"hub":     1.08,
-	"winding": 1.32,
-	"garden":  1.28,
-	"canyon":  1.25,
+	// Tuned with levelGold against the actual bends and firing lanes. The
+	// normal autoplay proxy holds the four floors with decreasing spare lives.
+	"hub":     0.65,
+	"winding": 0.77,
+	"garden":  1.02,
+	"canyon":  1.04,
 	// The heart chamber is the endgame gate behind the unsealed heart: a
-	// long serpentine. Autoplay is deterministic, so it is all-or-nothing per
-	// map; 1.10 is the edge where the weak-player proxy reaches the final
+	// inward spiral. Autoplay is deterministic, so it is all-or-nothing per
+	// map; 2.20 is the edge where the weak-player proxy reaches the final
 	// wave and dies there — the final expedition a passive player loses,
 	// while a player who arrives with hearts (+lives) and relics can hold it.
-	"heart": 1.10,
+	"heart": 2.20,
 }
 
 // mazeHP keeps the procedural maze in the "chaos" tier (~60% AI win). The
 // corridor-biased generator yields longer chokepoints but fewer effective
 // build pockets, so it needs a lower HP than the hand-crafted maps.
 const mazeHP = 0.58
+
+// Roomier floors fund more towers; health is tuned independently against
+// their actual route coverage, rather than treating every grass tile alike.
+var levelGold = map[string]float64{
+	"hub":     1.0,
+	"winding": 1.25,
+	"garden":  1.4,
+	"canyon":  1.3,
+	"heart":   1.4,
+}
 
 func LoadLevel(name string) (*Map, error) {
 	data, err := levelFS.ReadFile("levels/" + name + ".txt")
@@ -67,6 +77,7 @@ func LoadLevel(name string) (*Map, error) {
 	if v, ok := levelHP[name]; ok {
 		m.HPMul = v
 	}
+	m.GoldMul = levelGold[name]
 	return m, nil
 }
 
@@ -88,5 +99,6 @@ func LoadBoss() (*Map, error) {
 		return nil, err
 	}
 	m.HPMul = levelHP["heart"]
+	m.GoldMul = levelGold["heart"]
 	return m, nil
 }

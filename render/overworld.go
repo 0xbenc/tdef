@@ -55,7 +55,7 @@ type owNode struct {
 }
 
 // The five floors. The Rotunda is the hub every corridor runs through; the
-// Rift is where Grak starts. Order is the lair's "depth": the Rift is the
+// Rotunda is where Grak starts. Order is the lair's "depth": the Rift is the
 // mouth, the Unmapped Depths are the far dark.
 var owNodes = []owNode{
 	{
@@ -362,12 +362,11 @@ type OWState struct {
 	BonusLives int
 }
 
-// NewOWState is the starting look: Grak at the Rift, the Rift and the
-// Rotunda open, the rest of the lair still sealed, no memory.
+// NewOWState starts Grak at the Rotunda, with only the hub open and no memory.
 func NewOWState() OWState {
 	return OWState{
-		Cursor:    game.Vec{X: 6, Y: 10},
-		Unlocked:  map[string]bool{"rift": true, "rotunda": true},
+		Cursor:    game.Vec{X: 22, Y: 6},
+		Unlocked:  map[string]bool{"rotunda": true},
 		Unsealing: map[string]int{},
 		Records:   map[string]OWRec{},
 		Scores:    map[string]int{},
@@ -1385,7 +1384,7 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 		}
 	default:
 		if st.FirstRun {
-			// Shown even on a pad: a first-time Grak starts on the Rift, so
+			// Shown even on a pad: a first-time Grak starts on the Rotunda, so
 			// the old "only when the line is empty" trigger never fired.
 			s, fg = "wasd walk the lair · enter descend · tab renown", 240
 		} else {

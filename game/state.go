@@ -49,7 +49,7 @@ func NewState(m *Map) *State {
 func NewStateDiff(m *Map, diff Difficulty) *State {
 	return &State{
 		Map:        m,
-		Gold:       diff.Gold(),
+		Gold:       m.ScaleGold(diff.Gold()),
 		Lives:      diff.Lives(),
 		Diff:       diff,
 		NextWaveAt: 3.0,
@@ -166,7 +166,7 @@ func (s *State) StartWave() int {
 	}
 	bonus := 0
 	if s.Wave > 0 && s.Time < s.NextWaveAt {
-		bonus = EarlyBonus(s.Wave)
+		bonus = s.Map.ScaleGold(EarlyBonus(s.Wave))
 		s.Gold += bonus
 		s.Score += bonus * 10
 	}
@@ -221,7 +221,7 @@ func (s *State) splitChild(parent *Enemy) {
 		Speed:      EnemySpecs[EnemyMinion].Speed * SpeedScale(s.Wave),
 		Pos:        parent.Pos,
 		SlowFactor: 1.0,
-		Bounty:     EnemySpecs[EnemyMinion].Bounty,
+		Bounty:     s.Map.ScaleGold(EnemySpecs[EnemyMinion].Bounty),
 		Lives:      1,
 	}
 	s.NextID++

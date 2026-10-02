@@ -754,7 +754,7 @@ func headerSegments(g *game.State, ui *UI, pal Colors) []headerSeg {
 		wave = []headerRun{
 			{fmt.Sprintf("next %d in %ds (", nw, in), pal.Bright, true},
 			{"n", 167, true},
-			{fmt.Sprintf(" +%dg)", game.EarlyBonus(g.Wave)), pal.Bright, true},
+			{fmt.Sprintf(" +%dg)", g.Map.ScaleGold(game.EarlyBonus(g.Wave))), pal.Bright, true},
 		}
 	default: // game over: show the final wave
 		wave = []headerRun{{fmt.Sprintf("wave %d/%d", g.Wave, game.MaxWaves), pal.Bright, true}}
@@ -1012,7 +1012,7 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 			cc := f.C[y*f.W+x]
 			// Terrain (wall/grass/road) gets the cursor marker; entity glyphs
 			// (towers, enemies, the spawn rift, the lair heart) just bold.
-			if isGroundRune(cc.R) {
+			if g.Map.At(ui.Cursor) == game.CellWall || isGroundRune(cc.R) {
 				cc.R = '◻'
 				cc.FG = pal.Dim
 			} else {

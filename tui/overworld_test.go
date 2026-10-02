@@ -21,16 +21,21 @@ func owTestApp(t *testing.T) *App {
 }
 
 // The unseal chain must follow the lair's memory at the current renown:
-// rift+rotunda open at first; the halls after the rift; the garden after the
+// rotunda open at first; rift after rotunda; halls after rift; garden after the
 // halls; the depths after two built-in floors; the heart after all four.
 func TestOWUnlockChain(t *testing.T) {
 	a := owTestApp(t)
 	a.owRefresh()
-	if !a.ow.Unlocked["rift"] || !a.ow.Unlocked["rotunda"] {
-		t.Fatal("rift and rotunda must be open at first")
+	if !a.ow.Unlocked["rotunda"] {
+		t.Fatal("rotunda must be open at first")
 	}
-	if a.ow.Unlocked["halls"] || a.ow.Unlocked["garden"] || a.ow.Unlocked["depths"] {
+	if a.ow.Unlocked["rift"] || a.ow.Unlocked["halls"] || a.ow.Unlocked["garden"] || a.ow.Unlocked["depths"] {
 		t.Fatal("the far floors must be sealed at first")
+	}
+	a.lair.Record("rotunda", 1, 20, true)
+	a.owRefresh()
+	if !a.ow.Unlocked["rift"] || a.ow.Unlocked["halls"] || a.ow.Unlocked["depths"] {
+		t.Fatal("holding the rotunda should open only the rift")
 	}
 	a.lair.Record("rift", 1, 20, true)
 	a.owRefresh()
@@ -39,6 +44,9 @@ func TestOWUnlockChain(t *testing.T) {
 	}
 	if a.ow.Unlocked["garden"] {
 		t.Fatal("the garden must stay sealed until the halls are held")
+	}
+	if !a.ow.Unlocked["depths"] || a.ow.BossReady {
+		t.Fatal("two held floors should open the depths, but not the heart")
 	}
 	a.lair.Record("halls", 1, 20, true)
 	a.owRefresh()
@@ -49,9 +57,8 @@ func TestOWUnlockChain(t *testing.T) {
 		t.Fatal("the depths must open once two built-in floors are held")
 	}
 	if a.ow.BossReady {
-		t.Fatal("the heart must stay sealed with two floors held")
+		t.Fatal("the heart must stay sealed with three floors held")
 	}
-	a.lair.Record("rotunda", 1, 20, true)
 	a.lair.Record("garden", 1, 20, true)
 	a.owRefresh()
 	if !a.ow.BossReady {
@@ -62,11 +69,42 @@ func TestOWUnlockChain(t *testing.T) {
 	}
 }
 
+func TestOWHubWinUnsealsRift(t *testing.T) {
+	a := owTestApp(t)
+	a.owRefresh()
+	a.lair.Record("rotunda", 1, 8, false)
+	a.owUnsealCheck(1)
+	if a.ow.Unlocked["rift"] || a.ow.Unsealing["rift"] > 0 {
+		t.Fatal("losing the hub must not open the rift")
+	}
+	a.lair.Record("rotunda", 1, 20, true)
+	a.owUnsealCheck(1)
+	if a.ow.Unsealing["rift"] != render.OWUnsealFrames || a.ow.Unlocked["rift"] {
+		t.Fatal("holding the hub should start the rift's unseal transition")
+	}
+	for i := 0; i < render.OWUnsealFrames-1; i++ {
+		a.owTick()
+	}
+	if a.ow.Unlocked["rift"] {
+		t.Fatal("rift opened before its transition finished")
+	}
+	a.owTick()
+	if !a.ow.Unlocked["rift"] || a.ow.Unlocked["halls"] {
+		t.Fatal("the rift alone should open after the hub win")
+	}
+	a.owVisitFloor("rift")
+	a.owEnter()
+	if a.ow.Descending != "rift" {
+		t.Fatal("newly opened rift cannot be entered")
+	}
+}
+
 // Entering an open floor starts the descent; the transition plays out over
 // OWDescendFrames and then launches the matching level from the lair.
 func TestOWDescendLaunchesLevel(t *testing.T) {
 	a := owTestApp(t)
 	a.ow.Cursor = game.Vec{X: 6, Y: 10} // the Rift
+	a.ow.Unlocked["rift"] = true
 	a.owEnter()
 	if a.ow.Descending != "rift" {
 		t.Fatalf("descending = %q, want rift", a.ow.Descending)
@@ -101,6 +139,7 @@ func TestOWSealedRefusesDescent(t *testing.T) {
 // The wheel hops Grak between floor pads in the lair's depth order.
 func TestOWWheelHopsFloors(t *testing.T) {
 	a := owTestApp(t)
+	a.ow.Unlocked["rift"] = true
 	a.ow.Cursor = game.Vec{X: 6, Y: 10} // the Rift (first in depth order)
 	a.owWheel(false)                    // next
 	if a.owCursorFloor() != "rotunda" {
@@ -157,7 +196,7 @@ func TestOWInputGateDuringBoot(t *testing.T) {
 	a.ow.BootTTL = render.OWBootFrames
 	a.handleOverworld(Event{Rune: 'w'})
 	a.handleOverworld(Event{Key: KeyRight})
-	if a.ow.Cursor != (game.Vec{X: 6, Y: 10}) {
+	if a.ow.Cursor != (game.Vec{X: 22, Y: 6}) {
 		t.Fatalf("cursor moved during boot: %v", a.ow.Cursor)
 	}
 	if len(a.ow.Trail) != 0 {
@@ -359,7 +398,7 @@ func TestOWWalkingFollowsTheFork(t *testing.T) {
 }
 
 func TestOWWalkingStopsAtSealedDoorway(t *testing.T) {
-	for _, id := range []string{"halls", "garden", "depths"} {
+	for _, id := range []string{"rift", "halls", "garden", "depths"} {
 		a := owTestApp(t)
 		fl, _ := render.OWFloorOf(id)
 		approach, _ := render.OWFloorApproach(id)
@@ -400,7 +439,7 @@ func TestOWWalkingStopsAtSealedDoorway(t *testing.T) {
 
 func TestOWShortcutsRespectSeals(t *testing.T) {
 	a := owTestApp(t)
-	for _, id := range []string{"rotunda", "halls", "garden", "depths", "rift"} {
+	for _, id := range []string{"halls", "garden", "depths", "rift", "rotunda"} {
 		a.owWheel(false)
 		if a.owBrowseFloor() != id {
 			t.Fatalf("wheel stopped at %q, want %q", a.owBrowseFloor(), id)
@@ -412,7 +451,7 @@ func TestOWShortcutsRespectSeals(t *testing.T) {
 			}
 		}
 	}
-	for _, id := range []string{"halls", "garden", "depths"} {
+	for _, id := range []string{"rift", "halls", "garden", "depths"} {
 		fl, _ := render.OWFloorOf(id)
 		a.ow.CameraSet, a.ow.CameraX = true, float64(fl.Center.X)
 		w, h := a.termSize()

@@ -58,6 +58,30 @@ endgame chamber behind the Rotunda. `tab` cycles the renown (easy / normal /
 hard); the lair remembers what you've held, and a held floor earns a
 **dragon heart** (+1 starting life on later defenses).
 
+A fresh lair starts Grak in **the Rotunda**, the only open floor. Holding it
+opens **the Rift**; holding the Rift opens **the Long Halls**, then holding the
+Halls opens **the Sunken Garden**. Holding any two built-in floors also opens
+**the Unmapped Depths**.
+
+Each defense has its own route and build terrain. Inner bends can cover several
+passes; open stretches reward long range, while narrow ledges demand careful
+placement. Roomier floors fund more towers through starting gold and rewards.
+Enemy health is tuned separately for each route.
+
+| floor | layout | build tiles | starting gold (normal) |
+|-------|--------|-------------|------------------------|
+| Rotunda | coiling route around the hoard, broad inner courts | 231 | 220 |
+| Long Halls | staggered chambers, pillars and returning corridors | 234 | 275 |
+| Sunken Garden | looping clearings around planted islands | 230 | 308 |
+| Rift | cliffside switchbacks and narrow firing ledges | 170 | 286 |
+| Heart | long inward spiral with shared firing lanes | 189 | 308 |
+
+Blocked terrain carries the scenery: dragon reliefs and treasure vaults in the
+Rotunda, vaulted masonry and banners in the Halls, trees and drowned arches in
+the Garden, basalt and flowing lava in the Rift, bone masks and chained ribs in
+the Heart, and crystal seams in the Depths. Larger display scales reveal more
+detail; roads and tower pads remain clear.
+
 ## Your kin (towers)
 
 The last monster kin you command. Each has three levels; upgrading deepens

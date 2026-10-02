@@ -280,7 +280,7 @@ func (a *App) stepGame(real float64) {
 				a.ui.Message = tg
 				a.msgTTL = game.AutoWaveDelayFor(a.g.Wave)
 			} else {
-				a.msg("wave " + strconv.Itoa(prevWave) + " cleared +" + strconv.Itoa(game.WaveBonus(prevWave)) + "g")
+				a.msg("wave " + strconv.Itoa(prevWave) + " cleared +" + strconv.Itoa(a.g.Map.ScaleGold(game.WaveBonus(prevWave))) + "g")
 			}
 		}
 	} else {
@@ -343,6 +343,7 @@ func (a *App) owUnsealCheck(d int) {
 			st.Unsealing[id] = render.OWUnsealFrames
 		}
 	}
+	opened("rift", a.lair.Floor("rotunda", d).Cleared)
 	opened("halls", a.lair.Floor("rift", d).Cleared)
 	opened("garden", a.lair.Floor("halls", d).Cleared)
 	opened("depths", a.lair.ClearedCount(d) >= 2)

@@ -59,7 +59,7 @@ func (s *State) spawnDue() {
 			Speed:      spec.Speed * spMul,
 			Pos:        s.Map.Path[0].Center(),
 			SlowFactor: 1.0,
-			Bounty:     spec.Bounty,
+			Bounty:     s.Map.ScaleGold(spec.Bounty),
 			Lives:      1,
 			Armor:      spec.Armor,
 		}
@@ -278,7 +278,7 @@ func (s *State) cleanup() {
 	}
 	if s.SpawnIdx >= len(s.SpawnQueue) && len(s.Enemies) == 0 {
 		s.WaveActive = false
-		s.Gold += WaveBonus(s.Wave)
+		s.Gold += s.Map.ScaleGold(WaveBonus(s.Wave))
 		s.Score += WaveBonus(s.Wave) * 100
 		if s.Wave >= MaxWaves {
 			s.Status = StatusVictory

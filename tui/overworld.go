@@ -387,10 +387,14 @@ func (a *App) owRefresh() {
 		a.owBossSeen = map[int]bool{}
 	}
 	a.owBossSeen[d] = st.BossReady
-	// The unseal chain: the Rift and the Rotunda are always open; the Halls
-	// open after the Rift is held, the Garden after the Halls, and the
+	// The unseal chain: the Rotunda is always open; the Rift opens after
+	// the Rotunda is held; the Halls open after the Rift, the Garden after
+	// the Halls, and the
 	// Depths once two built-in floors are held (the lair reveals its dark).
-	st.Unlocked = map[string]bool{"rift": true, "rotunda": true}
+	st.Unlocked = map[string]bool{"rotunda": true}
+	if recs["rotunda"].Cleared {
+		st.Unlocked["rift"] = true
+	}
 	if recs["rift"].Cleared {
 		st.Unlocked["halls"] = true
 	}

@@ -3,7 +3,7 @@ package render
 import "testing"
 
 func TestOWSealsBlockRoomInteriors(t *testing.T) {
-	for _, id := range []string{"halls", "garden", "depths"} {
+	for _, id := range []string{"rift", "halls", "garden", "depths"} {
 		st := NewOWState()
 		st.RevealAll = true // a visual preview cannot unlock a floor
 		n := owNodeByID(id)

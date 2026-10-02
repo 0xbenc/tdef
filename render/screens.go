@@ -146,7 +146,7 @@ func themeForLevel(level string) Theme {
 	switch {
 	case level == "winding":
 		return Theme{ // the Long Halls: warm bronze stone, amber torches
-			Wall: 94, WallHi: 136, WallLo: 58,
+			Wall: 94, WallHi: 136, WallLo: 233,
 			Grass: 234, GrassTuft: 94,
 			RoadBG: 237, RoadLine: 136,
 			Accent: 214, AccentDim: 130,
@@ -178,7 +178,7 @@ func themeForLevel(level string) Theme {
 		}
 	case level == "heart":
 		return Theme{ // the heart chamber: deep blood, a light that beats
-			Wall: 89, WallHi: 91, WallLo: 52,
+			Wall: 89, WallHi: 91, WallLo: 232,
 			Grass: 52, GrassTuft: 89,
 			RoadBG: 236, RoadLine: 196,
 			Accent: 196, AccentDim: 124,
@@ -216,6 +216,7 @@ func drawMapPreview(f *Frame, m *game.Map, pal Colors, th Theme, l Layout, frame
 			}
 		}
 	}
+	drawScenery(f, m, th, l, frame)
 	drawTheme(f, m, th, l, frame)
 	drawSpawnRift(f, pal, l, m.Spawn, frame)
 	drawLairHeart(f, pal, l, m.Exit, frame)
