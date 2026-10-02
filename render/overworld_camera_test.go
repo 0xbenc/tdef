@@ -55,6 +55,10 @@ func TestOWScrollPreservesChrome(t *testing.T) {
 		st.Cursor = game.Vec{X: 65, Y: 9}
 		right := RenderOverworld(w, h, st, 30, Palette())
 		for y := h - ChromeBot; y < h; y++ {
+			// The context row intentionally changes with the occupied floor.
+			if y == h-2 {
+				continue
+			}
 			for x := 0; x < w; x++ {
 				if left.C[y*w+x] != right.C[y*w+x] {
 					t.Fatalf("%dx%d: scrolling changed footer at %d,%d", w, h, x, y)

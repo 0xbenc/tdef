@@ -410,65 +410,7 @@ func drawOWBuilding(f *Frame, l Layout, n *owNode, accent, bg int, v owPadView, 
 		}
 
 	case "rotunda":
-		// Malgrath asleep on his gold: horn, folded wing, head and curled tail.
-		art := []string{
-			"     /\\   /\\",
-			" ___/  \\_/  \\_",
-			"/  _   _   -  >",
-			"\\_/ \\_/ \\___/",
-			"   ▴  ▴  · :",
-		}
-		if l.Scale >= 2 {
-			art = []string{
-				"               /\\",
-				"      __      /  \\    /\\",
-				"   __/  \\____/    \\__/  \\_",
-				" _/   _        _      -  >",
-				"/  __/ \\______/ \\_____,_/",
-				"\\ /      \\    /   /",
-				" \\_______/___/___/",
-				"  . : .   ▴   ▴  . : .",
-			}
-		}
-		width := 0
-		for _, line := range art {
-			width = max(width, len([]rune(line)))
-		}
-		for row, line := range art {
-			runes := []rune(line)
-			for i, r := range runes {
-				if r == ' ' {
-					continue
-				}
-				fg := accent
-				if row == len(art)-1 && open {
-					fg = 178
-					if (frame/12+i)%5 == 0 {
-						fg = 220
-					}
-				}
-				if r == '-' && open && frame%120 > 108 {
-					r = 'o' // the dragon briefly opens an eye
-				}
-				f.Set(cx-width/2+i, cy-len(art)/2+row, Cell{R: r, FG: fg, BG: bg, Bold: open})
-			}
-		}
-		// Gold banks flank the dragon, filling the extra space at larger scales.
-		for x := x0 + 1; x < x1; x++ {
-			if x >= cx-6 && x <= cx+6 {
-				continue
-			}
-			fg := accent
-			if open {
-				fg = 178 + owHash(x, 0, frame/16)%2
-			}
-			f.Set(x, y1-1, Cell{R: '·', FG: fg, BG: bg})
-		}
-		if l.Scale >= 2 {
-			for _, x := range []int{n.X - 5, n.X + 5} {
-				stampOW(f, l, x, n.Y+2, []string{"┌─┐", "└■┘"}, accent, bg)
-			}
-		}
+		drawOWRotunda(f, l, n, bg, v, frame)
 
 	}
 	if n.ID == "rift" || n.ID == "halls" {

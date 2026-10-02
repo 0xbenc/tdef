@@ -237,7 +237,12 @@ func TestLevelSelectStartBuiltin(t *testing.T) {
 }
 
 func TestLevelSelectStartMaze(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	a := lsApp()
+	a.lair = hiscore.LoadLair()
+	for _, floor := range append(append([]string{}, hiscore.LairFloors...), hiscore.HeartFloor) {
+		a.lair.Record(floor, a.ls.Diff, game.MaxWaves, true)
+	}
 	a.ls.Cursor = len(a.ls.Levels)
 	a.ls.Seed = "1234"
 	a.handle(Event{Key: KeyEnter})
@@ -256,6 +261,7 @@ func TestLevelSelectStartMaze(t *testing.T) {
 	}
 	// An unparseable (too long) seed shows an error instead of starting.
 	b := lsApp()
+	b.lair = a.lair
 	b.ls.Cursor = len(b.ls.Levels)
 	b.ls.Seed = "99999999999999999999"
 	b.handle(Event{Key: KeyEnter})

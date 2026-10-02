@@ -454,23 +454,37 @@ func TestOWLandmarkNotOccluded(t *testing.T) {
 	}
 }
 
-// The Rotunda's gold banks flank the sleeping dragon when the room is open.
+// The Rotunda's hoard and sleeping dragon are solid, legible masses at
+// every scale, including when Grak stands in the middle of the illustration.
 func TestOWRotundaHoard(t *testing.T) {
-	pal := Palette()
-	w, h := 158, 32
-	l := GameLayout(OWW, OWH, w, h)
-	st := NewOWState()
-	st.Cursor = game.Vec{X: 14, Y: 6} // Grak elsewhere
-	f := RenderOverworld(w, h, st, 0, pal)
-	for _, v := range []game.Vec{{X: 16, Y: 9}, {X: 28, Y: 9}} {
-		cx, _ := l.center(v.X, v.Y)
-		cy := l.Y(v.Y)
-		c := f.C[cy*f.W+cx]
-		if c.R != '·' {
-			t.Fatalf("hoard cell (%d,%d) = %q, want ·", v.X, v.Y, c.R)
-		}
-		if c.FG != 178 && c.FG != 179 {
-			t.Fatalf("hoard cell (%d,%d) FG = %d, want 178 or 179 (gold)", v.X, v.Y, c.FG)
+	for scale := 1; scale <= 4; scale++ {
+		w, h := OWW*scale+2, OWH*scale+ChromeTop+ChromeBot
+		st := NewOWState()
+		l := OverworldLayout(w, h, st)
+		n := owNodeByID("rotunda")
+		for _, frame := range []int{0, 90, 145} {
+			f := RenderOverworld(w, h, st, frame, Palette())
+			gold, dragon := 0, 0
+			for y := l.Y(n.Y - n.PH/2); y < l.Y(n.Y+n.PH/2+1); y++ {
+				for x := l.X(n.X - n.PW/2); x < l.X(n.X+n.PW/2+1); x++ {
+					c := f.C[y*w+x]
+					if c.R == '█' || c.R == '▄' || c.R == '◆' {
+						if c.FG == 130 || c.FG == 178 || c.FG == 220 {
+							gold++
+						}
+						if c.FG == 131 || c.FG == 95 {
+							dragon++
+						}
+					}
+				}
+			}
+			if gold < 5*scale*scale || dragon < 5*scale*scale {
+				t.Fatalf("scale %d frame %d: insufficient solid masses: gold=%d dragon=%d", scale, frame, gold, dragon)
+			}
+			cx, cy := l.center(n.X, n.Y)
+			if f.C[cy*w+cx].R != '@' {
+				t.Fatalf("scale %d: dragon hides Grak", scale)
+			}
 		}
 	}
 }

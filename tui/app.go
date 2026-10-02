@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/0xbenc/tdef/game"
@@ -24,6 +25,23 @@ const (
 	ScreenLevelSelect
 	ScreenGame
 	ScreenOverworld
+	ScreenDragonMockup
+	ScreenGrakMockup
+	ScreenGnollMockup
+	ScreenGunnerMockup
+	ScreenFrostMockup
+	ScreenPlayerMockup
+	ScreenCannonierMockup
+	ScreenRangerMockup
+	ScreenLightningMockup
+	ScreenTrebuchetMockup
+	ScreenNecromancerMockup
+	ScreenPaladinMockup
+	ScreenRogueMockup
+	ScreenMercenaryMockup
+	ScreenWizardMockup
+	ScreenCenturionMockup
+	ScreenSquireMockup
 )
 
 type App struct {
@@ -74,6 +92,9 @@ type App struct {
 
 // Run starts a specific level directly, skipping the title/menu flow.
 func Run(m *game.Map, name string, diff game.Difficulty) error {
+	if strings.HasPrefix(name, "maze") && !hiscore.LoadLair().DepthsReady(diffIndex(diff)) {
+		return fmt.Errorf("%s", depthsLockedMessage)
+	}
 	term, err := Open()
 	if err != nil {
 		return err
@@ -234,9 +255,10 @@ func (a *App) loop() error {
 	}
 }
 
-// stepGame advances the simulation by real seconds, expires transient
-// messages and records the final score exactly once.
+// stepGame advances the gameplay animation clock even while paused or ended,
+// steps the simulation, expires messages and records the final score once.
 func (a *App) stepGame(real float64) {
+	a.frameNo++ // victory/defeat cinematics must advance after simulation stops
 	if a.msgTTL > 0 {
 		a.msgTTL -= real
 		if a.msgTTL <= 0 {
@@ -346,7 +368,7 @@ func (a *App) owUnsealCheck(d int) {
 	opened("rift", a.lair.Floor("rotunda", d).Cleared)
 	opened("halls", a.lair.Floor("rift", d).Cleared)
 	opened("garden", a.lair.Floor("halls", d).Cleared)
-	opened("depths", a.lair.ClearedCount(d) >= 2)
+	opened("depths", a.lair.DepthsReady(d))
 }
 
 // owHeartBlastCheck arms the heart-unseal shockwave when a defense just
@@ -397,6 +419,40 @@ func (a *App) drawScreen() {
 		a.blit(render.RenderHighScores(w, h, a.hsTop, a.scores, a.pal))
 	case ScreenLevelSelect:
 		a.blit(render.RenderLevelSelect(a.lsView(), w, h, a.pal))
+	case ScreenFrostMockup:
+		a.blit(render.RenderFrostMockup(w, h))
+	case ScreenCenturionMockup:
+		a.blit(render.RenderCenturionMockup(w, h))
+	case ScreenSquireMockup:
+		a.blit(render.RenderSquireMockup(w, h))
+	case ScreenWizardMockup:
+		a.blit(render.RenderWizardMockup(w, h))
+	case ScreenMercenaryMockup:
+		a.blit(render.RenderMercenaryMockup(w, h))
+	case ScreenRogueMockup:
+		a.blit(render.RenderRogueMockup(w, h))
+	case ScreenPaladinMockup:
+		a.blit(render.RenderPaladinMockup(w, h))
+	case ScreenNecromancerMockup:
+		a.blit(render.RenderNecromancerMockup(w, h))
+	case ScreenTrebuchetMockup:
+		a.blit(render.RenderTrebuchetMockup(w, h))
+	case ScreenLightningMockup:
+		a.blit(render.RenderLightningMockup(w, h))
+	case ScreenRangerMockup:
+		a.blit(render.RenderRangerMockup(w, h))
+	case ScreenCannonierMockup:
+		a.blit(render.RenderCannonierMockup(w, h))
+	case ScreenPlayerMockup:
+		a.blit(render.RenderPlayerMockup(w, h))
+	case ScreenGunnerMockup:
+		a.blit(render.RenderGunnerMockup(w, h))
+	case ScreenGnollMockup:
+		a.blit(render.RenderGnollMockup(w, h))
+	case ScreenGrakMockup:
+		a.blit(render.RenderGrakMockup(w, h))
+	case ScreenDragonMockup:
+		a.blit(render.RenderDragonMockup(w, h))
 	case ScreenOverworld:
 		a.blit(render.RenderOverworld(w, h, a.ow, a.frameNo, a.pal))
 	default:
@@ -458,6 +514,8 @@ func (a *App) handle(e Event) {
 		a.handleHiscores(e)
 	case ScreenLevelSelect:
 		a.handleLevelSelect(e)
+	case ScreenDragonMockup, ScreenGrakMockup, ScreenGnollMockup, ScreenGunnerMockup, ScreenFrostMockup, ScreenPlayerMockup, ScreenCannonierMockup, ScreenRangerMockup, ScreenLightningMockup, ScreenTrebuchetMockup, ScreenNecromancerMockup, ScreenPaladinMockup, ScreenRogueMockup, ScreenMercenaryMockup, ScreenWizardMockup, ScreenCenturionMockup, ScreenSquireMockup:
+		a.handlePortraitMockup(e)
 	case ScreenOverworld:
 		a.handleOverworld(e)
 	default:
@@ -714,6 +772,10 @@ func (a *App) cycleDiff(dir int) {
 func (a *App) startGame() {
 	diff := render.Difficulties[a.ls.Diff]
 	if a.ls.Cursor == len(a.ls.Levels) {
+		if !a.lair.DepthsReady(a.ls.Diff) {
+			a.ls.Err = depthsLockedMessage
+			return
+		}
 		seed, ok := a.parseSeed()
 		if !ok {
 			a.ls.Err = "seed too large"
@@ -774,6 +836,9 @@ func (a *App) lsView() render.LSState {
 		}
 	}
 	v := a.ls
+	if v.Cursor == len(v.Levels) && !a.lair.DepthsReady(v.Diff) {
+		v.Err = depthsLockedMessage
+	}
 	v.Preview = a.lsPreview
 	return v
 }

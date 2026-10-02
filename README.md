@@ -19,6 +19,23 @@ go build -o tdef .
 
 ./tdef                       # title screen → main menu → the lair
 ./tdef overworld             # jump straight to the lair map
+./tdef dragon                # view the static Malgrath portrait mockup
+./tdef grak                  # view Grak, the Last Monster
+./tdef gnolls                # view the Gnoll Slingers lore portrait
+./tdef gunner                # view the Orc Gunner lore portrait
+./tdef frost                 # view the Frost Mage lore portrait
+./tdef player                # view the guild champion lore portrait
+./tdef cannonier             # view the monster artillery crew portrait
+./tdef ranger                # view the monster archer portrait
+./tdef lightning             # view the Lightning Mage portrait
+./tdef trebuchet             # view the monster siege crew portrait
+./tdef necromancer           # view the guild summoner portrait
+./tdef paladin               # view the guild vanguard portrait
+./tdef rogue                 # view the guild knife-runner portrait
+./tdef mercenary             # view the weary guild hireling portrait
+./tdef wizard                # view the guild spellcaster portrait
+./tdef centurion             # view the warded guild veteran portrait
+./tdef squire                # view the young guild recruit portrait
 ./tdef play -level canyon    # skip the menus: hub | winding | garden | canyon
 ./tdef play -maze 123        # a procedural maze (seeded, reproducible)
 ./tdef play -diff hard -maze 7
@@ -60,8 +77,38 @@ hard); the lair remembers what you've held, and a held floor earns a
 
 A fresh lair starts Grak in **the Rotunda**, the only open floor. Holding it
 opens **the Rift**; holding the Rift opens **the Long Halls**, then holding the
-Halls opens **the Sunken Garden**. Holding any two built-in floors also opens
-**the Unmapped Depths**.
+Halls opens **the Sunken Garden**. Beat all four floors and then **the Heart**
+to unlock **the Unmapped Depths** on that renown. This also unlocks procedural
+play from Quick Play and the command line.
+
+Press `v` in the Rotunda to view a larger, static portrait of Malgrath in his
+curled resting pose. `esc` or `enter` returns to the lair. This is a visual
+mockup for a future cutscene. Press `g` in the Rotunda for Grak’s companion
+portrait. `tab` cycles Malgrath → Grak → Gnoll Slingers → Orc Gunner → Frost Mage → the Player → Cannonier → Ranger → Lightning Mage → Trebuchet → Necromancer → Paladin → Rogue → Mercenary → Wizard → Centurion → Squire. The slingers have
+one definitive lore portrait: a throwing gnoll and a crouched partner
+supplying stones. Each tower portrait shows one definitive form, with no
+upgrade variants. The Ranger holds a full draw on a tall recurved bow, with
+a swept ear, narrow eye, feathered quiver and wind-torn cloak. The Lightning
+Mage catches a descending fork in one claw and directs it with the other,
+with swept horns and a flaring violet robe. The Trebuchet exposes its loaded
+sling, hanging counterweight and windlass inside a timber frame, with one
+monster winding the crank and another sighting from the rear rail. The
+Necromancer looms over two returning armored squires beneath a skull-hung
+crook and an extended skeletal hand. The Paladin braces an enormous pointed
+shield beneath a closed helm, with a flanged mace held upright, overlapping
+plate armor and an ivory guild tabard. The Rogue crouches between two hooked
+blades, with a pointed hood, masked human face, light leather armor and two
+long trailing lengths of red scarf. The Mercenary rests both bare hands on a
+planted cleaver, wearing a dented open helmet, salvaged iron on one shoulder
+and patched cloth on the other; a scar and short beard frame a weary stare.
+The Wizard wears an enormous crooked hat and gold-faced violet robes, with
+a forked ivory beard, clasped field grimoire, bowed staff and suspended crystal.
+His free hand cups a luminous core inside a hollow diamond spell. The Centurion
+stands behind a bronze-bound rectangular shield beneath a broad red helmet
+crest, with segmented iron armor, short sword and a broken cyan ward arch.
+The Squire leans into an enormous two-handed sword, wearing a tilted kettle
+helm, loose mail and a short guild surcoat; a round shield hangs on his back.
+All seven towers and all eight enemy types now have one definitive portrait.
 
 Each defense has its own route and build terrain. Inner bends can cover several
 passes; open stretches reward long range, while narrow ledges demand careful

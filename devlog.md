@@ -703,3 +703,161 @@
   leaves it sealed while a hub win opens it only after the unseal completes.
   Existing render fixtures explicitly choose their player position and open
   floors. Tests with the race detector, vet and build pass; rebuilt ./tdef.
+
+- 2026-10-02 (a figurative overworld Rotunda)
+- Replaced the thin ASCII dragon and scattered gold with three composed
+  silhouettes inside the existing hub footprint: a rounded stone vault with
+  thick piers, a solid sleeping dragon, and a low mound of gold. Malgrath's
+  projecting muzzle, pale swept-back horns, folded triangular wing and curled
+  tail identify the figure. A closed eye briefly opens; sparse facets catch
+  the light on the hoard.
+- Geometry scales with the room's terminal footprint. Rounded small-scale
+  feature placement keeps the horns and eye attached to the head at 1x.
+  Grak and the heart/portal remain visible over the figure; the room's
+  unseal and result colours still apply. Walkways and progression are intact.
+- Inspected coloured before/after views and all four scales. Updated the
+  hoard check for solid dragon/gold masses at every scale and added a room
+  footprint check to guard neighboring corridors. Tests, vet, race checks,
+  build and diff checks pass; rebuilt ./tdef.
+
+- 2026-10-02: added a static Malgrath portrait study, accessible with v in the
+  Rotunda or `tdef dragon`. Shares the overworld pose at a larger tile footprint,
+  with filled tapered horns, broad wing folds, a bent foreleg and a curled tail
+  enclosing the hoard. Responsive framing; no cutscene timeline or progression
+  effects. Escape/enter restores the lair exactly where it was.
+
+- 2026-10-02: refined the Malgrath portrait: curved torso shading and a warm
+  back rim, clearer wing folds, a tapered tail tip separated from the paw,
+  chamfered muzzle and an anchored tooth, solid vault piers and irregular gold
+  facets. Eyes, claws and gold details keep their surface color beneath them
+  instead of punching dark cell-shaped holes into the illustration.
+
+- 2026-10-02: designed Grak as a squat angular defender with blade ears,
+  asymmetric tusks, a scarred broad jaw, worn red mantle, diagonal leather
+  strap and a grounded builder’s mallet. Added a static responsive companion
+  portrait: `tdef grak`, g in the Rotunda, and tab between both character
+  studies. Lair progression and time remain unchanged while viewing them.
+
+- 2026-10-02: added the definitive Gnoll Slingers lore portrait: a long-muzzled,
+  hunched thrower winding a broad sling loop above an ammunition-feeding partner.
+  Warm fur, charcoal manes, digitigrade legs, teal wraps and a shared stone
+  pouch establish their shape language. Thin cord uses half-cell geometry.
+  `tdef gnolls` opens it directly; tab cycles all three studies. Shared polygon
+  drawing preserves Grak’s geometry. No upgrade variants or gameplay changes.
+
+- 2026-10-02: designed the Orc Gunner lore portrait: a braced green orc in a
+  red headcloth, iron shoulder slab and heavy boots, gripping a walnut-stocked
+  iron gun with a brass flare and a deep muzzle bore. Bent support elbow,
+  squint, tusks, three large cartridges and quiet smoke establish the pose.
+  `tdef gunner` opens it directly; tab from the Gnoll Slingers reaches it.
+  One definitive portrait, with no upgrade variants or simulation changes.
+
+- 2026-10-02: designed two full lore portraits. Frost Mage: tall dark cloak,
+  peaked hood, ancient gaunt face and icy beard, forked crystal staff, reflected
+  cold planes and a shard above an open long-fingered hand. Player: monumental
+  shoulder-rested sword, polished plate and gold trim, red crest and cape,
+  composed half-smile, reaching hand, stolen tusk and ivory monster skull.
+  Reviewed/refined both at small and large terminal sizes; moved frost glow
+  behind the fingers and gave the skull explicit dark half-cell sockets.
+  `tdef frost` and `tdef player` open them; tab cycles all six lore studies.
+  Both are static definitive forms with no upgrades or simulation changes.
+
+- 2026-10-02: designed the Cannonier lore composition: a sweating, braced
+  loader pushes a cloth-tipped ramrod into the foreground bore while a
+  smaller, grinning spotter checks over the breech. Cast iron planes, bronze
+  hoops, timber braces, two spoked wheels and stacked cannonballs establish
+  weight and scale. Added half-cell oval compositing for the round lip, rims
+  and balls, preserving the uncovered background/underlying material. Older
+  portraits keep their existing geometry. `tdef cannonier` opens it directly;
+  tab from the Player reaches it and the seven studies cycle back to Malgrath.
+
+- 2026-10-02: designed the Ranger lore portrait: a lean, long-eared monster
+  at full draw, with a blade-shaped ear, narrow eye, angled quiver, torn cloak
+  and planted leather boots. A tall recurved bow, taut triangular string,
+  feathered arrow and faceted steel arrowhead define the aiming pose. New
+  half-cell path strokes preserve the surfaces behind cords and shafts.
+  `tdef ranger` opens the static study; tab from Cannonier reaches it, then
+  wraps to Malgrath. No upgrade variants or simulation changes.
+
+- 2026-10-02: designed the Lightning Mage lore portrait: a wiry horned monster
+  arches backward between a descending fork and an outward discharge. Open
+  receiving and directing claws, an upturned face, swept ivory horns, split
+  violet robe, angular sash and planted feet define the silhouette. Half-cell
+  bolts layer dim purple edges around pale electric cores; their width scales
+  down in compact terminals to preserve the figure. `tdef lightning` opens
+  the static study; tab from Ranger reaches it, then wraps to Malgrath. One
+  definitive form, with no upgrade variants or simulation changes.
+
+- 2026-10-02: completed the tower lore portraits with the Trebuchet: two
+  timber A frames, a tapered iron-bound throwing arm, visible axle, free
+  loaded sling, hinged ballast box and rope-wound windlass. A green winding
+  monster grips the crank while an olive spotter braces on the rear rail.
+  Dark rear timbers and lit front planes establish depth; open triangles
+  keep the mechanism visible. `tdef trebuchet` opens the static study; tab
+  from Lightning Mage reaches it, then wraps to Malgrath. One definitive
+  form per tower, with no upgrades or simulation changes.
+
+- 2026-10-02: designed the Necromancer lore portrait: a bent human death-worker
+  looms over two returning squires, one hauling a knee beneath himself and
+  the other braced on a planted sword. Skull-hung bone crook, sallow face,
+  long hooked fingers, wine-lined robe and pale green summoning threads frame
+  tarnished guild armor and pointed red shields. Reviewed the large and
+  compact compositions; preserved the lit eye in its dark socket and quieted
+  the ground light. `tdef necromancer` opens the static study; tab from
+  Trebuchet reaches it, then wraps to Malgrath. No simulation changes.
+
+- 2026-10-02: designed the Paladin lore portrait: a severe closed helm over
+  an enormous convex pointed shield, with a flanged steel mace held upright.
+  Overlapping shoulder plates, sealed gorget, ivory guild tabard, burgundy
+  mantle, articulated gauntlets and planted sabatons establish an immovable
+  stance. Dark lozenge seals remain stark against pale shield planes; a
+  visible bracing grip connects shield and bearer. Reviewed large and compact
+  layouts. `tdef paladin` opens the static study; tab from Necromancer reaches
+  it, then wraps to Malgrath. No simulation changes.
+
+- 2026-10-02: fixed gameplay's frozen victory/defeat sequence after portrait
+  viewer work stopped advancing the game screen's animation clock. The clock
+  now ticks during active, paused and completed gameplay; simulation stays
+  stopped after the result. Regression coverage clears the final wave,
+  reaches both result screens, and returns to the lair without duplicate
+  rewards or further simulation.
+
+- 2026-10-02: moved Unmapped Depths to post-campaign: all four fixed floors
+  and the Heart must be won on the selected renown. One progression check
+  governs overworld refresh/unseal, pending descent, Quick Play mazes and
+  direct `play -maze` launches. Locked previews and entries explain the
+  requirement. Existing victory records remain intact.
+
+- 2026-10-02: designed the Rogue lore portrait: a masked human crouches
+  forward between opposing hooked blades, with a pointed teal hood, two
+  trailing lengths of red scarf, leather cuirass, bent braced knees and soft
+  boots. Forward and reverse knife grips remain visible; half-cell cutting
+  edges keep the steel continuous in compact terminals. `tdef rogue` opens
+  the static study; tab from Paladin reaches it, then wraps to Malgrath.
+  No simulation or progression changes.
+
+- 2026-10-02: designed the Mercenary lore portrait: a scarred, bearded guild
+  hireling rests both bare hands on a broad planted cleaver. Bowed shoulders,
+  dented open helmet, salvaged iron on one side and quilted cloth on the other,
+  mismatched leg armor, sewn patches and worn belt coins establish a tired
+  practical fighter. `tdef mercenary` opens the static study; Tab from Rogue
+  reaches it, then wraps to Malgrath. No simulation or progression changes.
+
+- 2026-10-02: designed the Wizard lore portrait with a crooked oversized hat,
+  stooped human profile, forked ivory beard and heavy gold-faced violet robe.
+  His free hand cups a bright faceted core within a hollow cyan diamond; the
+  other grips a bowed staff carrying a suspended crystal. A clasped grimoire
+  hangs at his hip. `tdef wizard` opens the static study; Tab from Mercenary
+  reaches it, then wraps to Malgrath. No simulation or progression changes.
+
+- 2026-10-02: completed the guild portrait roster with Centurion and Squire.
+  Centurion has a transverse red horsehair crest, narrow human helmet opening,
+  segmented iron cuirass, military skirt and planted sandals. His immense
+  flat-topped bronze-bound shield has a square boss; a broken cyan ward arch
+  floats outside its rim, with a short gladius exposed on the other side.
+  Squire leans forward behind a huge two-handed blade in an oversized tilted
+  kettle helm, loose mail, short red surcoat and rolled boots, with a borrowed
+  round shield strapped to his back. `tdef centurion` and `tdef squire` open
+  the static studies; the cycle now ends Wizard → Centurion → Squire → Malgrath.
+  All seven towers and eight enemy types have one definitive lore portrait.
+  No simulation, upgrade or progression changes.

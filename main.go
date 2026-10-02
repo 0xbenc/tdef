@@ -29,6 +29,74 @@ func main() {
 		capture(os.Args[2:])
 	case "overworld":
 		overworldCmd()
+	case "centurion":
+		if err := tui.RunCenturionMockup(); err != nil {
+			die("%v", err)
+		}
+	case "squire":
+		if err := tui.RunSquireMockup(); err != nil {
+			die("%v", err)
+		}
+	case "wizard":
+		if err := tui.RunWizardMockup(); err != nil {
+			die("%v", err)
+		}
+	case "mercenary":
+		if err := tui.RunMercenaryMockup(); err != nil {
+			die("%v", err)
+		}
+	case "rogue":
+		if err := tui.RunRogueMockup(); err != nil {
+			die("%v", err)
+		}
+	case "paladin":
+		if err := tui.RunPaladinMockup(); err != nil {
+			die("%v", err)
+		}
+	case "necromancer":
+		if err := tui.RunNecromancerMockup(); err != nil {
+			die("%v", err)
+		}
+	case "trebuchet":
+		if err := tui.RunTrebuchetMockup(); err != nil {
+			die("%v", err)
+		}
+	case "lightning":
+		if err := tui.RunLightningMockup(); err != nil {
+			die("%v", err)
+		}
+	case "ranger":
+		if err := tui.RunRangerMockup(); err != nil {
+			die("%v", err)
+		}
+	case "cannonier":
+		if err := tui.RunCannonierMockup(); err != nil {
+			die("%v", err)
+		}
+	case "frost":
+		if err := tui.RunFrostMockup(); err != nil {
+			die("%v", err)
+		}
+	case "player":
+		if err := tui.RunPlayerMockup(); err != nil {
+			die("%v", err)
+		}
+	case "gunner":
+		if err := tui.RunGunnerMockup(); err != nil {
+			die("%v", err)
+		}
+	case "gnolls":
+		if err := tui.RunGnollMockup(); err != nil {
+			die("%v", err)
+		}
+	case "grak":
+		if err := tui.RunGrakMockup(); err != nil {
+			die("%v", err)
+		}
+	case "dragon":
+		if err := tui.RunDragonMockup(); err != nil {
+			die("%v", err)
+		}
 	case "maps":
 		mapsCmd()
 	case "help", "-h", "--help":
@@ -48,6 +116,23 @@ usage:
   tdef headless [flags]    run one autoplay game, print result
   tdef capture [flags]     render headless game frames to files
   tdef overworld           the lair map: walk the floors, descend into one
+  tdef dragon              view Malgrath's static portrait mockup
+  tdef grak                view Grak's static portrait mockup
+  tdef gnolls              view the Gnoll Slingers lore portrait
+  tdef gunner              view the Orc Gunner lore portrait
+  tdef frost               view the Frost Mage lore portrait
+  tdef player              view the guild champion lore portrait
+  tdef centurion           view the warded guild veteran portrait
+  tdef squire              view the young guild recruit portrait
+  tdef wizard              view the guild spellcaster portrait
+  tdef mercenary           view the weary guild hireling portrait
+  tdef rogue               view the guild knife-runner portrait
+  tdef paladin             view the guild vanguard portrait
+  tdef necromancer         view the guild summoner portrait
+  tdef trebuchet           view the monster siege crew portrait
+  tdef lightning           view the Lightning Mage portrait
+  tdef ranger              view the monster archer portrait
+  tdef cannonier           view the monster artillery crew portrait
   tdef maps                list built-in levels
   tdef help
 

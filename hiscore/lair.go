@@ -149,6 +149,12 @@ func (l *Lair) BossReady(diff int) bool {
 	return l.ClearedCount(diff) >= len(LairFloors)
 }
 
+// DepthsReady reports whether every fixed defense, including the Heart,
+// has been won on this difficulty. Procedural defenses are post-campaign.
+func (l *Lair) DepthsReady(diff int) bool {
+	return l != nil && l.BossReady(diff) && l.BossHeld(diff)
+}
+
 // BossHeld reports whether the heart has been held on a difficulty (the
 // game's end state).
 func (l *Lair) BossHeld(diff int) bool {

@@ -141,3 +141,26 @@ func TestLairTokensPersist(t *testing.T) {
 		t.Fatalf("tokens = %d, want 3", again.Tokens)
 	}
 }
+
+func TestDepthsRequiresEveryFixedDefenseOnSameDifficulty(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	l := LoadLair()
+	// Even a Heart win from direct play cannot replace the other victories.
+	l.Record(HeartFloor, 1, 20, true)
+	if l.DepthsReady(1) {
+		t.Fatal("Heart alone unlocked depths")
+	}
+	for i, floor := range LairFloors {
+		l.Record(floor, 1, 20, true)
+		if got, want := l.DepthsReady(1), i == len(LairFloors)-1; got != want {
+			t.Fatalf("after %s: ready=%v want=%v", floor, got, want)
+		}
+	}
+	if l.DepthsReady(0) || l.DepthsReady(2) {
+		t.Fatal("victories unlocked other difficulties")
+	}
+	var missing *Lair
+	if missing.DepthsReady(1) {
+		t.Fatal("missing progression unlocked depths")
+	}
+}

@@ -22,7 +22,7 @@ func owTestApp(t *testing.T) *App {
 
 // The unseal chain must follow the lair's memory at the current renown:
 // rotunda open at first; rift after rotunda; halls after rift; garden after the
-// halls; the depths after two built-in floors; the heart after all four.
+// halls; the heart after all four; the depths after the Heart is also held.
 func TestOWUnlockChain(t *testing.T) {
 	a := owTestApp(t)
 	a.owRefresh()
@@ -45,16 +45,16 @@ func TestOWUnlockChain(t *testing.T) {
 	if a.ow.Unlocked["garden"] {
 		t.Fatal("the garden must stay sealed until the halls are held")
 	}
-	if !a.ow.Unlocked["depths"] || a.ow.BossReady {
-		t.Fatal("two held floors should open the depths, but not the heart")
+	if a.ow.Unlocked["depths"] || a.ow.BossReady {
+		t.Fatal("two held floors must leave the depths and heart sealed")
 	}
 	a.lair.Record("halls", 1, 20, true)
 	a.owRefresh()
 	if !a.ow.Unlocked["garden"] {
 		t.Fatal("the garden must open once the halls are held")
 	}
-	if !a.ow.Unlocked["depths"] {
-		t.Fatal("the depths must open once two built-in floors are held")
+	if a.ow.Unlocked["depths"] {
+		t.Fatal("the depths must stay sealed with three floors held")
 	}
 	if a.ow.BossReady {
 		t.Fatal("the heart must stay sealed with three floors held")
@@ -66,6 +66,23 @@ func TestOWUnlockChain(t *testing.T) {
 	}
 	if a.ow.Hearts != 4 {
 		t.Fatalf("hearts = %d, want 4", a.ow.Hearts)
+	}
+	if a.ow.Unlocked["depths"] {
+		t.Fatal("the depths must stay sealed until the Heart is beaten")
+	}
+	a.lair.Record(hiscore.HeartFloor, 1, 20, true)
+	a.owUnsealCheck(1)
+	if a.ow.Unsealing["depths"] == 0 {
+		t.Fatal("the Heart victory did not start the depths unseal")
+	}
+	a.owRefresh()
+	if !a.ow.Unlocked["depths"] {
+		t.Fatal("all fixed defenses held must open the depths")
+	}
+	a.ow.Diff = 0
+	a.owRefresh()
+	if a.ow.Unlocked["depths"] {
+		t.Fatal("normal victories unlocked depths on easy")
 	}
 }
 
@@ -480,5 +497,38 @@ func TestOWRenownChangeReturnsPlayerToDoorway(t *testing.T) {
 	a.owTick()
 	if a.ow.Unlocked["garden"] {
 		t.Fatal("old renown's unseal opened a hard floor")
+	}
+}
+
+func TestDepthsCannotBypassCampaign(t *testing.T) {
+	a := owTestApp(t)
+	for _, floor := range hiscore.LairFloors {
+		a.lair.Record(floor, 1, game.MaxWaves, true)
+	}
+	a.owRefresh()
+	a.owUnsealCheck(1)
+	if a.ow.Unlocked["depths"] || a.ow.Unsealing["depths"] > 0 {
+		t.Fatal("four floors without Heart opened depths")
+	}
+	// A pending/direct launch cannot spend relics or create a procedural run.
+	a.ow.BonusGold = 123
+	a.ow.Descending, a.ow.DescendTTL = "depths", 1
+	a.owLaunch("depths")
+	if a.screen != ScreenOverworld || a.g != nil || a.ow.BonusGold != 123 || a.ow.Descending != "" || a.ow.Msg != depthsLockedMessage {
+		t.Fatal("locked depths launch bypassed progression or spent relics")
+	}
+	b := lsApp()
+	b.lair = a.lair
+	b.ls.Diff, b.ls.Cursor = 1, len(b.ls.Levels)
+	if b.lsView().Err != depthsLockedMessage {
+		t.Fatal("Quick Play preview omitted lock requirement")
+	}
+	b.handle(Event{Key: KeyEnter})
+	if b.screen != ScreenLevelSelect || b.g != nil || b.ls.Err != depthsLockedMessage {
+		t.Fatal("Quick Play bypassed depths lock")
+	}
+	// The command-line play entry must refuse the maze before opening a TTY.
+	if err := Run(nil, "maze1234", game.Normal); err == nil || err.Error() != depthsLockedMessage {
+		t.Fatalf("direct play bypassed depths lock: %v", err)
 	}
 }

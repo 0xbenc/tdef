@@ -29,6 +29,8 @@ func RunOverworld() error {
 }
 
 // owFloorOrder is the lair's depth order — the wheel browser's sequence.
+const depthsLockedMessage = "Depths sealed: beat all floors and the Heart on this renown"
+
 var owFloorOrder = []string{"rift", "rotunda", "halls", "garden", "depths"}
 
 // handleOverworld drives Grak around the lair map: arrows/wasd walk (one
@@ -89,6 +91,14 @@ func (a *App) handleOverworld(e Event) {
 			a.ow.Msg = "the whole lair, lit — every floor revealed"
 		} else {
 			a.ow.Msg = ""
+		}
+	case 'g', 'G':
+		if a.owCursorFloor() == "rotunda" {
+			a.toScreen(ScreenGrakMockup)
+		}
+	case 'v', 'V':
+		if a.owCursorFloor() == "rotunda" {
+			a.toScreen(ScreenDragonMockup)
 		}
 	case 't', 'T':
 		if a.owCursorFloor() == "rotunda" && a.ow.Tokens > 0 {
@@ -243,6 +253,11 @@ func (a *App) owEnter() {
 // so its result comes back to the lair.
 func (a *App) owLaunch(id string) {
 	st := &a.ow
+	if id == hiscore.DepthsFloor && !a.lair.DepthsReady(st.Diff) {
+		st.Descending, st.DescendTTL = "", 0
+		st.Msg = depthsLockedMessage
+		return
+	}
 	a.diff = render.Difficulties[st.Diff]
 	a.fromOW = true
 	a.owFloorID = id
@@ -389,8 +404,7 @@ func (a *App) owRefresh() {
 	a.owBossSeen[d] = st.BossReady
 	// The unseal chain: the Rotunda is always open; the Rift opens after
 	// the Rotunda is held; the Halls open after the Rift, the Garden after
-	// the Halls, and the
-	// Depths once two built-in floors are held (the lair reveals its dark).
+	// the Halls. Depths opens after all four and the Heart are held.
 	st.Unlocked = map[string]bool{"rotunda": true}
 	if recs["rotunda"].Cleared {
 		st.Unlocked["rift"] = true
@@ -401,7 +415,7 @@ func (a *App) owRefresh() {
 	if recs["halls"].Cleared {
 		st.Unlocked["garden"] = true
 	}
-	if a.lair.ClearedCount(d) >= 2 {
+	if a.lair.DepthsReady(d) {
 		st.Unlocked["depths"] = true
 	}
 	if !a.lair.AnyRecord() {
@@ -514,6 +528,8 @@ func (a *App) owBrowseFloor() string {
 func (a *App) owSealedMessage(id string) {
 	if a.ow.Unsealing[id] > 0 {
 		a.ow.Msg = render.OWFloorName(id) + " is opening — wait at the doorway"
+	} else if id == hiscore.DepthsFloor {
+		a.ow.Msg = depthsLockedMessage
 	} else {
 		a.ow.Msg = render.OWFloorName(id) + " is sealed — hold the lair to break it open"
 	}

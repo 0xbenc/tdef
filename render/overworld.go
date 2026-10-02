@@ -1584,8 +1584,17 @@ func drawOWChromeRows(f *Frame, st OWState) {
 	case onPad && fl.ID == "rotunda" && st.Tokens > 0 && !st.RelicMenu:
 		ctx = "t spend a relic"
 	}
+	if onPad && fl.ID == "rotunda" && !st.RelicMenu {
+		if ctx != "" {
+			ctx += " · "
+		}
+		ctx += "v view Malgrath"
+		if len([]rune(ctx))+len([]rune(" · g Grak")) <= f.W-4 {
+			ctx += " · g Grak"
+		}
+	}
 	if ctx != "" {
-		putCenteredRuns(f, h-2, []owRun{{ctx, 240, false}})
+		putCenteredRuns(f, h-2, []owRun{{fitMsg(ctx, f.W-4), 240, false}})
 	}
 }
 

@@ -227,3 +227,58 @@ func TestCycleSpeedWraps(t *testing.T) {
 		}
 	}
 }
+
+// Ending a run freezes simulation, not the animation that reveals its result.
+func TestGameEndSequenceAdvancesToResult(t *testing.T) {
+	for _, outcome := range []struct {
+		status game.GameStatus
+		title  string
+	}{{game.StatusVictory, "VICTORY"}, {game.StatusDefeat, "DEFEAT"}} {
+		t.Run(outcome.title, func(t *testing.T) {
+			a := owTestApp(t)
+			a.owRefresh()
+			a.fromOW, a.owFloorID = true, "rotunda"
+			m, err := game.LoadLevel("winding")
+			if err != nil {
+				t.Fatal(err)
+			}
+			a.enterGame(m, "winding", game.Normal)
+			a.frameNo = 30 // as after arriving from the title and lair
+			a.stepGame(1.0 / frameRate)
+			if a.frameNo != 31 {
+				t.Fatal("paused gameplay stopped its animation clock")
+			}
+			a.g.Wave = game.MaxWaves
+			if outcome.status == game.StatusVictory {
+				// Last wave cleared: no pending spawns or surviving enemies.
+				a.g.WaveActive = true
+				a.ui.Paused = false
+			} else {
+				a.g.Status = game.StatusDefeat
+			}
+			a.stepGame(1.0 / tickRate)
+			if a.g.Status != outcome.status || !a.scored {
+				t.Fatal("run did not finish and record its result")
+			}
+			end, simTime, tokens := a.ui.EndAtFrame, a.g.Time, a.lair.Tokens
+			f := render.Render(a.g, &a.ui, render.Palette(), 94, 47, a.frameNo)
+			if strings.Contains(f.Text(), outcome.title) {
+				t.Fatal("result appeared before the end sequence")
+			}
+			for i := 0; i < 120; i++ {
+				a.stepGame(1.0 / frameRate)
+			}
+			f = render.Render(a.g, &a.ui, render.Palette(), 94, 47, a.frameNo)
+			if !strings.Contains(f.Text(), outcome.title) || !strings.Contains(f.Text(), "esc lair") {
+				t.Fatalf("end sequence never revealed result and return controls:\n%s", f.Text())
+			}
+			if a.ui.EndAtFrame != end || a.g.Time != simTime || a.lair.Tokens != tokens {
+				t.Fatal("end animation advanced simulation or recorded the run again")
+			}
+			a.handle(Event{Key: KeyEscape})
+			if a.screen != ScreenOverworld {
+				t.Fatal("result did not return to the lair")
+			}
+		})
+	}
+}
