@@ -29,6 +29,14 @@ func main() {
 		capture(os.Args[2:])
 	case "overworld":
 		overworldCmd()
+	case "intro", "ending":
+		film := render.FilmOpening
+		if os.Args[1] == "ending" {
+			film = render.FilmEnding
+		}
+		if err := tui.RunCutscene(film); err != nil {
+			die("%v", err)
+		}
 	case "journal":
 		if err := tui.RunJournal(); err != nil {
 			die("%v", err)
@@ -120,6 +128,8 @@ usage:
   tdef headless [flags]    run one autoplay game, print result
   tdef capture [flags]     render headless game frames to files
   tdef overworld           the lair map: walk the floors, descend into one
+  tdef intro               replay the opening film
+  tdef ending              replay the Heart ending film
   tdef journal             browse Grak's lore journal
   tdef dragon              view Malgrath's static portrait mockup
   tdef grak                view Grak's static portrait mockup

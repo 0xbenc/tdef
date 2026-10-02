@@ -19,6 +19,8 @@ go build -o tdef .
 
 ./tdef                       # title screen → main menu → the lair
 ./tdef overworld             # jump straight to the lair map
+./tdef intro                 # replay the 13-shot opening
+./tdef ending                # replay the 15-shot Heart ending
 ./tdef journal               # browse Grak's lore journal
 ./tdef dragon                # view the static Malgrath portrait mockup
 ./tdef grak                  # view Grak, the Last Monster
@@ -82,9 +84,28 @@ Halls opens **the Sunken Garden**. Beat all four floors and then **the Heart**
 to unlock **the Unmapped Depths** on that renown. This also unlocks procedural
 play from Quick Play and the command line.
 
+A fresh campaign opens with **The Last Monster**, a thirteen-shot film about
+Grak arriving for the hoard and choosing to stay. The first Heart victory on
+each renown plays **The Heart Held**, a fifteen-shot ending, after its rewards
+are saved. Existing campaigns continue directly into the lair; repeat wins
+keep their usual result screen.
+
+The films use directed tile scenes: the guild approaching the gate, a sealed
+commission, Grak and Malgrath's close-ups, water offered beside the hoard,
+a builder's mallet, a hand resting on a dragon's claw, and morning after the
+siege. Breathing, embers, water and slow camera movements continue while you
+read. Dialogue waits for you. `enter`, `space`, or a left click reveals the
+whole line, then advances; left arrow revisits the previous shot. `esc` skips
+to the lair or finished result, and `q` quits. Below 62×19 the film holds until
+the terminal fits again. No simulation or lair transitions advance behind it.
+
+Press `i` in the Rotunda to replay the opening, or `e` to replay the ending
+once the Heart is held on the selected renown. A won Heart result also offers
+`v` to replay its ending. `./tdef intro` and `./tdef ending` preview either film
+without earning victories or changing which films your campaign has seen.
+
 Press `v` in the Rotunda to view a larger, static portrait of Malgrath in his
-curled resting pose. `esc` or `enter` returns to the lair. This is a visual
-mockup for a future cutscene. Press `g` in the Rotunda for Grak’s companion
+curled resting pose. `esc` or `enter` returns to the lair. The film compositions also draw on this curled resting pose. Press `g` in the Rotunda for Grak’s companion
 portrait. `tab` cycles Malgrath → Grak → Gnoll Slingers → Orc Gunner → Frost Mage → the Player → Cannonier → Ranger → Lightning Mage → Trebuchet → Necromancer → Paladin → Rogue → Mercenary → Wizard → Centurion → Squire. The slingers have
 one definitive lore portrait: a throwing gnoll and a crouched partner
 supplying stones. Each tower portrait shows one definitive form, with no

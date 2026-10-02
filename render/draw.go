@@ -562,6 +562,9 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 	put(by+4, 24, "time", formatTime(g.Time))
 	put(by+5, 2, "towers", fmt.Sprintf("%d", len(g.Towers)))
 	put(by+5, 24, "best", fmt.Sprintf("%d", ui.BestScore))
+	if g.Status == game.StatusVictory && ui.Level == "heart" {
+		putString(f, bx+15, by+6, "v view ending", 180, bg, false)
+	}
 	bestLine := fmt.Sprintf("best %d", ui.BestScore)
 	bold := false
 	if ui.NewBest {

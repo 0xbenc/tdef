@@ -889,3 +889,18 @@
   record once through the existing score guard; defeats grant no story or repeat
   count. Existing lair records backfill proven discoveries and a minimum repeat
   count. Local save backed up again and all pages/milestones unlocked for review.
+
+- 2026-10-02: built two directed, playable films: the thirteen-shot opening
+  The Last Monster and fifteen-shot Heart ending The Heart Held. Original tile
+  compositions establish the guild procession, stamped dragon commission,
+  bowl, mallet, hand on a dragon's claw, dawn outside the gate, and a new seated
+  Grak beside Malgrath. Close-ups preserve established character silhouettes;
+  matching objects and reverse angles connect the arrival to the ending.
+  Quiet camera moves, breathing, water and embers accompany authored dialogue
+  that waits for the reader. Enter/space/click reveals then advances, left
+  revisits, Escape skips and q quits. A fresh lair sees the opening once;
+  legacy progress avoids it. The first Heart win on each renown plays its film
+  after scoring, then restores the result. Replays from the Rotunda, Heart
+  result, and intro/ending CLI commands grant no rewards. Small terminals hold
+  the film clock; resizing restores the composition and full caption. The
+  game and overworld stay frozen behind films, including unseal transitions.

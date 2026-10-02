@@ -43,6 +43,7 @@ const (
 	ScreenCenturionMockup
 	ScreenSquireMockup
 	ScreenJournal
+	ScreenCutscene
 )
 
 type App struct {
@@ -70,17 +71,21 @@ type App struct {
 
 	// Lair (overworld) plumbing: the persistent lair memory, and the run's
 	// provenance, so a defense's result comes back to the map it left.
-	journalMigrated bool
-	journal         *hiscore.Journal
-	journalUI       render.JournalState
-	journalReturn   Screen
-	lair            *hiscore.Lair
-	fromOW          bool // the run started from the overworld
-	owFloorID       string
-	cleanWaves      int // waves held with no strike on the heart (relics)
-	waveStartLives  int
-	owBootArmed     bool         // the arrival cinematic has been armed this session
-	owBossSeen      map[int]bool // renown -> the heart's unseal has been seen
+	film               render.CutsceneState
+	filmReturn         Screen
+	filmRemember       bool
+	heartEndingPending bool
+	journalMigrated    bool
+	journal            *hiscore.Journal
+	journalUI          render.JournalState
+	journalReturn      Screen
+	lair               *hiscore.Lair
+	fromOW             bool // the run started from the overworld
+	owFloorID          string
+	cleanWaves         int // waves held with no strike on the heart (relics)
+	waveStartLives     int
+	owBootArmed        bool         // the arrival cinematic has been armed this session
+	owBossSeen         map[int]bool // renown -> the heart's unseal has been seen
 
 	// Relic bonuses carried into the next defense.
 	bonusGold  int
@@ -183,6 +188,7 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 	tw, th := a.termSize()
 	a.layout = render.GameLayout(m.W, m.H, tw, th)
 	a.scored = false
+	a.heartEndingPending = false
 	a.acc = 0
 	a.msgTTL = 0
 	a.prev = nil
@@ -253,6 +259,9 @@ func (a *App) loop() error {
 		real := now.Sub(last).Seconds()
 		last = now
 		switch a.screen {
+		case ScreenCutscene:
+			a.frameNo++
+			a.tickCutscene()
 		case ScreenGame:
 			a.stepGame(real)
 		case ScreenOverworld:
@@ -337,6 +346,7 @@ func (a *App) stepGame(real float64) {
 		if floor == "" {
 			floor = floorForLevel(a.level)
 		}
+		a.heartEndingPending = won && floor == hiscore.HeartFloor && !a.lair.BossHeld(d)
 		a.lair.Record(floor, d, a.g.Wave, won)
 		if won {
 			a.journal.RecordVictory(floor, d)
@@ -351,6 +361,10 @@ func (a *App) stepGame(real float64) {
 			a.owSetBanner(won, best, isNew)
 			a.owHeartBlastCheck(d)
 		}
+	}
+	if a.heartEndingPending && a.frameNo-a.ui.EndAtFrame >= 90 {
+		a.heartEndingPending = false
+		a.startCutscene(render.FilmEnding, ScreenGame, false)
 	}
 }
 
@@ -425,6 +439,8 @@ func (a *App) owSetBanner(won bool, best int, isNew bool) {
 func (a *App) drawScreen() {
 	w, h := a.termSize()
 	switch a.screen {
+	case ScreenCutscene:
+		a.blit(render.RenderCutscene(w, h, a.film))
 	case ScreenJournal:
 		a.blit(render.RenderJournal(w, h, a.journalUI))
 	case ScreenTitle:
@@ -522,6 +538,8 @@ func (a *App) drainInput() {
 
 func (a *App) handle(e Event) {
 	switch a.screen {
+	case ScreenCutscene:
+		a.handleCutscene(e)
 	case ScreenJournal:
 		a.handleJournal(e)
 	case ScreenTitle:
@@ -878,6 +896,9 @@ func (a *App) toScreen(s Screen) {
 		a.ls.Err = ""
 	case ScreenOverworld:
 		a.owRefresh()
+		if a.maybeOpening() {
+			return
+		}
 		if !a.owBootArmed {
 			// The arrival cinematic plays once per session, on first entry.
 			a.owBootArmed = true
@@ -905,7 +926,15 @@ func (a *App) handleGame(e Event) {
 		return
 	}
 	if a.g.Status != game.StatusRunning {
+		if a.heartEndingPending && (e.Key == KeyEscape || e.Rune == 'r' || e.Rune == 'R') {
+			a.heartEndingPending = false
+			a.startCutscene(render.FilmEnding, ScreenGame, false)
+			return
+		}
 		switch {
+		case (e.Rune == 'v' || e.Rune == 'V') && a.g.Status == game.StatusVictory && floorForLevel(a.level) == hiscore.HeartFloor:
+			a.heartEndingPending = false
+			a.startCutscene(render.FilmEnding, ScreenGame, false)
 		case e.Rune == 'q' || e.Rune == 'Q':
 			a.quit()
 		case e.Rune == 'r' || e.Rune == 'R':
@@ -1175,6 +1204,7 @@ func (a *App) restart() {
 	m := a.g.Map
 	a.g = game.NewStateDiff(m, a.diff)
 	a.scored = false
+	a.heartEndingPending = false
 	a.cleanWaves = 0
 	a.waveStartLives = a.g.Lives
 	// Rebuild the UI, but keep player preferences (speed, help). The

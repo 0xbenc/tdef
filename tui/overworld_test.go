@@ -230,6 +230,8 @@ func TestOWInputGateDuringBoot(t *testing.T) {
 // replay it.
 func TestOWBootArmedOnce(t *testing.T) {
 	a := owTestApp(t)
+	a.lair.IntroSeen = true // Returning players retain the short lair arrival.
+	hiscore.SaveLair(a.lair)
 	a.toScreen(ScreenOverworld)
 	if a.ow.BootTTL != render.OWBootFrames {
 		t.Fatalf("first entry BootTTL = %d, want %d", a.ow.BootTTL, render.OWBootFrames)

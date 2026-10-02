@@ -43,7 +43,7 @@ func TestMenuTransitions(t *testing.T) {
 	a := &App{screen: ScreenMenu, scores: map[string]int{"canyon": 1}}
 	// Each case re-enters the menu, since activating an item leaves it.
 	for sel, want := range map[int]Screen{
-		0: ScreenOverworld,
+		0: ScreenCutscene,
 		1: ScreenLevelSelect,
 		2: ScreenHelp,
 		3: ScreenHiscores,
@@ -289,7 +289,11 @@ func TestScreenSequenceReachable(t *testing.T) {
 	if a.screen != ScreenMenu {
 		t.Fatalf("title -> %v, want menu", a.screen)
 	}
-	a.handle(Event{Key: KeyEnter}) // Start: the lair
+	a.handle(Event{Key: KeyEnter}) // Start: the opening, then the lair
+	if a.screen != ScreenCutscene {
+		t.Fatalf("menu -> %v, want opening", a.screen)
+	}
+	a.handle(Event{Key: KeyEscape})
 	if a.screen != ScreenOverworld {
 		t.Fatalf("menu -> %v, want the lair", a.screen)
 	}

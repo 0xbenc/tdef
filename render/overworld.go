@@ -1589,7 +1589,13 @@ func drawOWChromeRows(f *Frame, st OWState) {
 		if ctx != "" {
 			ctx += " · "
 		}
-		ctx += "v view Malgrath"
+		ctx += "i opening"
+		if st.BossDone && len([]rune(ctx))+len([]rune(" · e ending")) <= f.W-4 {
+			ctx += " · e ending"
+		}
+		if len([]rune(ctx))+len([]rune(" · v Malgrath")) <= f.W-4 {
+			ctx += " · v Malgrath"
+		}
 		if len([]rune(ctx))+len([]rune(" · g Grak")) <= f.W-4 {
 			ctx += " · g Grak"
 		}

@@ -164,3 +164,23 @@ func TestDepthsRequiresEveryFixedDefenseOnSameDifficulty(t *testing.T) {
 		t.Fatal("missing progression unlocked depths")
 	}
 }
+
+func TestIntroMemorySurvivesProgressAndLegacySaves(t *testing.T) {
+	home := isolateHome(t)
+	if err := os.WriteFile(home+"/.tdef-lair.json", []byte(`{"floors":{"rotunda:1":{"best_wave":2}},"tokens":3}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	l := LoadLair()
+	if l.IntroSeen || !l.AnyRecord() {
+		t.Fatal("legacy intro/progress migration changed the save")
+	}
+	l.IntroSeen = true
+	if err := SaveLair(l); err != nil {
+		t.Fatal(err)
+	}
+	l = LoadLair()
+	l.Record("rift", 1, 20, true)
+	if !LoadLair().IntroSeen || LoadLair().Tokens != 3 {
+		t.Fatal("progress overwrote intro memory or tokens")
+	}
+}

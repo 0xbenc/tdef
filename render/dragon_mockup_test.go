@@ -47,15 +47,20 @@ func TestDragonMockupSmallWindows(t *testing.T) {
 	}
 }
 
-func TestRotundaAdvertisesPortrait(t *testing.T) {
+func TestRotundaAdvertisesFilms(t *testing.T) {
 	st := NewOWState()
 	st.Tokens, st.BonusGold, st.BonusLives, st.BonusTower = 3, 200, 1, true
 	f := RenderOverworld(62, 19, st, 30, Palette())
-	if !strings.Contains(f.Text(), "v view Malgrath") {
-		t.Fatal("missing Rotunda portrait hint")
+	if !strings.Contains(f.Text(), "i opening") {
+		t.Fatal("missing Rotunda opening hint")
 	}
 	if f.C[(f.H-2)*f.W+f.W-1].R != '│' {
 		t.Fatal("context hint overwrote frame")
+	}
+	st.BossDone = true
+	f = RenderOverworld(120, 46, st, 30, Palette())
+	if !strings.Contains(f.Text(), "e ending") || !strings.Contains(f.Text(), "v Malgrath") {
+		t.Fatal("held lair lost ending or portrait hint")
 	}
 }
 

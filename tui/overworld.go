@@ -21,6 +21,9 @@ func RunOverworld() error {
 	a.ow = render.NewOWState()
 	a.owRefresh()
 	a.screen = ScreenOverworld
+	if a.maybeOpening() {
+		return a.run()
+	}
 	if !a.owBootArmed {
 		a.owBootArmed = true
 		a.ow.BootTTL = render.OWBootFrames
@@ -91,6 +94,14 @@ func (a *App) handleOverworld(e Event) {
 			a.ow.Msg = "the whole lair, lit — every floor revealed"
 		} else {
 			a.ow.Msg = ""
+		}
+	case 'i', 'I':
+		if a.owCursorFloor() == "rotunda" {
+			a.startCutscene(render.FilmOpening, ScreenOverworld, false)
+		}
+	case 'e', 'E':
+		if a.owCursorFloor() == "rotunda" && a.lair.BossHeld(a.ow.Diff) {
+			a.startCutscene(render.FilmEnding, ScreenOverworld, false)
 		}
 	case 'j', 'J':
 		a.openJournal()

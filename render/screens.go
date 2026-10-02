@@ -2532,6 +2532,7 @@ func RenderHelp(w, h int, pal Colors) *Frame {
 		{"wave", "n (early = bonus gold)"},
 		{"pause", "p"},
 		{"journal", "j (lair or paused), [ ] chapters"},
+		{"films", "i opening · e ending (Rotunda)"},
 		{"speed", "f or wheel"},
 		{"descend", "enter, on a floor (the lair)"},
 		{"renown", "tab (the lair)"},
