@@ -909,7 +909,9 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 		}
 	}
 	y := f.H - 2
-	if ui.Help {
+	if ui.Paused && !ui.Help {
+		hint(y, [][2]string{{"p", " resume "}, {"j", " journal "}, {"↑↓", " move "}, {"⏎", " place "}, {"q", " quit"}})
+	} else if ui.Help {
 		hint(y, [][2]string{
 			{"↑↓/wasd", " "}, {"⏎/1-7", " "}, {"u", " up "}, {"x", " sell "},
 			{"t", " target "}, {"n", " wave "}, {"p", " pause "}, {"f", " speed"},

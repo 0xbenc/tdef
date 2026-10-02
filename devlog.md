@@ -861,3 +861,31 @@
   the static studies; the cycle now ends Wizard → Centurion → Squire → Malgrath.
   All seven towers and eight enemy types have one definitive lore portrait.
   No simulation, upgrade or progression changes.
+
+- 2026-10-02: built the tower chapter of Grak's Journal. A portrait collection
+  opens into responsive illustrated pages with short first-person lore and
+  field notes; compact terminals use a list and stacked, scrollable pages.
+  Successful keyboard, mouse and relic placements discover one persistent
+  page per tower, without notifications, unread badges or gameplay changes.
+  `j` opens it from the lair or a paused defense; `tdef journal` opens directly.
+  Returning preserves the lair and paused game. Enemies, places and story
+  moments remain outside this first pass. Backed up the local player's save,
+  marked every defense complete on all three difficulties, and unlocked all
+  seven tower pages for review; high scores and relic tokens were preserved.
+
+- 2026-10-02: moved journal titles, lore and field notes below the artwork at
+  every width. Portraits now use the full page width rather than a left column,
+  with a centered prose viewport below; existing text scrolling is preserved.
+
+- 2026-10-02: completed the remaining journal chapters: eight guild enemies,
+  six illustrated places, eighteen authored defense/difficulty memories and
+  four Afterward scenes earned at 1/3/5/10 combined Heart/Depths wins. Place
+  landmarks use distinct figurative tile art; each difficulty memory adds its
+  own scene objects beside Grak, and bonus memories depict life after the siege.
+  Chapter browsing and paginated collections work at compact sizes, with the
+  existing full-width artwork and text below. Locked memories expose their
+  requirements while hiding titles and art. Enemy encounters survive spawn-tick
+  death or leakage; visits require open rooms or actual defense entry. Victories
+  record once through the existing score guard; defeats grant no story or repeat
+  count. Existing lair records backfill proven discoveries and a minimum repeat
+  count. Local save backed up again and all pages/milestones unlocked for review.

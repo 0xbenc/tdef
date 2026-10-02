@@ -450,6 +450,7 @@ func overworldFooter() []fseg {
 		{key: "wasd", text: " walk"},
 		{key: "⏎", text: " descend"},
 		{key: "tab", text: " renown"},
+		{key: "j", text: " journal"},
 		{key: "esc", text: " back"},
 	}
 }

@@ -92,6 +92,8 @@ func (a *App) handleOverworld(e Event) {
 		} else {
 			a.ow.Msg = ""
 		}
+	case 'j', 'J':
+		a.openJournal()
 	case 'g', 'G':
 		if a.owCursorFloor() == "rotunda" {
 			a.toScreen(ScreenGrakMockup)
@@ -150,6 +152,7 @@ func (a *App) owStep(dx, dy int) {
 	if render.OWCanWalk(n.X, n.Y, a.ow) {
 		a.ow.PushTrail(a.ow.Cursor)
 		a.ow.Cursor = n
+		a.discoverCurrentPlace()
 	} else if fl, room := render.OWFloorAt(n.X, n.Y); room && !render.OWFloorOpen(fl.ID, a.ow) {
 		a.owSealedMessage(fl.ID)
 	}
@@ -158,6 +161,7 @@ func (a *App) owStep(dx, dy int) {
 // owTick advances the overworld's frame-counted transitions and the held
 // walk. Called once per 30fps frame from the app loop.
 func (a *App) owTick() {
+	a.discoverCurrentPlace()
 	st := &a.ow
 	if !st.CameraSet {
 		st.CameraX, st.CameraSet = float64(st.Cursor.X), true

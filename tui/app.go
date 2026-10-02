@@ -42,6 +42,7 @@ const (
 	ScreenWizardMockup
 	ScreenCenturionMockup
 	ScreenSquireMockup
+	ScreenJournal
 )
 
 type App struct {
@@ -69,13 +70,17 @@ type App struct {
 
 	// Lair (overworld) plumbing: the persistent lair memory, and the run's
 	// provenance, so a defense's result comes back to the map it left.
-	lair           *hiscore.Lair
-	fromOW         bool // the run started from the overworld
-	owFloorID      string
-	cleanWaves     int // waves held with no strike on the heart (relics)
-	waveStartLives int
-	owBootArmed    bool         // the arrival cinematic has been armed this session
-	owBossSeen     map[int]bool // renown -> the heart's unseal has been seen
+	journalMigrated bool
+	journal         *hiscore.Journal
+	journalUI       render.JournalState
+	journalReturn   Screen
+	lair            *hiscore.Lair
+	fromOW          bool // the run started from the overworld
+	owFloorID       string
+	cleanWaves      int // waves held with no strike on the heart (relics)
+	waveStartLives  int
+	owBootArmed     bool         // the arrival cinematic has been armed this session
+	owBossSeen      map[int]bool // renown -> the heart's unseal has been seen
 
 	// Relic bonuses carried into the next defense.
 	bonusGold  int
@@ -128,14 +133,17 @@ func diffIndex(d game.Difficulty) int {
 }
 
 func newApp(term *Terminal, diff game.Difficulty) *App {
-	return &App{
-		term:   term,
-		pal:    render.Palette(),
-		diff:   diff,
-		events: make(chan Event, 256),
-		scores: hiscore.Load(),
-		lair:   hiscore.LoadLair(),
+	a := &App{
+		term:    term,
+		pal:     render.Palette(),
+		diff:    diff,
+		events:  make(chan Event, 256),
+		scores:  hiscore.Load(),
+		lair:    hiscore.LoadLair(),
+		journal: hiscore.LoadJournal(),
 	}
+	a.ensureJournal()
+	return a
 }
 
 // termSize returns the current terminal size, or a default 80x24 for tests
@@ -164,7 +172,9 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 	a.g.Lives += a.bonusLives
 	if a.bonusTower {
 		if cell, ok := firstGrass(m); ok {
-			a.g.Build(cell, game.TowerGunner)
+			if a.g.Build(cell, game.TowerGunner) != nil {
+				a.discoverTower(game.TowerGunner)
+			}
 		}
 	}
 	a.bonusGold, a.bonusTower, a.bonusLives = 0, false, 0
@@ -177,6 +187,7 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 	a.msgTTL = 0
 	a.prev = nil
 	a.screen = ScreenGame
+	a.discoverPlace(floorForLevel(name))
 }
 
 // firstGrass is the first grass cell in reading order: where a relic's free
@@ -308,6 +319,7 @@ func (a *App) stepGame(real float64) {
 	} else {
 		a.acc = 0
 	}
+	a.recordEnemyDiscoveries()
 	if a.g.Status != game.StatusRunning && !a.scored {
 		a.scored = true
 		a.ui.EndAtFrame = a.frameNo // the end cinematics run off this clock
@@ -326,6 +338,10 @@ func (a *App) stepGame(real float64) {
 			floor = floorForLevel(a.level)
 		}
 		a.lair.Record(floor, d, a.g.Wave, won)
+		if won {
+			a.journal.RecordVictory(floor, d)
+			hiscore.SaveJournal(a.journal)
+		}
 		a.lair.Tokens += a.cleanWaves
 		hiscore.SaveLair(a.lair)
 		if a.fromOW {
@@ -409,6 +425,8 @@ func (a *App) owSetBanner(won bool, best int, isNew bool) {
 func (a *App) drawScreen() {
 	w, h := a.termSize()
 	switch a.screen {
+	case ScreenJournal:
+		a.blit(render.RenderJournal(w, h, a.journalUI))
 	case ScreenTitle:
 		a.blit(render.RenderTitle(w, h, a.frameNo, a.frameNo-a.titleBootAt, a.scores, a.pal))
 	case ScreenMenu:
@@ -504,6 +522,8 @@ func (a *App) drainInput() {
 
 func (a *App) handle(e Event) {
 	switch a.screen {
+	case ScreenJournal:
+		a.handleJournal(e)
 	case ScreenTitle:
 		a.handleTitle(e)
 	case ScreenMenu:
@@ -880,6 +900,10 @@ func (a *App) handleGame(e Event) {
 		a.quit()
 		return
 	}
+	if (e.Rune == 'j' || e.Rune == 'J') && (a.ui.Paused || a.g.Status != game.StatusRunning) {
+		a.openJournal()
+		return
+	}
 	if a.g.Status != game.StatusRunning {
 		switch {
 		case e.Rune == 'q' || e.Rune == 'Q':
@@ -1067,7 +1091,9 @@ func (a *App) activate() {
 
 func (a *App) place() {
 	if a.g.CanBuild(a.ui.Cursor, a.ui.Placing) {
-		a.g.Build(a.ui.Cursor, a.ui.Placing)
+		if a.g.Build(a.ui.Cursor, a.ui.Placing) != nil {
+			a.discoverTower(a.ui.Placing)
+		}
 		if a.g.Gold < game.TowerSpecs[a.ui.Placing].Cost[0] {
 			a.ui.PlacingOn = false
 		}

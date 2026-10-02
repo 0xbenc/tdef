@@ -19,6 +19,7 @@ go build -o tdef .
 
 ./tdef                       # title screen → main menu → the lair
 ./tdef overworld             # jump straight to the lair map
+./tdef journal               # browse Grak's lore journal
 ./tdef dragon                # view the static Malgrath portrait mockup
 ./tdef grak                  # view Grak, the Last Monster
 ./tdef gnolls                # view the Gnoll Slingers lore portrait
@@ -110,6 +111,30 @@ The Squire leans into an enormous two-handed sword, wearing a tilted kettle
 helm, loose mail and a short guild surcoat; a round shield hangs on his back.
 All seven towers and all eight enemy types now have one definitive portrait.
 
+Press `j` in the lair, or while a defense is paused, to open **Grak's Journal**.
+The journal has four chapters: **Towers**, **Enemies**, **Places**, and
+**Story Moments**. Artwork uses the page width; lore and field notes sit below
+it and scroll independently. `[` and `]` change chapters. Arrow keys browse the
+collection; `enter` reads a page. Left/right turn to another discovered page
+and up/down scroll its text. `esc` returns to the collection, then to the exact
+lair or paused defense you left. `./tdef journal` opens it directly.
+
+Discovery is silent and permanent across defenses and difficulties: first
+successful placement unlocks a tower (including a relic's free gunner), first
+encounter unlocks an enemy, and visiting a room unlocks its place illustration.
+Failed placements and sealed rooms reveal nothing. There are no discovery
+popups, unread badges or upgrade variants. Existing victory records backfill
+proven visits, encounters and memories without replaying the campaign.
+
+Every defense has a distinct illustrated story moment on each of the three
+renowns: eighteen memories across the four floors, Heart and Depths. Any maze
+seed can earn the Depths memory for its difficulty. Undiscovered moments show
+the required floor and renown when selected, while keeping their title and
+artwork hidden. Four bonus **Afterward** memories unlock at 1, 3, 5 and 10
+combined Heart or Depths victories, beyond the main story. Each finished
+victory counts once; defeats earn no victory memory. Older saves retain a
+minimum repeat count supported by their distinct held endgame records.
+
 Each defense has its own route and build terrain. Inner bends can cover several
 passes; open stretches reward long range, while narrow ledges demand careful
 placement. Roomier floors fund more towers through starting gold and rewards.
@@ -200,7 +225,8 @@ the Dragon's heart.
   ```
 
   High scores live in `~/.tdef-hiscores.json`; the lair's memory (floors
-  held, hearts, relics) in `~/.tdef-lair.json`.
+  held, hearts, relics) in `~/.tdef-lair.json`; journal discoveries and endgame wins in
+  `~/.tdef-journal.json`.
 
 ## License
 

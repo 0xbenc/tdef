@@ -10,6 +10,8 @@ type State struct {
 	Wave   int
 	Status GameStatus
 
+	// SeenEnemies also remembers enemies killed on their spawning tick.
+	SeenEnemies [EnemyCount]bool
 	Enemies     []*Enemy
 	Towers      []*Tower
 	Projectiles []*Projectile
@@ -212,6 +214,7 @@ func killColor(k EnemyKind) int {
 }
 
 func (s *State) splitChild(parent *Enemy) {
+	s.SeenEnemies[EnemyMinion] = true
 	child := &Enemy{
 		ID:         s.NextID,
 		Kind:       EnemyMinion,

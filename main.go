@@ -29,6 +29,10 @@ func main() {
 		capture(os.Args[2:])
 	case "overworld":
 		overworldCmd()
+	case "journal":
+		if err := tui.RunJournal(); err != nil {
+			die("%v", err)
+		}
 	case "centurion":
 		if err := tui.RunCenturionMockup(); err != nil {
 			die("%v", err)
@@ -116,6 +120,7 @@ usage:
   tdef headless [flags]    run one autoplay game, print result
   tdef capture [flags]     render headless game frames to files
   tdef overworld           the lair map: walk the floors, descend into one
+  tdef journal             browse Grak's lore journal
   tdef dragon              view Malgrath's static portrait mockup
   tdef grak                view Grak's static portrait mockup
   tdef gnolls              view the Gnoll Slingers lore portrait

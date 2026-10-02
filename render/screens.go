@@ -2531,6 +2531,7 @@ func RenderHelp(w, h int, pal Colors) *Frame {
 		{"target", "t (game) · t relics (lair)"},
 		{"wave", "n (early = bonus gold)"},
 		{"pause", "p"},
+		{"journal", "j (lair or paused), [ ] chapters"},
 		{"speed", "f or wheel"},
 		{"descend", "enter, on a floor (the lair)"},
 		{"renown", "tab (the lair)"},

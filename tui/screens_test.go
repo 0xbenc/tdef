@@ -214,6 +214,7 @@ func TestLevelSelectMouse(t *testing.T) {
 }
 
 func TestLevelSelectStartBuiltin(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	a := lsApp()
 	a.ls.Diff = 2
 	a.ls.Cursor = 2 // hub

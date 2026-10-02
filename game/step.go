@@ -43,6 +43,7 @@ func (s *State) spawnDue() {
 	for s.SpawnIdx < len(s.SpawnQueue) && s.SpawnQueue[s.SpawnIdx].At <= s.waveTime() {
 		e := s.SpawnQueue[s.SpawnIdx]
 		s.SpawnIdx++
+		s.SeenEnemies[e.Kind] = true
 		spec := &EnemySpecs[e.Kind]
 		hpMul := HPScale(s.Wave) * s.Diff.HPMul() * s.Map.HPMul
 		spMul := SpeedScale(s.Wave)
