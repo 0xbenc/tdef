@@ -85,5 +85,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dist", type=pathlib.Path, default=pathlib.Path("dist"))
     parser.add_argument("--out", type=pathlib.Path, default=pathlib.Path("dist/itch"))
+    parser.add_argument("--zip", action="store_true", help="also create portable ZIP downloads preserving execute bits")
     args = parser.parse_args()
     stage(args.dist, args.out)
+    if args.zip:
+        for channel in TARGETS.values():
+            shutil.make_archive(str(args.out / channel), "zip", root_dir=args.out, base_dir=channel)
