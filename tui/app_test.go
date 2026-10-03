@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -18,7 +19,8 @@ func TestWaveClearMessageShowsFloorReward(t *testing.T) {
 	// The last enemy has died and all spawns are complete.
 	a := &App{g: g, ui: render.UI{Speed: 1}, waveStartLives: g.Lives}
 	a.stepGame(1.0 / tickRate)
-	if a.ui.Message != "wave 1 cleared +49g" || g.Gold != 357 {
+	reward := m.ScaleGold(game.WaveBonus(1))
+	if a.ui.Message != fmt.Sprintf("wave 1 cleared +%dg", reward) || g.Gold != m.ScaleGold(game.StartingGold)+reward {
 		t.Errorf("wave clear: message=%q gold=%d", a.ui.Message, g.Gold)
 	}
 }

@@ -904,3 +904,18 @@
   result, and intro/ending CLI commands grant no rewards. Small terminals hold
   the film clock; resizing restores the composition and full caption. The
   game and overworld stay frozen behind films, including unseal transitions.
+
+- 2026-10-02: redesigned all five fixed defense tracks around distinct tactics:
+  shared Rotunda courts, separate Rift banks, long returning Halls, crowded
+  Garden hairpins and the Heart's outer ring feeding an inner coil. Authored
+  floor formations preserve enemy debuts and boss milestones; health and
+  economy follow exposure and wave pressure. Actual formation counts appear
+  in previews, with quiet placement hints and advance tactical warnings.
+  Added an eleven-policy benchmark with a control using identical waves,
+  health and gold; shape alone changes compact-camp and range outcomes.
+  Tuned against 220 policy runs over normal, easy/hard campaign and control:
+  no stalls and multiple successful compositions per floor/difficulty.
+  Tactical outcomes, hard alternatives, queue/preview integration and route
+  validity have regression coverage. Tests, race checks, vet and four live
+  terminal placement/wave-start checks passed; rebuilt ./tdef. Details and
+  human-playtest limits are recorded in TACTICS.md. Procedural Depths unchanged.

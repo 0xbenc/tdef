@@ -868,9 +868,11 @@ func drawHeader(f *Frame, g *game.State, ui *UI, pal Colors) {
 			fg, bold = pal.Gold, true
 		}
 		putString(f, 2, 1, fitMsg(msg, f.W-4), fg, 0, bold)
+	case inBreak && g.Wave == 0 && game.TacticalBrief(g.Map) != "":
+		putString(f, 2, 1, fitMsg(game.TacticalBrief(g.Map), f.W-4), pal.Dim, 0, false)
 	case inBreak:
 		nw := g.Wave + 1
-		putString(f, 2, 1, fmt.Sprintf("→%d: %s", nw, game.WavePreview(nw)), pal.Dim, 0, false)
+		putString(f, 2, 1, fmt.Sprintf("→%d: %s", nw, game.WavePreviewFor(g.Map, nw)), pal.Dim, 0, false)
 	}
 }
 

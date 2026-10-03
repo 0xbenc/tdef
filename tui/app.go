@@ -317,7 +317,7 @@ func (a *App) stepGame(real float64) {
 				a.cleanWaves++ // a clean expedition: the heart was not struck
 			}
 			next := a.g.Wave + 1
-			if tg := game.WaveTelegraph(next); tg != "" {
+			if tg := game.WaveTelegraphFor(a.g.Map, next); tg != "" {
 				// Hold the telegraph for the whole break so it can be read.
 				a.ui.Message = tg
 				a.msgTTL = game.AutoWaveDelayFor(a.g.Wave)

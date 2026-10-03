@@ -13,12 +13,17 @@ import (
 	"github.com/0xbenc/tdef/tui"
 )
 
+// Release builds set version through -ldflags; local builds remain identifiable.
+var version = "dev"
+
 func main() {
 	if len(os.Args) < 2 {
 		play(nil)
 		return
 	}
 	switch os.Args[1] {
+	case "version", "--version", "-version":
+		fmt.Printf("tdef %s\n", version)
 	case "play":
 		play(os.Args[2:])
 	case "bench":
@@ -149,6 +154,7 @@ usage:
   tdef ranger              view the monster archer portrait
   tdef cannonier           view the monster artillery crew portrait
   tdef maps                list built-in levels
+  tdef version             print the binary version
   tdef help
 
 play flags:

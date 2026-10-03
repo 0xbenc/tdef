@@ -29,19 +29,14 @@ func LevelNames() []string {
 	return names
 }
 
+// Health follows actual exposure and wave pressure, rather than road length
+// alone. The tactical benchmark also checks focused, upgraded defenses.
 var levelHP = map[string]float64{
-	// Tuned with levelGold against the actual bends and firing lanes. The
-	// normal autoplay proxy holds the four floors with decreasing spare lives.
-	"hub":     0.65,
-	"winding": 0.77,
-	"garden":  1.02,
-	"canyon":  1.04,
-	// The heart chamber is the endgame gate behind the unsealed heart: a
-	// inward spiral. Autoplay is deterministic, so it is all-or-nothing per
-	// map; 2.20 is the edge where the weak-player proxy reaches the final
-	// wave and dies there — the final expedition a passive player loses,
-	// while a player who arrives with hearts (+lives) and relics can hold it.
-	"heart": 2.20,
+	"hub":     .52,
+	"canyon":  .82,
+	"winding": 1.15,
+	"garden":  .90,
+	"heart":   1.70,
 }
 
 // mazeHP keeps the procedural maze in the "chaos" tier (~60% AI win). The
@@ -54,7 +49,7 @@ const mazeHP = 0.58
 var levelGold = map[string]float64{
 	"hub":     1.0,
 	"winding": 1.25,
-	"garden":  1.4,
+	"garden":  1.35,
 	"canyon":  1.3,
 	"heart":   1.4,
 }
@@ -78,6 +73,7 @@ func LoadLevel(name string) (*Map, error) {
 		m.HPMul = v
 	}
 	m.GoldMul = levelGold[name]
+	m.Encounter = map[string]Encounter{"hub": EncounterRotunda, "canyon": EncounterRift, "winding": EncounterHalls, "garden": EncounterGarden}[name]
 	return m, nil
 }
 
@@ -100,5 +96,6 @@ func LoadBoss() (*Map, error) {
 	}
 	m.HPMul = levelHP["heart"]
 	m.GoldMul = levelGold["heart"]
+	m.Encounter = EncounterHeart
 	return m, nil
 }

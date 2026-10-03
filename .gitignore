@@ -1,7 +1,12 @@
 # built binary
 tdef
 
+# generated output
+/output/
+/dist/
+
 # editor/OS cruft
 .*.swp
 .DS_Store
 .ruff_cache/
+__pycache__/

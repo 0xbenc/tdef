@@ -6,8 +6,9 @@ import (
 )
 
 type Map struct {
-	W, H int
-	Cell []CellKind
+	W, H      int
+	Encounter Encounter
+	Cell      []CellKind
 
 	Path     []Vec
 	Dist     []float64

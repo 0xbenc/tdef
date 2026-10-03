@@ -1,0 +1,36 @@
+class Tdef < Formula
+  desc "Terminal tower defense: hold a dying dragon's lair"
+  homepage "https://github.com/0xbenc/tdef"
+  version "{{VERSION}}"
+  license "MIT"
+
+  on_macos do
+    depends_on macos: :monterey
+    if Hardware::CPU.arm?
+      url "https://github.com/0xbenc/tdef/releases/download/v{{VERSION}}/tdef_{{VERSION}}_darwin_arm64.tar.gz"
+      sha256 "{{SHA_DARWIN_ARM64}}"
+    else
+      url "https://github.com/0xbenc/tdef/releases/download/v{{VERSION}}/tdef_{{VERSION}}_darwin_amd64.tar.gz"
+      sha256 "{{SHA_DARWIN_AMD64}}"
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/0xbenc/tdef/releases/download/v{{VERSION}}/tdef_{{VERSION}}_linux_arm64.tar.gz"
+      sha256 "{{SHA_LINUX_ARM64}}"
+    else
+      url "https://github.com/0xbenc/tdef/releases/download/v{{VERSION}}/tdef_{{VERSION}}_linux_amd64.tar.gz"
+      sha256 "{{SHA_LINUX_AMD64}}"
+    end
+  end
+
+  def install
+    bin.install "tdef"
+  end
+
+  test do
+    assert_equal "tdef #{version}", shell_output("#{bin}/tdef --version").strip
+    assert_match "hub", shell_output("#{bin}/tdef maps")
+  end
+end

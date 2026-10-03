@@ -173,7 +173,7 @@ func (s *State) StartWave() int {
 		s.Score += bonus * 10
 	}
 	s.Wave++
-	s.SpawnQueue = BuildWave(s.Wave)
+	s.SpawnQueue = BuildWaveFor(s.Map, s.Wave)
 	s.SpawnIdx = 0
 	s.WaveActive = true
 	s.WaveStart = s.Time
