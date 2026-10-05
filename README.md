@@ -18,7 +18,7 @@ brew install 0xbenc/tap/tdef
 tdef
 ```
 
-For Linux and macOS (12+), on Intel/AMD and ARM.
+For Windows 10/11, Linux, and macOS (12+), on Intel/AMD and ARM.
 
 ## Build it
 
@@ -27,6 +27,13 @@ With Go 1.26.3 or newer:
 ```sh
 go build -o tdef .
 ./tdef
+```
+
+On Windows, build and run from PowerShell:
+
+```powershell
+go build -o tdef.exe .
+.\tdef.exe
 ```
 
 ## Play

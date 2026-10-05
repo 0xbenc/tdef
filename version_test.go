@@ -3,6 +3,7 @@ package main
 import (
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -10,6 +11,9 @@ import (
 // in the executable and none of the version aliases opens the terminal.
 func TestReleaseVersionCLI(t *testing.T) {
 	binary := filepath.Join(t.TempDir(), "tdef")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	if out, err := exec.Command("go", "build", "-ldflags=-X main.version=1.0.0", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("release build: %v\n%s", err, out)
 	}

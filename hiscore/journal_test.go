@@ -8,7 +8,9 @@ import (
 )
 
 func TestJournalPersistsOnlyFirstDiscovery(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	j := LoadJournal()
 	if len(j.Towers) != 0 {
 		t.Fatal("fresh journal was pre-unlocked")
@@ -33,7 +35,9 @@ func TestJournalPersistsOnlyFirstDiscovery(t *testing.T) {
 }
 
 func TestJournalHandlesOldMissingOrCorruptSave(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	p, _ := JournalPath()
 	for _, data := range []string{"{}", "null", "{broken", "{\"towers\":null}"} {
 		if err := os.WriteFile(p, []byte(data), 0644); err != nil {
@@ -53,7 +57,9 @@ func TestJournalHandlesOldMissingOrCorruptSave(t *testing.T) {
 }
 
 func TestJournalVictoryDifficultyAndBonusMilestones(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	j := LoadJournal()
 	j.RecordVictory("rotunda", 0)
 	j.RecordVictory("rotunda", 2)

@@ -143,7 +143,9 @@ func TestLairTokensPersist(t *testing.T) {
 }
 
 func TestDepthsRequiresEveryFixedDefenseOnSameDifficulty(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	l := LoadLair()
 	// Even a Heart win from direct play cannot replace the other victories.
 	l.Record(HeartFloor, 1, 20, true)

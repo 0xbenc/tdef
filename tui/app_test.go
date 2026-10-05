@@ -48,7 +48,9 @@ func TestFreshUIHasNoSelection(t *testing.T) {
 }
 
 func TestRestartClearsSelection(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	m, err := game.LoadLevel("winding")
 	if err != nil {
 		t.Fatal(err)

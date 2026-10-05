@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and push staged itch packages to the four stable release channels."""
+"""Validate and push staged itch packages to the stable release channels."""
 import argparse
 import pathlib
 import re
@@ -22,9 +22,10 @@ def commands(directory: pathlib.Path, target: str, version: str, butler: str) ->
             raise ValueError(f"wrong package version for {channel}")
         if not (package / ".itch.toml").is_file():
             raise ValueError(f"missing launch manifest for {channel}")
-        # Butler's validator only accepts 386/amd64. Our manifests launch
-        # architecture-independent scripts; stage tests verify the ARM binary.
-        result.append([butler, "validate", "--platform", "linux" if system == "linux" else "osx",
+        # Butler's validator only accepts 386/amd64. Unix launchers are scripts;
+        # Windows ARM validates with a PE-probe warning and is misreported as
+        # amd64. This validates the launch configuration, not ARM compatibility.
+        result.append([butler, "validate", "--platform", "osx" if system == "darwin" else system,
                        "--arch", "amd64", str(package)])
     # Validate every channel before making the first public update.
     for channel in TARGETS.values():

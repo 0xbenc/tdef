@@ -213,7 +213,7 @@ func firstGrass(m *game.Map) (game.Vec, bool) {
 // the frame loop until the app quits.
 func (a *App) run() error {
 	defer a.term.Close()
-	startReader(a.term.in, a.events)
+	a.term.startInput(a.events)
 	a.term.AltScreen(true)
 	a.term.Cursor(false)
 	a.term.Mouse(true)

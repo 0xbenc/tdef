@@ -2,7 +2,10 @@ import json
 import os
 import pathlib
 import plistlib
-import pty
+try:
+    import pty
+except ImportError:
+    pty = None
 import shlex
 import shutil
 import subprocess
@@ -41,6 +44,13 @@ class ItchPackagingTest(unittest.TestCase):
             if system == "linux":
                 binary = package / "tdef"
                 launcher = package / "Play.sh"
+            elif system == "windows":
+                binary = package / "tdef.exe"
+                launcher = package / "Play.cmd"
+                manifest = (package / ".itch.toml").read_text()
+                self.assertIn('path = "tdef.exe"', manifest)
+                self.assertIn('platform = "windows"', manifest)
+                self.assertIn('console = true', manifest)
             else:
                 app = package / "TDEF.app" / "Contents"
                 binary = app / "Resources" / "tdef"
@@ -48,12 +58,15 @@ class ItchPackagingTest(unittest.TestCase):
                 info = plistlib.loads((app / "Info.plist").read_bytes())
                 self.assertTrue((app / "MacOS" / info["CFBundleExecutable"]).is_file())
                 self.assertEqual(info["CFBundleShortVersionString"], "1.0.0")
-                result = subprocess.run([str(launcher), "argument with spaces", "literal $value"],
-                                        capture_output=True, text=True, check=True)
-                self.assertEqual(result.stdout.splitlines(), ["argument with spaces", "literal $value"])
+                if os.name != "nt":
+                    result = subprocess.run([str(launcher), "argument with spaces", "literal $value"],
+                                            capture_output=True, text=True, check=True)
+                    self.assertEqual(result.stdout.splitlines(), ["argument with spaces", "literal $value"])
             self.assertEqual(binary.read_bytes(), self.sources[(system, arch)].read_bytes())
             self.assertTrue(os.access(binary, os.X_OK))
-            self.assertTrue(os.access(launcher, os.X_OK))
+            self.assertTrue(launcher.is_file())
+            if system != "windows":
+                self.assertTrue(os.access(launcher, os.X_OK))
             self.assertTrue((package / ".itch.toml").is_file())
 
     def mock_path(self, terminal):
@@ -68,6 +81,19 @@ class ItchPackagingTest(unittest.TestCase):
         command.chmod(0o755)
         return directory
 
+    @unittest.skipUnless(os.name == "nt", "Windows command launcher")
+    def test_windows_launcher_preserves_arguments_and_exit_code(self):
+        source = self.root / "launcher-fixture.go"
+        source.write_text('package main\nimport ("fmt"; "os")\n'
+                          'func main() { for _, arg := range os.Args[1:] { fmt.Println(arg) } }\n')
+        package = self.out / "windows-amd64"
+        (package / "tdef.exe").unlink()
+        subprocess.run(["go", "build", "-o", str(package / "tdef.exe"), str(source)], check=True)
+        result = subprocess.run([str(package / "Play.cmd"), "argument with spaces", "literal $value"],
+                                shell=True, capture_output=True, text=True, check=True, timeout=10)
+        self.assertEqual(result.stdout.splitlines(), ["argument with spaces", "literal $value"])
+
+    @unittest.skipIf(os.name == "nt", "Unix shell launcher")
     def test_linux_launcher_opens_terminal_and_preserves_arguments(self):
         for terminal, prefix in [("xdg-terminal-exec", []), ("gnome-terminal", ["--"]),
                                  ("konsole", ["-e"]), ("wezterm", ["start", "--"])]:
@@ -80,6 +106,7 @@ class ItchPackagingTest(unittest.TestCase):
                 self.assertEqual(result.stdout.splitlines(), prefix + [str(package / "tdef"), "two words", "literal $value"])
                 (directory / terminal).unlink()
 
+    @unittest.skipIf(os.name == "nt", "Unix shell launcher")
     def test_missing_terminal_has_actionable_error(self):
         directory = self.mock_path("temporary-terminal")
         (directory / "temporary-terminal").unlink()
@@ -88,6 +115,7 @@ class ItchPackagingTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("./tdef", result.stderr)
 
+    @unittest.skipIf(os.name == "nt", "Unix shell launcher")
     def test_xfce_command_string_preserves_paths_and_arguments(self):
         directory = self.mock_path("xfce4-terminal")
         package = self.out / "linux-amd64"
@@ -99,6 +127,7 @@ class ItchPackagingTest(unittest.TestCase):
         launched = subprocess.run(shlex.split(arguments[2]), capture_output=True, text=True, check=True)
         self.assertEqual(launched.stdout.splitlines(), ["two words", "literal $value"])
 
+    @unittest.skipIf(pty is None, "Requires Unix pseudo-terminal")
     def test_linux_uses_existing_terminal_without_opening_another(self):
         directory = self.mock_path("xdg-terminal-exec")
         master, slave = pty.openpty()
@@ -121,8 +150,11 @@ class ItchPackagingTest(unittest.TestCase):
 
     def test_publication_validates_all_channels_first(self):
         plan = commands(self.out, "kairuku-studios/tdef", "v1.0.0", "butler")
-        self.assertEqual([command[1] for command in plan], ["validate"] * 4 + ["push"] * 4)
-        for command, channel in zip(plan[4:], TARGETS.values()):
+        count = len(TARGETS)
+        self.assertEqual([command[1] for command in plan], ["validate"] * count + ["push"] * count)
+        for command, (system, _) in zip(plan[:count], TARGETS):
+            self.assertEqual(command[3], "osx" if system == "darwin" else system)
+        for command, channel in zip(plan[count:], TARGETS.values()):
             self.assertIn("kairuku-studios/tdef:" + channel, command)
             self.assertEqual(command[-2:], ["--userversion", "1.0.0"])
         with self.assertRaisesRegex(ValueError, "stable"):

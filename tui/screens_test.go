@@ -39,7 +39,9 @@ func TestMenuNavWraps(t *testing.T) {
 }
 
 func TestMenuTransitions(t *testing.T) {
-	t.Setenv("HOME", t.TempDir()) // the lair's memory is read on Start
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // the lair's memory is read on Start
 	a := &App{screen: ScreenMenu, scores: map[string]int{"canyon": 1}}
 	// Each case re-enters the menu, since activating an item leaves it.
 	for sel, want := range map[int]Screen{
@@ -72,7 +74,9 @@ func TestMenuTransitions(t *testing.T) {
 // A click on a menu item must activate it, using the same geometry the
 // renderer draws with.
 func TestMenuClickActivates(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	a := &App{screen: ScreenMenu}
 	w, h := a.termSize()
 	rects := render.MenuRects(w, h)
@@ -214,7 +218,9 @@ func TestLevelSelectMouse(t *testing.T) {
 }
 
 func TestLevelSelectStartBuiltin(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	a := lsApp()
 	a.ls.Diff = 2
 	a.ls.Cursor = 2 // hub
@@ -238,7 +244,9 @@ func TestLevelSelectStartBuiltin(t *testing.T) {
 }
 
 func TestLevelSelectStartMaze(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	a := lsApp()
 	a.lair = hiscore.LoadLair()
 	for _, floor := range append(append([]string{}, hiscore.LairFloors...), hiscore.HeartFloor) {
@@ -277,7 +285,9 @@ func TestLevelSelectStartMaze(t *testing.T) {
 // The full pre-game flow must be reachable: title -> menu -> the lair ->
 // descend into a floor -> game, ending in a playable state.
 func TestScreenSequenceReachable(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	a := &App{
 		screen: ScreenTitle,
 		ls:     render.LSState{Levels: game.LevelNames()},

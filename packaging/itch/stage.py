@@ -14,6 +14,8 @@ TARGETS = {
     ("linux", "arm64"): "linux-arm64",
     ("darwin", "amd64"): "mac-amd64",
     ("darwin", "arm64"): "mac-arm64",
+    ("windows", "amd64"): "windows-amd64",
+    ("windows", "arm64"): "windows-arm64",
 }
 
 
@@ -56,6 +58,10 @@ def stage(dist: pathlib.Path, out: pathlib.Path) -> None:
             executable(binaries[target], directory / "tdef")
             executable(HERE / "Play.sh", directory / "Play.sh")
             launch_path, platform = "Play.sh", "linux"
+        elif target[0] == "windows":
+            executable(binaries[target], directory / "tdef.exe")
+            shutil.copyfile(HERE / "Play.cmd", directory / "Play.cmd")
+            launch_path, platform = "tdef.exe", "windows"
         else:
             app = directory / "TDEF.app" / "Contents"
             executable(binaries[target], app / "Resources" / "tdef")
@@ -77,6 +83,7 @@ def stage(dist: pathlib.Path, out: pathlib.Path) -> None:
             launch_path, platform = "TDEF.app", "osx"
         (directory / ".itch.toml").write_text(
             f'[[actions]]\nname = "play"\npath = "{launch_path}"\nplatform = "{platform}"\n'
+            + ('console = true\n' if platform == "windows" else '')
         )
         print(f"staged {channel}: {version}")
 

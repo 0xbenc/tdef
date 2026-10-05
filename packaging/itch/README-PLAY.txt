@@ -14,9 +14,17 @@ Linux
   in the folder and run ./Play.sh. From a terminal, ./tdef also works.
   A graphical Play launch needs an installed terminal emulator.
 
+Windows 10/11
+  In the itch app, click Play to open the game in a console window.
+  For a browser download, extract the whole folder and double-click Play.cmd
+  or tdef.exe. From PowerShell in the folder, .\tdef.exe also works.
+  Play.cmd keeps startup errors visible before closing the window.
+  Windows Terminal is optional; no PowerShell scripts or installer are needed.
+
 Choose the download that matches your computer:
   mac-arm64: Apple Silicon; mac-amd64: Intel Mac
   linux-amd64: Intel/AMD Linux; linux-arm64: ARM Linux
+  windows-amd64: Intel/AMD Windows; windows-arm64: ARM Windows
 
 Controls
   Arrows / WASD: move or select     Enter: confirm or place

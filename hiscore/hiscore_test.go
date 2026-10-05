@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -13,6 +14,7 @@ func isolateHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	return home
 }
 
@@ -54,8 +56,12 @@ func TestSaveIsAtomicAndReadable(t *testing.T) {
 			t.Fatalf("unexpected file %q in %s", e.Name(), home)
 		}
 	}
-	if fi, err := os.Stat(p); err != nil || fi.Mode().Perm() != 0o644 {
-		t.Fatalf("mode = %v, want 0644 (err %v)", fi.Mode().Perm(), err)
+	fi, err := os.Stat(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && fi.Mode().Perm() != 0o644 {
+		t.Fatalf("mode = %v, want 0644", fi.Mode().Perm())
 	}
 }
 

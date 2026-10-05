@@ -11,7 +11,9 @@ import (
 // owTestApp builds an App standing on the lair map, with an isolated lair file.
 func owTestApp(t *testing.T) *App {
 	t.Helper()
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	return &App{
 		screen: ScreenOverworld,
 		diff:   game.Normal,
@@ -309,7 +311,9 @@ func TestOWGameOverReturnsToLair(t *testing.T) {
 // fold its result into the lair's memory without touching the overworld's
 // transition maps — the unseal cascade only runs for lair runs.
 func TestDirectPlayRecordsLairWithoutOverworld(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	m, err := game.LoadLevel("canyon")
 	if err != nil {
 		t.Fatal(err)

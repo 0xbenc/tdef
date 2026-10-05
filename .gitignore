@@ -1,5 +1,6 @@
 # built binary
 tdef
+tdef.exe
 
 # generated output
 /output/
