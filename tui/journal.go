@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"github.com/0xbenc/tdef/game"
-	"github.com/0xbenc/tdef/hiscore"
-	"github.com/0xbenc/tdef/render"
+	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/hiscore"
+	"github.com/0xbenc/termtd/render"
 	"strconv"
 )
 
@@ -76,6 +76,9 @@ func (a *App) ensureJournal() {
 }
 
 func (a *App) recordEnemyDiscoveries() {
+	if !a.fromOW {
+		return
+	}
 	a.ensureJournal()
 	changed := false
 	for k, seen := range a.g.SeenEnemies {
@@ -131,6 +134,9 @@ func (a *App) changeJournalChapter(delta int) {
 }
 
 func (a *App) discoverTower(k game.TowerKind) {
+	if !a.fromOW {
+		return
+	}
 	a.ensureJournal()
 	if a.journal.DiscoverTower(render.TowerJournalID(k)) {
 		hiscore.SaveJournal(a.journal)

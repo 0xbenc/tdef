@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 func TestOWWaterfallFlowsDown(t *testing.T) {

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 game_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-game="$game_dir/tdef"
+game="$game_dir/termtd"
 
 # Running from an existing terminal needs no additional window.
 if [[ -t 0 && -t 1 ]]; then
@@ -33,9 +33,9 @@ if command -v xfce4-terminal >/dev/null 2>&1; then
     exec xfce4-terminal --disable-server --command "bash -c $(printf '%q' "exec $command_line")"
 fi
 
-message="TDEF needs a terminal. Open a terminal in this folder and run ./tdef, or install a terminal emulator and try Play again."
+message="TERMTD needs a terminal. Open a terminal in this folder and run ./termtd, or install a terminal emulator and try Play again."
 printf '%s\n' "$message" >&2
 if command -v zenity >/dev/null 2>&1; then
-    zenity --error --title=TDEF --text="$message" || true
+    zenity --error --title=TERMTD --text="$message" || true
 fi
 exit 1

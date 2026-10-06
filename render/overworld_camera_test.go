@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 // Camera, renderer and hit testing must agree even when a room is partially

@@ -29,10 +29,10 @@ def render(version: str, checksums: str) -> str:
         if name in sums:
             raise ValueError(f"duplicate checksum for {name}")
         sums[name] = digest.lower()
-    formula = pathlib.Path(__file__).with_name("tdef.rb.tmpl").read_text()
+    formula = pathlib.Path(__file__).with_name("termtd.rb.tmpl").read_text()
     formula = formula.replace("{{VERSION}}", version)
     for arch, token in ARCHES.items():
-        archive = f"tdef_{version}_{arch}.tar.gz"
+        archive = f"termtd_{version}_{arch}.tar.gz"
         if archive not in sums:
             raise ValueError(f"missing {archive} in checksums")
         formula = formula.replace("{{" + token + "}}", sums[archive])

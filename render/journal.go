@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 type TowerJournalEntry struct {
@@ -137,6 +137,7 @@ func RenderJournal(w, h int, st JournalState) *Frame {
 	journalCenter(f, 2, chapter, 240, false)
 	if !st.Reading || !st.Unlocked[entries[st.Cursor].ID] {
 		drawJournalCollection(f, st)
+		journalCenter(f, 4, "Discover entries in the campaign", 240, false)
 	} else {
 		drawJournalPage(f, st)
 	}

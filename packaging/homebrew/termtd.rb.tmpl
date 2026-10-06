@@ -1,0 +1,36 @@
+class Termtd < Formula
+  desc "Terminal tower defense: hold a dying dragon's lair"
+  homepage "https://github.com/0xbenc/termtd"
+  version "{{VERSION}}"
+  license "MIT"
+
+  on_macos do
+    depends_on macos: :monterey
+    if Hardware::CPU.arm?
+      url "https://github.com/0xbenc/termtd/releases/download/v{{VERSION}}/termtd_{{VERSION}}_darwin_arm64.tar.gz"
+      sha256 "{{SHA_DARWIN_ARM64}}"
+    else
+      url "https://github.com/0xbenc/termtd/releases/download/v{{VERSION}}/termtd_{{VERSION}}_darwin_amd64.tar.gz"
+      sha256 "{{SHA_DARWIN_AMD64}}"
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/0xbenc/termtd/releases/download/v{{VERSION}}/termtd_{{VERSION}}_linux_arm64.tar.gz"
+      sha256 "{{SHA_LINUX_ARM64}}"
+    else
+      url "https://github.com/0xbenc/termtd/releases/download/v{{VERSION}}/termtd_{{VERSION}}_linux_amd64.tar.gz"
+      sha256 "{{SHA_LINUX_AMD64}}"
+    end
+  end
+
+  def install
+    bin.install "termtd"
+  end
+
+  test do
+    assert_equal "termtd #{version}", shell_output("#{bin}/termtd --version").strip
+    assert_match "hub", shell_output("#{bin}/termtd maps")
+  end
+end

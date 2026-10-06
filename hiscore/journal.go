@@ -22,7 +22,7 @@ func JournalPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".tdef-journal.json"), nil
+	return filepath.Join(home, ".termtd-journal.json"), nil
 }
 
 func LoadJournal() *Journal {
@@ -31,7 +31,7 @@ func LoadJournal() *Journal {
 	if err != nil {
 		return j
 	}
-	data, err := os.ReadFile(p)
+	data, err := readSave(p)
 	if err != nil {
 		return j
 	}
@@ -106,7 +106,7 @@ func SaveJournal(j *Journal) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(p), ".tdef-journal*.tmp")
+	tmp, err := os.CreateTemp(filepath.Dir(p), ".termtd-journal*.tmp")
 	if err != nil {
 		return err
 	}

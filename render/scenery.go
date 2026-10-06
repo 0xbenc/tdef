@@ -3,7 +3,7 @@ package render
 import (
 	"math"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 // sceneryCanvas restricts every decorative mark to blocked map cells. It is

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 // The overworld is the lair's map: a dark void with lit corridors connecting

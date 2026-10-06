@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"github.com/0xbenc/tdef/game"
-	"github.com/0xbenc/tdef/hiscore"
-	"github.com/0xbenc/tdef/render"
+	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/hiscore"
+	"github.com/0xbenc/termtd/render"
 )
 
 // RunCutscene is a review/replay entry point. It never grants progression or

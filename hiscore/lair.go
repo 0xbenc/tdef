@@ -42,7 +42,7 @@ func LairPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".tdef-lair.json"), nil
+	return filepath.Join(home, ".termtd-lair.json"), nil
 }
 
 func emptyLair() *Lair {
@@ -57,7 +57,7 @@ func LoadLair() *Lair {
 	if err != nil {
 		return l
 	}
-	data, err := os.ReadFile(p)
+	data, err := readSave(p)
 	if err != nil {
 		return l
 	}
@@ -83,7 +83,7 @@ func SaveLair(l *Lair) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(p), ".tdef-lair*.tmp")
+	tmp, err := os.CreateTemp(filepath.Dir(p), ".termtd-lair*.tmp")
 	if err != nil {
 		return err
 	}

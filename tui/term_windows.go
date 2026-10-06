@@ -44,7 +44,7 @@ func consoleMode(file *os.File, mode uint32) error {
 func Open() (*Terminal, error) {
 	t := &Terminal{in: os.Stdin, out: os.Stdout, winch: make(chan struct{}, 1), done: make(chan struct{})}
 	if err := syscall.GetConsoleMode(syscall.Handle(t.in.Fd()), &t.oldIn); err != nil {
-		return nil, fmt.Errorf("TDEF needs an interactive Windows console: %w", err)
+		return nil, fmt.Errorf("TERMTD needs an interactive Windows console: %w", err)
 	}
 	if err := syscall.GetConsoleMode(syscall.Handle(t.out.Fd()), &t.oldOut); err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func Open() (*Terminal, error) {
 	}
 	if err := consoleMode(t.out, t.oldOut|0x1|0x4|0x8); err != nil {
 		consoleMode(t.in, t.oldIn)
-		return nil, fmt.Errorf("TDEF requires Windows 10/11 virtual terminal output: %w", err)
+		return nil, fmt.Errorf("TERMTD requires Windows 10/11 virtual terminal output: %w", err)
 	}
 	t.oldCP, _, _ = getOutputCP.Call()
 	if ok, _, err := setOutputCP.Call(65001); ok == 0 {

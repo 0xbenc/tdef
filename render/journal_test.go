@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 func TestJournalPagesResponsiveAndComplete(t *testing.T) {
@@ -63,6 +63,9 @@ func TestJournalCollectionLocksHideNamesAndArt(t *testing.T) {
 	for _, size := range [][2]int{{32, 16}, {62, 19}, {80, 24}, {120, 40}} {
 		w, h := size[0], size[1]
 		f := RenderJournal(w, h, JournalState{})
+		if !strings.Contains(f.Text(), "Discover entries in the campaign") {
+			t.Fatal("journal collection must explain how to discover entries")
+		}
 		for _, e := range TowerJournalEntries {
 			if strings.Contains(f.Text(), e.Name) {
 				t.Fatal("locked entry spoiled identity")

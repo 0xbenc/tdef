@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 func TestComputeScale(t *testing.T) {
@@ -429,9 +429,9 @@ func TestHeaderSegmentsAt62(t *testing.T) {
 		}
 	}
 	// At 62 the level·diff segment is elided (first in the drop order).
-	check(62, 19, []string{"tdef", "wave 5/20", "⛁"}, []string{"the Rift", "normal"})
+	check(62, 19, []string{"termtd", "wave 5/20", "⛁"}, []string{"the Rift", "normal"})
 	// At 80 everything fits.
-	check(80, 24, []string{"tdef", "the Rift", "normal", "wave 5/20", "⛁"}, nil)
+	check(80, 24, []string{"termtd", "the Rift", "normal", "wave 5/20", "⛁"}, nil)
 	if f := Render(g, ui, Palette(), 62, 19, 0); f.C[0].R != '╭' || f.C[f.W-1].R != '╮' {
 		t.Errorf("top border corners missing: %q %q", f.C[0].R, f.C[f.W-1].R)
 	}
@@ -487,7 +487,7 @@ func TestRenderSmoke(t *testing.T) {
 		t.Fatalf("frame = %dx%d, want 80x24", f.W, f.H)
 	}
 	text := f.Text()
-	for _, want := range []string{"tdef", "1 Orc Gunner 50", "⏎|place", "the Rift", "normal"} {
+	for _, want := range []string{"termtd", "1 Orc Gunner 50", "⏎|place", "the Rift", "normal"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("frame missing %q", want)
 		}

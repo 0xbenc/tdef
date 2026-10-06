@@ -32,7 +32,7 @@ def stage(dist: pathlib.Path, out: pathlib.Path) -> None:
         raise ValueError("invalid release version")
     binaries = {}
     for artifact in json.loads((dist / "artifacts.json").read_text()):
-        if artifact["type"] != "Binary" or artifact.get("extra", {}).get("ID") != "tdef":
+        if artifact["type"] != "Binary" or artifact.get("extra", {}).get("ID") != "termtd":
             continue
         target = (artifact["goos"], artifact["goarch"])
         if target not in TARGETS:
@@ -55,24 +55,24 @@ def stage(dist: pathlib.Path, out: pathlib.Path) -> None:
         shutil.copyfile(HERE / "README-PLAY.txt", directory / "README-PLAY.txt")
         (directory / "VERSION.txt").write_text(version + "\n")
         if target[0] == "linux":
-            executable(binaries[target], directory / "tdef")
+            executable(binaries[target], directory / "termtd")
             executable(HERE / "Play.sh", directory / "Play.sh")
             launch_path, platform = "Play.sh", "linux"
         elif target[0] == "windows":
-            executable(binaries[target], directory / "tdef.exe")
+            executable(binaries[target], directory / "termtd.exe")
             shutil.copyfile(HERE / "Play.cmd", directory / "Play.cmd")
-            launch_path, platform = "tdef.exe", "windows"
+            launch_path, platform = "termtd.exe", "windows"
         else:
-            app = directory / "TDEF.app" / "Contents"
-            executable(binaries[target], app / "Resources" / "tdef")
+            app = directory / "TERMTD.app" / "Contents"
+            executable(binaries[target], app / "Resources" / "termtd")
             executable(HERE / "app-launch.sh", app / "MacOS" / "Play")
             executable(HERE / "app-play.command", app / "Resources" / "Play.command")
             executable(HERE / "Play.command", directory / "Play.command")
             info = {
                 "CFBundleExecutable": "Play",
-                "CFBundleIdentifier": "io.itch.kairuku-studios.tdef",
-                "CFBundleName": "TDEF",
-                "CFBundleDisplayName": "TDEF",
+                "CFBundleIdentifier": "io.itch.kairuku-studios.termtd",
+                "CFBundleName": "TERMTD",
+                "CFBundleDisplayName": "TERMTD",
                 "CFBundlePackageType": "APPL",
                 "CFBundleShortVersionString": version.split("-")[0],
                 "CFBundleVersion": version.split("-")[0],
@@ -80,7 +80,7 @@ def stage(dist: pathlib.Path, out: pathlib.Path) -> None:
                 "NSHighResolutionCapable": True,
             }
             (app / "Info.plist").write_bytes(plistlib.dumps(info))
-            launch_path, platform = "TDEF.app", "osx"
+            launch_path, platform = "TERMTD.app", "osx"
         (directory / ".itch.toml").write_text(
             f'[[actions]]\nname = "play"\npath = "{launch_path}"\nplatform = "{platform}"\n'
             + ('console = true\n' if platform == "windows" else '')

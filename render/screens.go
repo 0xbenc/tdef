@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 // Rect is a frame-space rectangle used for mouse hit-testing. The renderers
@@ -670,15 +670,17 @@ func drawStingerDepths(f *Frame, m *game.Map, th Theme, l Layout, frame int) {
 
 // ---------------------------------------------------------------- title
 
-// titleLetters is the 5x9 slab grid for "TDEF".
-var titleLetters = [4][5]string{
-	{"XXXXXXXXX", "XXXXXXXXX", "XXXXXXXXX", "...XXX...", "...XXX..."},
-	{"XXXXXXX..", "XXX...XXX", "XXX...XXX", "XXX...XXX", "XXXXXXX.."},
-	{"XXXXXXXXX", "XXX......", "XXXXXXXX.", "XXX......", "XXXXXXXXX"},
-	{"XXXXXXXXX", "XXX......", "XXXXXXXX.", "XXX......", "XXX......"},
+// titleLetters is the 5x6 slab grid for "TERMTD".
+var titleLetters = [6][5]string{
+	{"XXXXXX", "XXXXXX", "..XX..", "..XX..", "..XX.."},
+	{"XXXXXX", "XX....", "XXXXX.", "XX....", "XXXXXX"},
+	{"XXXXX.", "XX..XX", "XXXXX.", "XX.XX.", "XX..XX"},
+	{"XX..XX", "XXXXXX", "XXXXXX", "XX..XX", "XX..XX"},
+	{"XXXXXX", "XXXXXX", "..XX..", "..XX..", "..XX.."},
+	{"XXXXX.", "XX..XX", "XX..XX", "XX..XX", "XXXXX."},
 }
 
-var titleColors = [4]int{46, 220, 203, 171}
+var titleColors = [6]int{46, 220, 203, 171, 51, 208}
 
 // titleBest returns the highest score and its key (0, "" when empty).
 func titleBest(scores map[string]int) (int, string) {
@@ -699,9 +701,9 @@ const titleTagline = "— terminal tower defense —"
 //
 //	boot 0-250   the cinematic (~8s): a black beat, then the slab's
 //	             bounding box draws itself with a scan flicker (the light
-//	             pen's curtain-up); a light pen traces the TDEF slab out of
+//	             pen's curtain-up); a light pen traces the TERMTD slab out of
 //	             digital noise (each letter flashing white as it locks in);
-//	             then each letter, left to right, fires a different weapon
+//	             then the first four letters fire different weapons
 //	             at a creature in a frame corner — Gunner tracer spray into
 //	             a 2x2 braille blob, Cannon shell + AOE burst into a 3x5
 //	             bug, Sniper charge + piercing beam through an (o_o) guy,
@@ -712,8 +714,8 @@ const titleTagline = "— terminal tower defense —"
 //	boot 251+    the attract loop, every titleAttractCycle frames:
 //
 //	15s idle     standby: full UI, empty battlefield — no towers, no
-//	             enemies, no THE SIEGE/WAVE text
-//	then 120f    "┐THE SIEGE┌" and "┐WAVE 1┌" decode on, the five
+//	             enemies, no IDLE SCREEN/WAVE text
+//	then 120f    "┐IDLE SCREEN┌" and "┐WAVE 1┌" decode on, the five
 //	             towers power up left to right
 //	then 1685f   the battle script: wave 1 (minions) plays at true 1×
 //	             gameplay speed; waves 2-3 are compressed. The towers hold
@@ -727,7 +729,7 @@ const titleTagline = "— terminal tower defense —"
 //	             standby state, where the 15s clock starts again.
 const (
 	titleBootIntroEnd   = 8   // 0-7:      the slab box self-draws with scan flicker; the pen tip lands
-	titleBootPenEnd     = 73  // 8-72:     the light pen traces the TDEF slab
+	titleBootPenEnd     = 73  // 8-72:     the light pen traces the TERMTD slab
 	titleBootWeaponsEnd = 203 // 73-202:   the letters fire: Gunner, Cannon, Sniper, Tesla
 	titleBootFlashStart = 203 // 203-206:  the slab ignites white
 	titleBootFlashEnd   = 207 //
@@ -738,7 +740,7 @@ const (
 const (
 	// The attract loop: 15s of inactivity, then the battle sequence.
 	titleIdleWait     = 450 // 15s at 30fps
-	titleBattleLead   = 120 // THE SIEGE/WAVE text + tower power-up before wave 1
+	titleBattleLead   = 120 // IDLE SCREEN/WAVE text + tower power-up before wave 1
 	titleBattleLen    = titleBattleLead + titleCycle
 	titleAttractCycle = titleIdleWait + titleBattleLen
 )
@@ -824,13 +826,13 @@ func buildBootPenPath() []bootStep {
 	var p []bootStep
 	for li, letters := range titleLetters {
 		for row := 0; row < 5; row++ {
-			lo, hi, step := 0, 9, 1
+			lo, hi, step := 0, 6, 1
 			if row%2 == 1 {
-				lo, hi, step = 8, -1, -1
+				lo, hi, step = 5, -1, -1
 			}
 			for ci := lo; ci != hi; ci += step {
 				if letters[row][ci] == 'X' {
-					p = append(p, bootStep{relX: li*11 + ci, row: row, li: li})
+					p = append(p, bootStep{relX: li*7 + ci, row: row, li: li})
 				}
 			}
 		}
@@ -839,8 +841,8 @@ func buildBootPenPath() []bootStep {
 }
 
 // titleLetterDone[li] is the frame at which the pen finishes letter li.
-var titleLetterDone = func() [4]int {
-	var d [4]int
+var titleLetterDone = func() [6]int {
+	var d [6]int
 	n := 0
 	for li, letters := range titleLetters {
 		for row := range letters {
@@ -893,18 +895,18 @@ func titleFooter() []fseg {
 }
 
 // drawTitleStandby is the idle title: full UI, empty battlefield — no
-// towers, no enemies, no THE SIEGE/WAVE text, just the path and its
+// towers, no enemies, no IDLE SCREEN/WAVE text, just the path and its
 // ambient energy packet.
 func drawTitleStandby(w, h, frame int, scores map[string]int, pal Colors) *Frame {
 	lit := (frame/15)%2 == 0
-	f := screenBox(w, h, "TDEF", titleFooter(), lit, pal)
+	f := screenBox(w, h, "TERMTD", titleFooter(), lit, pal)
 	off := screenOff(h)
 	drawTitleChrome(f, w, h, off, scores, pal)
 	drawTitleEmptyBox(f, w, h, off, frame, pal)
 	return f
 }
 
-// drawTitleBattleSeq runs the attract battle: the THE SIEGE/WAVE
+// drawTitleBattleSeq runs the attract battle: the IDLE SCREEN/WAVE
 // text decodes on, the towers power up, then the battle script plays
 // (internal frame fr = local - titleBattleLead).
 func drawTitleBattleSeq(w, h, frame, local int, scores map[string]int, pal Colors) *Frame {
@@ -918,7 +920,7 @@ func drawTitleBattleSeq(w, h, frame, local int, scores map[string]int, pal Color
 	switch {
 	case fr < titleOverloadEnd:
 		lit := (frame/15)%2 == 0
-		f := screenBox(w, h, "TDEF", titleFooter(), lit, pal)
+		f := screenBox(w, h, "TERMTD", titleFooter(), lit, pal)
 		drawTitleBattle(f, w, h, fr, scores, pal)
 		if fr >= titleOverloadEnd-13 {
 			drawTitleOverload(f, w, h, fr-titleOverloadEnd+13, pal)
@@ -945,7 +947,7 @@ func drawTitleBattleSeq(w, h, frame, local int, scores map[string]int, pal Color
 	}
 }
 
-// drawTitleBattleIntro reveals "┐THE SIEGE┌" and "┐WAVE 1┌"
+// drawTitleBattleIntro reveals "┐IDLE SCREEN┌" and "┐WAVE 1┌"
 // character by character (each flashing white on arrival), then powers the
 // five towers up left to right. At local == titleBattleLead the box matches
 // battle frame 0 exactly.
@@ -975,8 +977,8 @@ func drawTitleBattleIntro(f *Frame, w, h, off, t int, pal Colors) {
 			f.Set(x+i, y0, c)
 		}
 	}
-	seg(2, "┐THE SIEGE┌", pal.Dim, 0)
-	seg(14, "┐WAVE 1┌", pal.Bright, 18)
+	seg(2, "┐IDLE SCREEN┌", pal.Dim, 0)
+	seg(16, "┐WAVE 1┌", pal.Bright, 18)
 
 	const towerStart, towerDur = 32, 17
 	// Left to right along the path.
@@ -1114,23 +1116,23 @@ func drawBootLetter(f *Frame, w, off, li, dx, dy, fg int, bold bool) {
 	bevel := [5]rune{'█', '▓', '▓', '▓', '▒'}
 	letters := titleLetters[li]
 	for row := 0; row < 5; row++ {
-		for ci := 0; ci < 9; ci++ {
+		for ci := 0; ci < 6; ci++ {
 			if letters[row][ci] != 'X' {
 				continue
 			}
-			f.Set(x0+li*11+ci+dx, off+2+row+dy, Cell{R: bevel[row], FG: fg, Bold: bold})
+			f.Set(x0+li*7+ci+dx, off+2+row+dy, Cell{R: bevel[row], FG: fg, Bold: bold})
 		}
 	}
 }
 
-// drawBootSlab is the complete, settled slab (all four letters in color).
+// drawBootSlab is the complete, settled slab (all six letters in color).
 func drawBootSlab(f *Frame, w, off int) {
-	for li := 0; li < 4; li++ {
+	for li := 0; li < len(titleLetters); li++ {
 		drawBootLetter(f, w, off, li, 0, 0, 0, false)
 	}
 }
 
-// drawBootPen traces the TDEF slab with a light pen: the tip is white, the
+// drawBootPen traces the TERMTD slab with a light pen: the tip is white, the
 // recent trail cools white -> cyan -> the letter color, and untraced cells
 // flicker as faint digital noise. The slab's box stays drawn around it.
 func drawBootPen(f *Frame, w, off, t int) {
@@ -1166,7 +1168,7 @@ func drawBootPen(f *Frame, w, off, t int) {
 		}
 	}
 	// Each letter flashes white for three frames as the pen completes it.
-	for li := 0; li < 4; li++ {
+	for li := 0; li < len(titleLetters); li++ {
 		if t >= titleLetterDone[li] && t < titleLetterDone[li]+3 {
 			for _, s := range titlePenPath {
 				if s.li == li {
@@ -1418,10 +1420,10 @@ func drawBootZap(f *Frame, tx, ty, s, die int) {
 	}
 }
 
-// drawBootWeapons is the fan: each letter, left to right, fires a different
+// drawBootWeapons is the fan: the first four letters fire a different
 // game weapon at a creature in a frame corner — T (Gunner) at the braille
-// blob lower-left, D (Cannon) at the 3x5 bug upper-left, E (Sniper) at the
-// (o_o) guy upper-right, F (Tesla) at the >_< guy lower-right. t is 0..129.
+// blob lower-left, E (Cannon) at the 3x5 bug upper-left, R (Sniper) at the
+// (o_o) guy upper-right, M (Tesla) at the >_< guy lower-right. t is 0..129.
 func drawBootWeapons(f *Frame, w, h, off, t int) {
 	drawBootBox(f, w, off, 98, 0, 234)
 	drawBootSlab(f, w, off)
@@ -1505,7 +1507,7 @@ func drawBootGunner(f *Frame, w, h, off, t int) {
 	}
 }
 
-// drawBootCannon: D recoils, then fires a chunky shell at the 3x5 bug in
+// drawBootCannon: E recoils, then fires a chunky shell at the 3x5 bug in
 // the upper-left corner. The bug squashes flat under the impact as the AOE
 // burst takes it.
 func drawBootCannon(f *Frame, w, h, off, t int) {
@@ -1519,7 +1521,7 @@ func drawBootCannon(f *Frame, w, h, off, t int) {
 	if x0 < 0 {
 		x0 = 0
 	}
-	mx, my := x0+15, off+2
+	mx, my := x0+li*7+3, off+2
 	tx, ty := 3, 4
 	fl := int(math.Hypot(float64(tx-mx), float64(ty-my))*2) + 1
 	if fl > 24 {
@@ -1586,7 +1588,7 @@ func drawBootCannon(f *Frame, w, h, off, t int) {
 	}
 }
 
-// drawBootSniper: E charges for fourteen frames (its top row filling with a
+// drawBootSniper: R charges for fourteen frames (its top row filling with a
 // ░▒▓█ ramp, the reticle locking on), then fires one piercing beam at the
 // (o_o) guy in the upper-right corner, who pops off bead by bead.
 func drawBootSniper(f *Frame, w, h, off, t int) {
@@ -1600,13 +1602,13 @@ func drawBootSniper(f *Frame, w, h, off, t int) {
 	if x0 < 0 {
 		x0 = 0
 	}
-	mx, my := x0+26, off+2
+	mx, my := x0+li*7+3, off+2
 	tx, ty := w-4, 3
 	if s < 14 {
 		fg := 203 + int(float64(s)/13*48)
 		drawBootLetter(f, w, off, li, 0, 0, fg, false)
-		for ci := 0; ci < 9; ci++ {
-			at := ci * 14 / 9
+		for ci := 0; ci < 6; ci++ {
+			at := ci * 14 / len(titleLetters[li][0])
 			if s < at {
 				continue
 			}
@@ -1619,7 +1621,7 @@ func drawBootSniper(f *Frame, w, h, off, t int) {
 			case age >= 3:
 				r = '▒'
 			}
-			f.Set(x0+li*11+ci, off+2, Cell{R: r, FG: 203})
+			f.Set(x0+li*7+ci, off+2, Cell{R: r, FG: 203})
 		}
 		drawBootGuy(f, tx, ty, s, -1)
 		drawBootReticle(f, tx, ty, -1)
@@ -1662,7 +1664,7 @@ func drawBootSniper(f *Frame, w, h, off, t int) {
 	drawBootGuy(f, tx, ty, s, die)
 }
 
-// drawBootTesla: F charges, then chain lightning flickers toward the
+// drawBootTesla: M charges, then chain lightning flickers toward the
 // target at 2:15 — the main arc re-rolls its jitter every frame, with two
 // branches forking off.
 func drawBootTesla(f *Frame, w, h, off, t int) {
@@ -1676,7 +1678,7 @@ func drawBootTesla(f *Frame, w, h, off, t int) {
 	if x0 < 0 {
 		x0 = 0
 	}
-	mx, my := x0+41, off+4
+	mx, my := x0+li*7+5, off+4
 	tx, ty := w-4, h-4
 	die := s - 12
 	if die < 0 {
@@ -1807,11 +1809,11 @@ func drawBootUI(f *Frame, w, h, off, t, frame int, pal Colors) {
 	if t >= 0 {
 		if t < 8 {
 			drawRoundedBox(f, 0, 0, w, h, 234)
-			embedSegment(f, 0, 2, "TDEF", '┐', '┌', 234, 244, true)
+			embedSegment(f, 0, 2, "TERMTD", '┐', '┌', 234, 244, true)
 			ghostRun(f, (w-44)/2, (w+44)/2-1, h-1)
 		} else {
 			drawRoundedBox(f, 0, 0, w, h, pal.Path)
-			embedSegment(f, 0, 2, "TDEF", '┐', '┌', pal.Path, pal.Bright, true)
+			embedSegment(f, 0, 2, "TERMTD", '┐', '┌', pal.Path, pal.Bright, true)
 			drawFooter(f, titleFooter(), lit, pal)
 			drawTitleSig(f)
 		}
@@ -1873,7 +1875,7 @@ func drawTitleBattle(f *Frame, w, h, fr int, scores map[string]int, pal Colors) 
 }
 
 // titleSig is the signature, embedded in the bottom border's right section
-// — mirroring the TDEF embed in the top border, but muted.
+// — mirroring the TERMTD embed in the top border, but muted.
 const titleSig = "by 0xbenc"
 
 // drawTitleSig draws the signature into the bottom border.
@@ -1906,7 +1908,7 @@ func drawTitleBest(f *Frame, w, off int, scores map[string]int) {
 }
 
 // drawTitleEmptyBox is the idle battlefield: the sub-box and its path with
-// the ambient energy packet — no THE SIEGE/WAVE text, no towers, no
+// the ambient energy packet — no IDLE SCREEN/WAVE text, no towers, no
 // enemies.
 func drawTitleEmptyBox(f *Frame, w, h, off, frame int, pal Colors) {
 	y0 := off + demoTop
@@ -1929,7 +1931,7 @@ func drawTitleEmptyBox(f *Frame, w, h, off, frame int, pal Colors) {
 	f.Set(w-3, pathY, Cell{R: 'E', FG: 196, Bold: true})
 }
 
-// drawTitleLogo draws the beveled TDEF slab (band rows 2-6) and its drop
+// drawTitleLogo draws the beveled TERMTD slab (band rows 2-6) and its drop
 // shadow (row 7). flashRow (0-4, or -1 for none) renders one logo row white
 // — the reboot uses it for the letter drop.
 func drawTitleLogo(f *Frame, w, off, flashRow int) {
@@ -1940,13 +1942,13 @@ func drawTitleLogo(f *Frame, w, off, flashRow int) {
 }
 
 func drawTitleLogoShadow(f *Frame, w, off int) {
-	const logoW = 42 // 4 letters * 9 + 3 gaps * 2
+	const logoW = 42 // 6 letters * 6 + 5 gaps + padding
 	x0 := (w - logoW) / 2
 	if x0 < 0 {
 		x0 = 0
 	}
 	for li, letters := range titleLetters {
-		lx := x0 + li*11
+		lx := x0 + li*7
 		for ci, ch := range letters[4] {
 			if ch == 'X' {
 				f.Set(lx+ci+1, off+7, Cell{R: '░', FG: 238})
@@ -1963,7 +1965,7 @@ func drawTitleLogoRow(f *Frame, w, off, row int, flash bool) {
 	}
 	bevel := [5]rune{'█', '▓', '▓', '▓', '▒'}
 	for li, letters := range titleLetters {
-		lx := x0 + li*11
+		lx := x0 + li*7
 		fg := titleColors[li]
 		if flash {
 			fg = 255
@@ -1990,7 +1992,7 @@ func drawTitleTagline(f *Frame, w, off, n int) {
 }
 
 // drawTitleDemo animates the scripted battle inside a full-width
-// [ THE SIEGE ] sub-box on band rows 9-13: five towers (three below
+// [ IDLE SCREEN ] sub-box on band rows 9-13: five towers (three below
 // the path, two above) fire on scripted cooldowns at scripted enemy waves.
 // Everything is a pure function of fr.
 func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
@@ -1998,7 +2000,7 @@ func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
 	if y0 <= 0 || y0+demoRows >= h-1 {
 		return
 	}
-	drawSubBox(f, 1, y0, w-2, demoRows, "THE SIEGE", pal)
+	drawSubBox(f, 1, y0, w-2, demoRows, "IDLE SCREEN", pal)
 	waveText, waveFG := "WAVE 1", pal.Bright
 	switch {
 	case fr >= titleOverloadEnd-13: // the boss reaches the exit
@@ -2008,9 +2010,9 @@ func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
 	case fr >= 480:
 		waveText, waveFG = "WAVE 2", pal.Bright
 	}
-	// The THE SIEGE label occupies x 2..12 (┐ + 9 + ┌); the wave
-	// segment follows at x 14.
-	embedSegment(f, y0, 14, waveText, '┐', '┌', pal.Path, waveFG, true)
+	// The IDLE SCREEN label occupies x 2..14 (┐ + 11 + ┌); the wave
+	// segment follows at x 16.
+	embedSegment(f, y0, 16, waveText, '┐', '┌', pal.Path, waveFG, true)
 
 	pathY := off + demoPath
 	L := w - 5 // path spans columns 2..w-3
@@ -2424,7 +2426,7 @@ func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Co
 		f.Set(x, y, Cell{R: r, FG: fg})
 	}
 	if p >= 0.58 {
-		embedSegment(f, 0, 2, "TDEF", '┐', '┌', 240, pal.Bright, true)
+		embedSegment(f, 0, 2, "TERMTD", '┐', '┌', 240, pal.Bright, true)
 	}
 	pPrev := float64(t-1) / float64(dur)
 	for i := 0; i < 5; i++ {
@@ -2457,7 +2459,17 @@ func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Co
 
 // MenuItems is the main menu, in order. Start is the lair itself: the
 // overworld, where Grak walks the floors and descends into one.
-var MenuItems = []string{"Start", "Quick Play", "Help", "High Scores", "Quit"}
+var MenuItems = []string{"Start", "Quick Play", "Help", "High Scores", "Journal", "Reset progress", "Quit"}
+
+const (
+	MenuStart = iota
+	MenuQuickPlay
+	MenuHelp
+	MenuHighScores
+	MenuJournal
+	MenuResetProgress
+	MenuQuit
+)
 
 // menuLayout returns the item rows of the main menu. The item block (2*len-1
 // rows tall at 2-row stride) is centered in the content band so the menu
@@ -2759,7 +2771,7 @@ func diffLayout(w int) (lineX int, labels [3]struct {
 }
 
 func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
-	f := screenBox(w, h, "SELECT LEVEL", []fseg{
+	f := screenBox(w, h, "QUICK PLAY · HIGH SCORES ONLY", []fseg{
 		{key: "enter", text: " start"},
 		{key: "esc", text: " back"},
 	}, true, pal)

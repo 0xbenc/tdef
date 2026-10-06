@@ -1,6 +1,7 @@
 # built binary
-tdef
-tdef.exe
+termtd
+termtd.exe
+termtd.exe~
 
 # generated output
 /output/

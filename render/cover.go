@@ -15,7 +15,7 @@ func RenderPromo(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 245, BG: 233}
 	}
 	drawRoundedBox(f, 0, 0, w, h, 238)
-	embedSegment(f, 0, 2, "./tdef", '┐', '┌', 238, 180, false)
+	embedSegment(f, 0, 2, "./termtd", '┐', '┌', 238, 180, false)
 	leftW := w/2 - 4
 	left := &Frame{W: leftW, H: h, C: make([]Cell, leftW*h)}
 	drawTitleLogo(left, leftW, 3, -1)
@@ -46,7 +46,7 @@ func RenderCover() *Frame {
 		f.C[i] = Cell{R: ' ', FG: 245, BG: 233}
 	}
 	drawRoundedBox(f, 0, 0, w, h, 238)
-	embedSegment(f, 0, 2, "./tdef", '┐', '┌', 238, 180, false)
+	embedSegment(f, 0, 2, "./termtd", '┐', '┌', 238, 180, false)
 	drawTitleLogo(f, w, 0, -1)
 	drawTitleTagline(f, w, 0, len([]rune(titleTagline)))
 	drawDragonTableau(f, 4, 10, 58, 13, 2, 233,

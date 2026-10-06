@@ -40,7 +40,7 @@ func TestLairLoadCorruptSelfHeals(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if e.Name() != ".tdef-lair.json" {
+		if e.Name() != ".termtd-lair.json" {
 			t.Fatalf("unexpected file %q in %s", e.Name(), home)
 		}
 	}
@@ -169,7 +169,7 @@ func TestDepthsRequiresEveryFixedDefenseOnSameDifficulty(t *testing.T) {
 
 func TestIntroMemorySurvivesProgressAndLegacySaves(t *testing.T) {
 	home := isolateHome(t)
-	if err := os.WriteFile(home+"/.tdef-lair.json", []byte(`{"floors":{"rotunda:1":{"best_wave":2}},"tokens":3}`), 0644); err != nil {
+	if err := os.WriteFile(home+"/.termtd-lair.json", []byte(`{"floors":{"rotunda:1":{"best_wave":2}},"tokens":3}`), 0644); err != nil {
 		t.Fatal(err)
 	}
 	l := LoadLair()

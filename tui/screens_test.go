@@ -3,9 +3,9 @@ package tui
 import (
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
-	"github.com/0xbenc/tdef/hiscore"
-	"github.com/0xbenc/tdef/render"
+	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/hiscore"
+	"github.com/0xbenc/termtd/render"
 )
 
 // lsApp builds an App on the level-select screen with the built-in level
@@ -45,10 +45,11 @@ func TestMenuTransitions(t *testing.T) {
 	a := &App{screen: ScreenMenu, scores: map[string]int{"canyon": 1}}
 	// Each case re-enters the menu, since activating an item leaves it.
 	for sel, want := range map[int]Screen{
-		0: ScreenCutscene,
-		1: ScreenLevelSelect,
-		2: ScreenHelp,
-		3: ScreenHiscores,
+		0:                  ScreenCutscene,
+		1:                  ScreenLevelSelect,
+		2:                  ScreenHelp,
+		3:                  ScreenHiscores,
+		render.MenuJournal: ScreenJournal,
 	} {
 		a.screen = ScreenMenu
 		a.menuSel = sel
@@ -58,7 +59,7 @@ func TestMenuTransitions(t *testing.T) {
 		}
 	}
 	a.screen = ScreenMenu
-	a.menuSel = 4
+	a.menuSel = len(render.MenuItems) - 1
 	a.handle(Event{Key: KeyEnter})
 	if !a.quitting {
 		t.Error("enter at Quit did not quit")

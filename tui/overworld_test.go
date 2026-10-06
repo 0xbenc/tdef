@@ -3,9 +3,9 @@ package tui
 import (
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
-	"github.com/0xbenc/tdef/hiscore"
-	"github.com/0xbenc/tdef/render"
+	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/hiscore"
+	"github.com/0xbenc/termtd/render"
 )
 
 // owTestApp builds an App standing on the lair map, with an isolated lair file.
@@ -307,10 +307,9 @@ func TestOWGameOverReturnsToLair(t *testing.T) {
 	}
 }
 
-// A run that did not come from the lair (a.ow is the zero value) must still
-// fold its result into the lair's memory without touching the overworld's
-// transition maps — the unseal cascade only runs for lair runs.
-func TestDirectPlayRecordsLairWithoutOverworld(t *testing.T) {
+// Direct play records scores without changing the lair or requiring initialized
+// overworld transition maps.
+func TestDirectPlayRecordsScoreWithoutCampaignProgress(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
@@ -331,11 +330,13 @@ func TestDirectPlayRecordsLairWithoutOverworld(t *testing.T) {
 	}
 	a.g.Status = game.StatusVictory
 	a.g.Wave = game.MaxWaves
-	// Must not panic: the floor clears (unsealing the halls) but the
-	// overworld's transition maps are never written.
+	a.g.Score = 123
 	a.stepGame(1.0 / 20.0)
-	if !a.lair.Floor("rift", diffIndex(game.Normal)).Cleared {
-		t.Fatal("a direct-play win did not record the floor in the lair")
+	if a.lair.AnyRecord() || hiscore.LoadLair().AnyRecord() {
+		t.Fatal("a direct-play win changed campaign progress")
+	}
+	if hiscore.Load()["canyon"] != 123 {
+		t.Fatal("a direct-play win did not save its high score")
 	}
 }
 
@@ -506,7 +507,7 @@ func TestOWRenownChangeReturnsPlayerToDoorway(t *testing.T) {
 	}
 }
 
-func TestDepthsCannotBypassCampaign(t *testing.T) {
+func TestDepthsCampaignGateDoesNotRestrictQuickPlay(t *testing.T) {
 	a := owTestApp(t)
 	for _, floor := range hiscore.LairFloors {
 		a.lair.Record(floor, 1, game.MaxWaves, true)
@@ -526,15 +527,12 @@ func TestDepthsCannotBypassCampaign(t *testing.T) {
 	b := lsApp()
 	b.lair = a.lair
 	b.ls.Diff, b.ls.Cursor = 1, len(b.ls.Levels)
-	if b.lsView().Err != depthsLockedMessage {
-		t.Fatal("Quick Play preview omitted lock requirement")
+	if b.lsView().Err != "" {
+		t.Fatal("Quick Play must not show a campaign lock")
 	}
+	b.ls.Seed = "1234"
 	b.handle(Event{Key: KeyEnter})
-	if b.screen != ScreenLevelSelect || b.g != nil || b.ls.Err != depthsLockedMessage {
-		t.Fatal("Quick Play bypassed depths lock")
-	}
-	// The command-line play entry must refuse the maze before opening a TTY.
-	if err := Run(nil, "maze1234", game.Normal); err == nil || err.Error() != depthsLockedMessage {
-		t.Fatalf("direct play bypassed depths lock: %v", err)
+	if b.screen != ScreenGame || b.g == nil || b.fromOW || b.level != "maze1234" {
+		t.Fatal("Quick Play must allow a procedural game without campaign progress")
 	}
 }

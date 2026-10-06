@@ -1,17 +1,79 @@
 package tui
 
 import (
+	"bytes"
 	"os"
 	"reflect"
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
-	"github.com/0xbenc/tdef/hiscore"
-	"github.com/0xbenc/tdef/render"
+	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/hiscore"
+	"github.com/0xbenc/termtd/render"
 )
+
+func TestMainMenuJournalReturnsWithoutChangingProgress(t *testing.T) {
+	for _, method := range []string{"Enter", "shortcut", "mouse"} {
+		t.Run(method, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("HOME", home)
+			t.Setenv("USERPROFILE", home)
+			if err := hiscore.SaveJournal(&hiscore.Journal{Towers: map[string]bool{"frost": true}}); err != nil {
+				t.Fatal(err)
+			}
+			if err := hiscore.SaveLair(&hiscore.Lair{IntroSeen: true, Tokens: 4}); err != nil {
+				t.Fatal(err)
+			}
+			a := newApp(nil, game.Normal)
+			a.screen, a.menuSel = ScreenMenu, render.MenuJournal
+			jp, _ := hiscore.JournalPath()
+			lp, _ := hiscore.LairPath()
+			before := map[string][]byte{}
+			for _, path := range []string{jp, lp} {
+				data, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				before[path] = data
+			}
+			switch method {
+			case "Enter":
+				a.handle(Event{Key: KeyEnter})
+			case "shortcut":
+				a.handle(Event{Rune: rune('1' + render.MenuJournal)})
+			case "mouse":
+				w, h := a.termSize()
+				r := render.MenuRects(w, h)[render.MenuJournal]
+				a.handle(Event{Mouse: true, Btn: 0, Press: true, X: r.X + 1, Y: r.Y})
+			}
+			if a.screen != ScreenJournal || a.journalReturn != ScreenMenu || a.g != nil || !a.journalUI.Unlocked["frost"] {
+				t.Fatal("menu Journal must open saved discoveries without starting gameplay")
+			}
+			a.handle(Event{Rune: '3'}) // Read the discovered Frost Mage entry.
+			if !a.journalUI.Reading {
+				t.Fatal("saved discovery could not be read")
+			}
+			a.handle(Event{Key: KeyEscape})
+			if a.screen != ScreenJournal || a.journalUI.Reading {
+				t.Fatal("Escape from a page must return to the collection")
+			}
+			a.handle(Event{Key: KeyEscape})
+			if a.screen != ScreenMenu || a.menuSel != render.MenuJournal || a.g != nil {
+				t.Fatal("journal must return to the menu selection")
+			}
+			for path, data := range before {
+				got, err := os.ReadFile(path)
+				if err != nil || !bytes.Equal(got, data) {
+					t.Fatal("browsing the journal changed campaign progress")
+				}
+			}
+		})
+	}
+}
 
 func journalGameApp(t *testing.T) *App {
 	a := owTestApp(t)
+	a.fromOW = true
+	a.owBossSeen = map[int]bool{}
 	m, err := game.LoadLevel("hub")
 	if err != nil {
 		t.Fatal(err)
@@ -88,6 +150,7 @@ func TestFailedPlacementAndUpgradeCannotDiscoverAnotherTower(t *testing.T) {
 
 func TestRelicTowerAlsoDiscoversItsPage(t *testing.T) {
 	a := owTestApp(t)
+	a.fromOW = true
 	a.bonusTower = true
 	m, _ := game.LoadLevel("hub")
 	a.enterGame(m, "hub", game.Normal)
@@ -281,6 +344,7 @@ func TestPlaceDiscoveryRequiresActualVisit(t *testing.T) {
 		t.Fatal("open floor visit not discovered")
 	}
 	m, _ := game.LoadBoss()
+	a.fromOW = true
 	a.enterGame(m, "heart", game.Normal)
 	if !hiscore.LoadJournal().Places["heart"] {
 		t.Fatal("heart entry did not discover place")

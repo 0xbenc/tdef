@@ -3,12 +3,11 @@ package tui
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/0xbenc/tdef/game"
-	"github.com/0xbenc/tdef/hiscore"
-	"github.com/0xbenc/tdef/render"
+	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/hiscore"
+	"github.com/0xbenc/termtd/render"
 )
 
 const tickRate = 20.0
@@ -44,6 +43,7 @@ const (
 	ScreenSquireMockup
 	ScreenJournal
 	ScreenCutscene
+	ScreenResetProgress
 )
 
 type App struct {
@@ -62,6 +62,9 @@ type App struct {
 	frameNo      int // 30fps tick counter; animates the title
 	titleBootAt  int // frameNo when this title visit started (boot clock)
 	menuSel      int // main-menu selection
+	resetSel     int // 0 = cancel; 1 = confirm reset
+	resetErr     string
+	resetDone    bool
 	hsTop        int // high-score scroll offset
 	ls           render.LSState
 	scores       map[string]int
@@ -100,11 +103,8 @@ type App struct {
 	prev []render.Cell
 }
 
-// Run starts a specific level directly, skipping the title/menu flow.
+// Run starts a scores-only game directly, skipping the title/menu flow.
 func Run(m *game.Map, name string, diff game.Difficulty) error {
-	if strings.HasPrefix(name, "maze") && !hiscore.LoadLair().DepthsReady(diffIndex(diff)) {
-		return fmt.Errorf("%s", depthsLockedMessage)
-	}
 	term, err := Open()
 	if err != nil {
 		return err
@@ -173,16 +173,18 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 	a.ui.ToLair = a.fromOW
 	// Relic bonuses earned on the lair, spent at the Rotunda: they ride into
 	// this defense and are consumed here.
-	a.g.Gold += a.bonusGold
-	a.g.Lives += a.bonusLives
-	if a.bonusTower {
-		if cell, ok := firstGrass(m); ok {
-			if a.g.Build(cell, game.TowerGunner) != nil {
-				a.discoverTower(game.TowerGunner)
+	if a.fromOW {
+		a.g.Gold += a.bonusGold
+		a.g.Lives += a.bonusLives
+		if a.bonusTower {
+			if cell, ok := firstGrass(m); ok {
+				if a.g.Build(cell, game.TowerGunner) != nil {
+					a.discoverTower(game.TowerGunner)
+				}
 			}
 		}
+		a.bonusGold, a.bonusTower, a.bonusLives = 0, false, 0
 	}
-	a.bonusGold, a.bonusTower, a.bonusLives = 0, false, 0
 	a.cleanWaves = 0
 	a.waveStartLives = a.g.Lives
 	tw, th := a.termSize()
@@ -193,7 +195,9 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 	a.msgTTL = 0
 	a.prev = nil
 	a.screen = ScreenGame
-	a.discoverPlace(floorForLevel(name))
+	if a.fromOW {
+		a.discoverPlace(floorForLevel(name))
+	}
 }
 
 // firstGrass is the first grass cell in reading order: where a relic's free
@@ -337,26 +341,24 @@ func (a *App) stepGame(real float64) {
 			a.cleanWaves++ // the final expedition held clean
 		}
 		best, isNew := hiscore.Update(a.level, a.g.Score)
+		a.scores = hiscore.Load()
 		a.ui.BestScore = best
 		a.ui.NewBest = isNew
-		// The lair remembers the defense: its record, its relics, and any
-		// floor the result just unseals.
-		d := diffIndex(a.diff)
-		floor := a.owFloorID
-		if floor == "" {
-			floor = floorForLevel(a.level)
-		}
-		a.heartEndingPending = won && floor == hiscore.HeartFloor && !a.lair.BossHeld(d)
-		a.lair.Record(floor, d, a.g.Wave, won)
-		if won {
-			a.journal.RecordVictory(floor, d)
-			hiscore.SaveJournal(a.journal)
-		}
-		a.lair.Tokens += a.cleanWaves
-		hiscore.SaveLair(a.lair)
 		if a.fromOW {
-			// The unseal cascade is a visual transition on the map, so it only
-			// runs for runs that came from the lair (a.ow is initialised there).
+			// Only defenses entered through the lair change campaign progress.
+			d := diffIndex(a.diff)
+			floor := a.owFloorID
+			if floor == "" {
+				floor = floorForLevel(a.level)
+			}
+			a.heartEndingPending = won && floor == hiscore.HeartFloor && !a.lair.BossHeld(d)
+			a.lair.Record(floor, d, a.g.Wave, won)
+			if won {
+				a.journal.RecordVictory(floor, d)
+				hiscore.SaveJournal(a.journal)
+			}
+			a.lair.Tokens += a.cleanWaves
+			hiscore.SaveLair(a.lair)
 			a.owUnsealCheck(d)
 			a.owSetBanner(won, best, isNew)
 			a.owHeartBlastCheck(d)
@@ -368,8 +370,7 @@ func (a *App) stepGame(real float64) {
 	}
 }
 
-// floorForLevel maps a level id to the lair floor that played it, so runs
-// from Quick Play feed the same memory as runs from the overworld.
+// floorForLevel maps a level id to its corresponding lair floor.
 func floorForLevel(level string) string {
 	switch {
 	case level == "canyon":
@@ -447,6 +448,8 @@ func (a *App) drawScreen() {
 		a.blit(render.RenderTitle(w, h, a.frameNo, a.frameNo-a.titleBootAt, a.scores, a.pal))
 	case ScreenMenu:
 		a.blit(render.RenderMenu(w, h, a.menuSel, a.pal))
+	case ScreenResetProgress:
+		a.blit(render.RenderResetProgress(w, h, a.resetSel, a.resetDone, a.resetErr, a.pal))
 	case ScreenHelp:
 		a.blit(render.RenderHelp(w, h, a.pal))
 	case ScreenHiscores:
@@ -546,6 +549,8 @@ func (a *App) handle(e Event) {
 		a.handleTitle(e)
 	case ScreenMenu:
 		a.handleMenu(e)
+	case ScreenResetProgress:
+		a.handleResetProgress(e)
 	case ScreenHelp:
 		a.handleHelp(e)
 	case ScreenHiscores:
@@ -593,7 +598,7 @@ func (a *App) handleMenu(e Event) {
 		a.moveMenu(-1)
 	case 's', 'S':
 		a.moveMenu(1)
-	case '1', '2', '3', '4', '5':
+	case '1', '2', '3', '4', '5', '6', '7':
 		a.activateMenu(int(e.Rune - '1'))
 	}
 	switch e.Key {
@@ -782,15 +787,19 @@ func (a *App) moveMenu(dir int) {
 
 func (a *App) activateMenu(i int) {
 	switch i {
-	case 0:
+	case render.MenuStart:
 		a.toScreen(ScreenOverworld) // Start: the lair itself
-	case 1:
+	case render.MenuQuickPlay:
 		a.toScreen(ScreenLevelSelect)
-	case 2:
+	case render.MenuHelp:
 		a.toScreen(ScreenHelp)
-	case 3:
+	case render.MenuHighScores:
 		a.toScreen(ScreenHiscores)
-	default:
+	case render.MenuJournal:
+		a.openJournal()
+	case render.MenuResetProgress:
+		a.toScreen(ScreenResetProgress)
+	case render.MenuQuit:
 		a.quit()
 	}
 }
@@ -810,10 +819,6 @@ func (a *App) cycleDiff(dir int) {
 func (a *App) startGame() {
 	diff := render.Difficulties[a.ls.Diff]
 	if a.ls.Cursor == len(a.ls.Levels) {
-		if !a.lair.DepthsReady(a.ls.Diff) {
-			a.ls.Err = depthsLockedMessage
-			return
-		}
 		seed, ok := a.parseSeed()
 		if !ok {
 			a.ls.Err = "seed too large"
@@ -824,7 +829,7 @@ func (a *App) startGame() {
 			a.ls.Err = err.Error()
 			return
 		}
-		a.enterGame(m, fmt.Sprintf("maze%d", seed), diff)
+		a.enterQuickGame(m, fmt.Sprintf("maze%d", seed), diff)
 		return
 	}
 	name := a.ls.Levels[a.ls.Cursor]
@@ -833,6 +838,13 @@ func (a *App) startGame() {
 		a.ls.Err = err.Error()
 		return
 	}
+	a.enterQuickGame(m, name, diff)
+}
+
+// A prior lair run must not make a subsequent Quick Play run a campaign run.
+func (a *App) enterQuickGame(m *game.Map, name string, diff game.Difficulty) {
+	a.fromOW = false
+	a.owFloorID = ""
 	a.enterGame(m, name, diff)
 }
 
@@ -874,9 +886,6 @@ func (a *App) lsView() render.LSState {
 		}
 	}
 	v := a.ls
-	if v.Cursor == len(v.Levels) && !a.lair.DepthsReady(v.Diff) {
-		v.Err = depthsLockedMessage
-	}
 	v.Preview = a.lsPreview
 	return v
 }
@@ -887,6 +896,8 @@ func (a *App) toScreen(s Screen) {
 	a.screen = s
 	a.prev = nil
 	switch s {
+	case ScreenResetProgress:
+		a.resetSel, a.resetErr, a.resetDone = 0, "", false
 	case ScreenTitle:
 		a.titleBootAt = a.frameNo // replay the boot cinematic
 	case ScreenHiscores:
@@ -1232,6 +1243,8 @@ func (a *App) leaveGame() {
 		a.toScreen(ScreenOverworld)
 		return
 	}
+	// A finished Quick Play run must not suppress the first campaign opening.
+	a.g = nil
 	if len(a.ls.Levels) > 0 {
 		a.toScreen(ScreenLevelSelect)
 		return

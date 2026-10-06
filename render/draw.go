@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 // NoSelection is "no tower selected". UI.Selected must be initialized to it
@@ -138,7 +138,7 @@ func RenderTooSmall(tw, th, needW, needH int) *Frame {
 		tw, th = 80, 24
 	}
 	f := &Frame{W: tw, H: th, C: make([]Cell, tw*th)}
-	m1 := " tdef: terminal too small"
+	m1 := " termtd: terminal too small"
 	m2 := fmt.Sprintf(" needs at least %dx%d — enlarge the window", needW, needH)
 	// Kept short: the notice renders in a terminal NARROWER than the
 	// frame, so long lines get clipped at the edges.
@@ -725,12 +725,12 @@ func (s headerSeg) len() int {
 }
 
 // headerSegments builds the row-0 segments in canonical order:
-// tdef | level·diff | wave | ⏸ | ⛁ g·♥ l·★ s·xN. The wave and stats
+// termtd | level·diff | wave | ⏸ | ⛁ g·♥ l·★ s·xN. The wave and stats
 // segments carry the decisions, so they are never dropped; under pressure
 // the level·diff, then wordmark, then pause mark are elided, in that order.
 func headerSegments(g *game.State, ui *UI, pal Colors) []headerSeg {
 	segs := []headerSeg{
-		{runs: []headerRun{{"tdef", pal.Bright, true}}, drop: 1},
+		{runs: []headerRun{{"termtd", pal.Bright, true}}, drop: 1},
 	}
 	if ui.Level != "" {
 		segs = append(segs, headerSeg{

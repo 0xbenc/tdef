@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 // titleAt renders the title at attract-battle internal frame fr
-// (0 = the THE SIEGE text starts to decode), with the visit clock
+// (0 = the IDLE SCREEN text starts to decode), with the visit clock
 // set so the boot cinematic and idle wait are already behind us.
 func titleAt(w, h, frame, fr int, scores map[string]int) *Frame {
 	boot := titleBootLen + titleIdleWait + titleBattleLead + fr
@@ -70,8 +70,8 @@ func TestRenderTitleFitsFrame(t *testing.T) {
 		}
 		text := titleStandbyAt(w, h, 100, 100, scores).Text()
 		for _, want := range []string{
-			"█████████", // logo top bevel (T)
-			"▒▒▒",       // logo bottom bevel
+			"██████", // logo top bevel (T)
+			"▒▒▒",    // logo bottom bevel
 			"— terminal tower defense —",
 			"▶", "E", // battlefield spawn / exit
 			" towers ", " enemies ",
@@ -83,9 +83,9 @@ func TestRenderTitleFitsFrame(t *testing.T) {
 				t.Errorf("w=%d h=%d: standby missing %q:\n%s", w, h, want, text)
 			}
 		}
-		// The standby battlefield must be empty: no THE SIEGE/WAVE
+		// The standby battlefield must be empty: no IDLE SCREEN/WAVE
 		// text.
-		for _, absent := range []string{"THE SIEGE", "WAVE"} {
+		for _, absent := range []string{"IDLE SCREEN", "WAVE"} {
 			if strings.Contains(text, absent) {
 				t.Errorf("w=%d h=%d: standby shows %q:\n%s", w, h, absent, text)
 			}
@@ -321,15 +321,15 @@ func TestTitlePhases(t *testing.T) {
 		want []string
 		abs  []string
 	}{
-		{200, []string{"THE SIEGE", "WAVE 1"}, nil},
+		{200, []string{"IDLE SCREEN", "WAVE 1"}, nil},
 		{600, []string{"WAVE 2"}, nil},
 		{1100, []string{"WAVE 3", "B"}, nil},
 		{1505, []string{"BREACH"}, nil},
-		{1514, nil, []string{"THE SIEGE", "TDEF", "·"}},                  // static whiteout
-		{1525, []string{"█"}, []string{"THE SIEGE"}},                     // shockwave front
-		{1590, nil, []string{"THE SIEGE", "█"}},                          // cooled grid only
-		{1640, nil, []string{"THE SIEGE", "[enter]"}},                    // mid-reboot
-		{1683, []string{"[enter] start"}, []string{"THE SIEGE", "WAVE"}}, // rebooted into the standby
+		{1514, nil, []string{"IDLE SCREEN", "TERMTD", "·"}},                // static whiteout
+		{1525, []string{"█"}, []string{"IDLE SCREEN"}},                     // shockwave front
+		{1590, nil, []string{"IDLE SCREEN", "█"}},                          // cooled grid only
+		{1640, nil, []string{"IDLE SCREEN", "[enter]"}},                    // mid-reboot
+		{1683, []string{"[enter] start"}, []string{"IDLE SCREEN", "WAVE"}}, // rebooted into the standby
 	}
 	for _, c := range cases {
 		got := text(c.fr)
@@ -540,11 +540,11 @@ func TestTitleBootSequence(t *testing.T) {
 	if c := f152.C[3*w+94]; c.R != '(' || c.FG != 255 || !c.Bold {
 		t.Fatalf("boot 152 guy flash = %+v, want (/255/bold", c)
 	}
-	// Boot 183: F's Tesla arc is live — the >_< guy convulses under it,
+	// Boot 183: M's Tesla arc is live — the >_< guy convulses under it,
 	// frame busy.
 	f183 := RenderTitle(w, h, 183, 183, nil, Palette())
-	if c := f183.C[7*w+62]; c.R != '█' || c.FG != 171 {
-		t.Fatalf("boot 183 F letter = %+v, want █/171", c)
+	if c := f183.C[(off+2)*w+x0+3*7]; c.R != '█' || c.FG != 171 {
+		t.Fatalf("boot 183 M letter = %+v, want █/171", c)
 	}
 	if c := f183.C[26*w+95]; c.R != '>' || c.FG != 244 {
 		t.Fatalf("boot 183 zap guy = %+v, want >/244", c)
@@ -579,7 +579,7 @@ func TestTitleBootSequence(t *testing.T) {
 		t.Fatalf("boot 213 caret = %+v, want █/251", c)
 	}
 	// Boot 223: the chrome fades in — border and footer still ghosted,
-	// the signature not yet up. (x=20 is clear of the TDEF title.)
+	// the signature not yet up. (x=20 is clear of the TERMTD title.)
 	f223 := RenderTitle(w, h, 223, 223, nil, Palette())
 	if c := f223.C[0*w+20]; c.FG != 234 {
 		t.Fatalf("boot 223 border = %+v, want ghost 234", c)
@@ -611,7 +611,7 @@ func TestTitleBootSequence(t *testing.T) {
 	}
 }
 
-// The standby battlefield is empty: no THE SIEGE/WAVE text, no
+// The standby battlefield is empty: no IDLE SCREEN/WAVE text, no
 // towers, no enemies — just the path, its ambient packet, and the
 // spawn/exit markers.
 func TestTitleStandbyEmpty(t *testing.T) {
@@ -619,7 +619,7 @@ func TestTitleStandbyEmpty(t *testing.T) {
 	off := screenOff(h)
 	f := titleStandbyAt(w, h, 0, 100, nil)
 	text := f.Text()
-	for _, absent := range []string{"THE SIEGE", "WAVE"} {
+	for _, absent := range []string{"IDLE SCREEN", "WAVE"} {
 		if strings.Contains(text, absent) {
 			t.Errorf("standby shows %q:\n%s", absent, text)
 		}
@@ -650,7 +650,7 @@ func TestTitleStandbyEmpty(t *testing.T) {
 }
 
 // The signature sits embedded in the bottom border's right section (mirroring
-// the TDEF embed in the top border), muted, and clear of the centered footer.
+// the TERMTD embed in the top border), muted, and clear of the centered footer.
 func TestTitleSigInBottomBorder(t *testing.T) {
 	for _, size := range [][2]int{{62, 19}, {100, 30}} {
 		w, h := size[0], size[1]
@@ -678,7 +678,7 @@ func TestTitleSigInBottomBorder(t *testing.T) {
 	}
 }
 
-// The attract loop: 15s (450 frames) of standby, then the THE SIEGE/WAVE
+// The attract loop: 15s (450 frames) of standby, then the IDLE SCREEN/WAVE
 // decode and tower power-up, then the battle script; it repeats.
 func TestTitleIdleGate(t *testing.T) {
 	const w, h = 100, 30
@@ -686,12 +686,12 @@ func TestTitleIdleGate(t *testing.T) {
 		return RenderTitle(w, h, boot, boot, nil, Palette()).Text()
 	}
 	// The frame before the 15s deadline: still idle.
-	if got := text(titleBootLen + titleIdleWait - 1); strings.Contains(got, "THE SIEGE") {
+	if got := text(titleBootLen + titleIdleWait - 1); strings.Contains(got, "IDLE SCREEN") {
 		t.Fatalf("1 frame before the idle deadline the battle text is up:\n%s", got)
 	}
 	// Past the deadline: the label has decoded, WAVE 1 is still arriving.
 	at := titleBootLen + titleIdleWait + 26
-	if got := text(at); !strings.Contains(got, "THE SIEGE") || strings.Contains(got, "WAVE 1") {
+	if got := text(at); !strings.Contains(got, "IDLE SCREEN") || strings.Contains(got, "WAVE 1") {
 		t.Fatalf("past the deadline want the label up and WAVE 1 decoding:\n%s", text(at))
 	}
 	// 2s past: WAVE 1 is on.
@@ -766,5 +766,27 @@ func TestLSRectsMatchRenderedRows(t *testing.T) {
 	}
 	if !strings.Contains(lines[seedRect.Y], "seed:") {
 		t.Errorf("seed rect at row %d misses the seed line: %q", seedRect.Y, lines[seedRect.Y])
+	}
+}
+
+func TestRenamedTitleCompletesAllSixLetters(t *testing.T) {
+	if len(titleLetters) != 6 {
+		t.Fatal("TERMTD requires six letters")
+	}
+	if titleLetterDone[len(titleLetters)-1] >= titleBootPenEnd {
+		t.Fatal("light pen must finish the final D before the weapon sequence")
+	}
+	if bootPenIndex(titleBootPenEnd-1) != len(titlePenPath)-1 {
+		t.Fatal("light pen did not reach the final logo cell")
+	}
+	const w, h = 80, 24
+	off := screenOff(h)
+	x0 := (w - 42) / 2
+	f := RenderTitle(w, h, titleBootPenEnd, titleBootPenEnd, nil, Palette())
+	for li, letter := range titleLetters {
+		x := x0 + li*7
+		if letter[0][0] != 'X' || f.C[(off+2)*w+x].R != '█' {
+			t.Fatalf("letter %d missing at start of weapon sequence", li)
+		}
 	}
 }

@@ -52,7 +52,7 @@ func TestSaveIsAtomicAndReadable(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if e.Name() != ".tdef-hiscores.json" {
+		if e.Name() != ".termtd-hiscores.json" {
 			t.Fatalf("unexpected file %q in %s", e.Name(), home)
 		}
 	}

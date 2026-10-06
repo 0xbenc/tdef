@@ -10,7 +10,7 @@ import (
 // Homebrew runs --version outside a TTY. Verify release metadata is embedded
 // in the executable and none of the version aliases opens the terminal.
 func TestReleaseVersionCLI(t *testing.T) {
-	binary := filepath.Join(t.TempDir(), "tdef")
+	binary := filepath.Join(t.TempDir(), "termtd")
 	if runtime.GOOS == "windows" {
 		binary += ".exe"
 	}
@@ -19,7 +19,7 @@ func TestReleaseVersionCLI(t *testing.T) {
 	}
 	for _, arg := range []string{"version", "--version", "-version"} {
 		out, err := exec.Command(binary, arg).CombinedOutput()
-		if err != nil || string(out) != "tdef 1.0.0\n" {
+		if err != nil || string(out) != "termtd 1.0.0\n" {
 			t.Errorf("%s: output %q, error %v", arg, out, err)
 		}
 	}

@@ -10,7 +10,7 @@ permissions:
   attestations: write
 
 concurrency:
-  group: tdef-release
+  group: termtd-release
   cancel-in-progress: false
 
 jobs:
@@ -115,16 +115,16 @@ jobs:
           set -euo pipefail
           gh auth setup-git
           git clone --depth 1 --branch main https://github.com/0xbenc/homebrew-tap.git tap
-          python3 packaging/homebrew/render.py "$VERSION" dist/checksums.txt tap/Formula/tdef.rb
+          python3 packaging/homebrew/render.py "$VERSION" dist/checksums.txt tap/Formula/termtd.rb
           cd tap
           git config user.name goreleaserbot
           git config user.email goreleaserbot@users.noreply.github.com
-          git add Formula/tdef.rb
+          git add Formula/termtd.rb
           if git diff --cached --quiet; then
             echo "formula already current for $VERSION"
             exit 0
           fi
-          git commit -m "Brew formula update for tdef version $VERSION"
+          git commit -m "Brew formula update for termtd version $VERSION"
           # Another project can update this shared tap during our release.
           for attempt in 1 2 3; do
             git pull --rebase origin main
@@ -153,7 +153,7 @@ jobs:
       - name: Restage itch packages
         run: python3 packaging/itch/stage.py
       - name: Install pinned Butler
-        run: bash packaging/itch/install-butler.sh "$RUNNER_TEMP/tdef-butler"
+        run: bash packaging/itch/install-butler.sh "$RUNNER_TEMP/termtd-butler"
       - name: Validate and publish itch channels
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
@@ -162,4 +162,4 @@ jobs:
         run: |
           python3 packaging/itch/publish.py \
             --target "$ITCH_TARGET" --version "$RELEASE_VERSION" \
-            --butler "$RUNNER_TEMP/tdef-butler/butler"
+            --butler "$RUNNER_TEMP/termtd-butler/butler"

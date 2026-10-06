@@ -1,7 +1,7 @@
 package render
 
 import (
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 	"math"
 )
 

@@ -6,7 +6,7 @@ from render import ARCHES, render
 class FormulaReleaseTest(unittest.TestCase):
     def setUp(self):
         self.checksums = "\n".join(
-            f"{index:064x}  tdef_1.0.0_{arch}.tar.gz"
+            f"{index:064x}  termtd_1.0.0_{arch}.tar.gz"
             for index, arch in enumerate(ARCHES, 1)
         )
 
@@ -15,7 +15,7 @@ class FormulaReleaseTest(unittest.TestCase):
         self.assertNotIn("{{", formula)
         self.assertIn('version "1.0.0"', formula)
         for index, arch in enumerate(ARCHES, 1):
-            self.assertIn(f"/v1.0.0/tdef_1.0.0_{arch}.tar.gz", formula)
+            self.assertIn(f"/v1.0.0/termtd_1.0.0_{arch}.tar.gz", formula)
             self.assertIn(f'sha256 "{index:064x}"', formula)
 
     def test_incomplete_release_is_rejected(self):
@@ -24,7 +24,7 @@ class FormulaReleaseTest(unittest.TestCase):
 
     def test_invalid_checksums_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "invalid SHA-256"):
-            render("1.0.0", "bogus  tdef_1.0.0_linux_amd64.tar.gz")
+            render("1.0.0", "bogus  termtd_1.0.0_linux_amd64.tar.gz")
 
     def test_duplicate_archive_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "duplicate"):

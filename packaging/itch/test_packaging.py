@@ -18,7 +18,7 @@ from stage import HERE, TARGETS, stage
 
 class ItchPackagingTest(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="TDEF builds with spaces ")
+        self.temporary = tempfile.TemporaryDirectory(prefix="TERMTD builds with spaces ")
         self.addCleanup(self.temporary.cleanup)
         self.root = pathlib.Path(self.temporary.name)
         self.dist = self.root / "dist"
@@ -27,13 +27,13 @@ class ItchPackagingTest(unittest.TestCase):
         artifacts = []
         self.sources = {}
         for system, arch in TARGETS:
-            binary = self.dist / f"{system}_{arch}" / "tdef"
+            binary = self.dist / f"{system}_{arch}" / "termtd"
             binary.parent.mkdir()
             binary.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
             binary.chmod(0o755)
             self.sources[(system, arch)] = binary
             artifacts.append({"type": "Binary", "goos": system, "goarch": arch,
-                              "path": str(binary), "extra": {"ID": "tdef"}})
+                              "path": str(binary), "extra": {"ID": "termtd"}})
         (self.dist / "artifacts.json").write_text(json.dumps(artifacts))
         self.out = self.dist / "itch"
         stage(self.dist, self.out)
@@ -42,18 +42,18 @@ class ItchPackagingTest(unittest.TestCase):
         for (system, arch), channel in TARGETS.items():
             package = self.out / channel
             if system == "linux":
-                binary = package / "tdef"
+                binary = package / "termtd"
                 launcher = package / "Play.sh"
             elif system == "windows":
-                binary = package / "tdef.exe"
+                binary = package / "termtd.exe"
                 launcher = package / "Play.cmd"
                 manifest = (package / ".itch.toml").read_text()
-                self.assertIn('path = "tdef.exe"', manifest)
+                self.assertIn('path = "termtd.exe"', manifest)
                 self.assertIn('platform = "windows"', manifest)
                 self.assertIn('console = true', manifest)
             else:
-                app = package / "TDEF.app" / "Contents"
-                binary = app / "Resources" / "tdef"
+                app = package / "TERMTD.app" / "Contents"
+                binary = app / "Resources" / "termtd"
                 launcher = package / "Play.command"
                 info = plistlib.loads((app / "Info.plist").read_bytes())
                 self.assertTrue((app / "MacOS" / info["CFBundleExecutable"]).is_file())
@@ -87,8 +87,8 @@ class ItchPackagingTest(unittest.TestCase):
         source.write_text('package main\nimport ("fmt"; "os")\n'
                           'func main() { for _, arg := range os.Args[1:] { fmt.Println(arg) } }\n')
         package = self.out / "windows-amd64"
-        (package / "tdef.exe").unlink()
-        subprocess.run(["go", "build", "-o", str(package / "tdef.exe"), str(source)], check=True)
+        (package / "termtd.exe").unlink()
+        subprocess.run(["go", "build", "-o", str(package / "termtd.exe"), str(source)], check=True)
         result = subprocess.run([str(package / "Play.cmd"), "argument with spaces", "literal $value"],
                                 shell=True, capture_output=True, text=True, check=True, timeout=10)
         self.assertEqual(result.stdout.splitlines(), ["argument with spaces", "literal $value"])
@@ -103,7 +103,7 @@ class ItchPackagingTest(unittest.TestCase):
                 package = self.out / "linux-amd64"
                 result = subprocess.run([str(package / "Play.sh"), "two words", "literal $value"],
                                         env=env, capture_output=True, text=True, check=True)
-                self.assertEqual(result.stdout.splitlines(), prefix + [str(package / "tdef"), "two words", "literal $value"])
+                self.assertEqual(result.stdout.splitlines(), prefix + [str(package / "termtd"), "two words", "literal $value"])
                 (directory / terminal).unlink()
 
     @unittest.skipIf(os.name == "nt", "Unix shell launcher")
@@ -113,7 +113,7 @@ class ItchPackagingTest(unittest.TestCase):
         result = subprocess.run([str(self.out / "linux-amd64" / "Play.sh")],
                                 env=dict(os.environ, PATH=str(directory)), capture_output=True, text=True)
         self.assertEqual(result.returncode, 1)
-        self.assertIn("./tdef", result.stderr)
+        self.assertIn("./termtd", result.stderr)
 
     @unittest.skipIf(os.name == "nt", "Unix shell launcher")
     def test_xfce_command_string_preserves_paths_and_arguments(self):
@@ -149,19 +149,19 @@ class ItchPackagingTest(unittest.TestCase):
         self.assertFalse((self.root / "incomplete").exists())
 
     def test_publication_validates_all_channels_first(self):
-        plan = commands(self.out, "kairuku-studios/tdef", "v1.0.0", "butler")
+        plan = commands(self.out, "kairuku-studios/termtd", "v1.0.0", "butler")
         count = len(TARGETS)
         self.assertEqual([command[1] for command in plan], ["validate"] * count + ["push"] * count)
         for command, (system, _) in zip(plan[:count], TARGETS):
             self.assertEqual(command[3], "osx" if system == "darwin" else system)
         for command, channel in zip(plan[count:], TARGETS.values()):
-            self.assertIn("kairuku-studios/tdef:" + channel, command)
+            self.assertIn("kairuku-studios/termtd:" + channel, command)
             self.assertEqual(command[-2:], ["--userversion", "1.0.0"])
         with self.assertRaisesRegex(ValueError, "stable"):
-            commands(self.out, "kairuku-studios/tdef", "v1.0.0-rc1", "butler")
+            commands(self.out, "kairuku-studios/termtd", "v1.0.0-rc1", "butler")
         (self.out / "mac-arm64" / "VERSION.txt").write_text("2.0.0\n")
         with self.assertRaisesRegex(ValueError, "wrong package version"):
-            commands(self.out, "kairuku-studios/tdef", "1.0.0", "butler")
+            commands(self.out, "kairuku-studios/termtd", "1.0.0", "butler")
 
 
 if __name__ == "__main__":

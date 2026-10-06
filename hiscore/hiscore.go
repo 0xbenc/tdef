@@ -21,7 +21,7 @@ func Path() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".tdef-hiscores.json"), nil
+	return filepath.Join(home, ".termtd-hiscores.json"), nil
 }
 
 func Load() Table {
@@ -30,7 +30,7 @@ func Load() Table {
 	if err != nil {
 		return t
 	}
-	data, err := os.ReadFile(p)
+	data, err := readSave(p)
 	if err != nil {
 		return t
 	}
@@ -53,7 +53,7 @@ func Save(t Table) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(p), ".tdef-hiscores*.tmp")
+	tmp, err := os.CreateTemp(filepath.Dir(p), ".termtd-hiscores*.tmp")
 	if err != nil {
 		return err
 	}

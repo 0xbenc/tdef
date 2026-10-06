@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0xbenc/tdef/game"
-	"github.com/0xbenc/tdef/render"
-	"github.com/0xbenc/tdef/tui"
+	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/render"
+	"github.com/0xbenc/termtd/tui"
 )
 
 // Release builds set version through -ldflags; local builds remain identifiable.
@@ -23,7 +23,7 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "version", "--version", "-version":
-		fmt.Printf("tdef %s\n", version)
+		fmt.Printf("termtd %s\n", version)
 	case "play":
 		play(os.Args[2:])
 	case "bench":
@@ -125,40 +125,40 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprint(os.Stderr, `tdef - terminal tower defense
+	fmt.Fprint(os.Stderr, `termtd - terminal tower defense
 
 usage:
-  tdef [play flags]        play (default: title -> menu -> the lair)
-  tdef bench [flags]       run autoplay balance benchmark
-  tdef headless [flags]    run one autoplay game, print result
-  tdef capture [flags]     render headless game frames to files
-  tdef overworld           the lair map: walk the floors, descend into one
-  tdef intro               replay the opening film
-  tdef ending              replay the Heart ending film
-  tdef journal             browse Grak's lore journal
-  tdef dragon              view Malgrath's static portrait mockup
-  tdef grak                view Grak's static portrait mockup
-  tdef gnolls              view the Gnoll Slingers lore portrait
-  tdef gunner              view the Orc Gunner lore portrait
-  tdef frost               view the Frost Mage lore portrait
-  tdef player              view the guild champion lore portrait
-  tdef centurion           view the warded guild veteran portrait
-  tdef squire              view the young guild recruit portrait
-  tdef wizard              view the guild spellcaster portrait
-  tdef mercenary           view the weary guild hireling portrait
-  tdef rogue               view the guild knife-runner portrait
-  tdef paladin             view the guild vanguard portrait
-  tdef necromancer         view the guild summoner portrait
-  tdef trebuchet           view the monster siege crew portrait
-  tdef lightning           view the Lightning Mage portrait
-  tdef ranger              view the monster archer portrait
-  tdef cannonier           view the monster artillery crew portrait
-  tdef maps                list built-in levels
-  tdef version             print the binary version
-  tdef help
+  termtd [play flags]        play (default: title -> menu -> the lair)
+  termtd bench [flags]       run autoplay balance benchmark
+  termtd headless [flags]    run one autoplay game, print result
+  termtd capture [flags]     render headless game frames to files
+  termtd overworld           the lair map: walk the floors, descend into one
+  termtd intro               replay the opening film
+  termtd ending              replay the Heart ending film
+  termtd journal             browse Grak's lore journal
+  termtd dragon              view Malgrath's static portrait mockup
+  termtd grak                view Grak's static portrait mockup
+  termtd gnolls              view the Gnoll Slingers lore portrait
+  termtd gunner              view the Orc Gunner lore portrait
+  termtd frost               view the Frost Mage lore portrait
+  termtd player              view the guild champion lore portrait
+  termtd centurion           view the warded guild veteran portrait
+  termtd squire              view the young guild recruit portrait
+  termtd wizard              view the guild spellcaster portrait
+  termtd mercenary           view the weary guild hireling portrait
+  termtd rogue               view the guild knife-runner portrait
+  termtd paladin             view the guild vanguard portrait
+  termtd necromancer         view the guild summoner portrait
+  termtd trebuchet           view the monster siege crew portrait
+  termtd lightning           view the Lightning Mage portrait
+  termtd ranger              view the monster archer portrait
+  termtd cannonier           view the monster artillery crew portrait
+  termtd maps                list built-in levels
+  termtd version             print the binary version
+  termtd help
 
 play flags:
-  -level string   level name (default "winding"; see tdef maps)
+  -level string   level name (default "winding"; see termtd maps)
   -maze int       use a procedural maze with this seed (0 = random)
 
 bench flags:
@@ -424,6 +424,6 @@ func mapsCmd() {
 }
 
 func die(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, "tdef: "+format+"\n", args...)
+	fmt.Fprintf(os.Stderr, "termtd: "+format+"\n", args...)
 	os.Exit(1)
 }

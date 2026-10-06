@@ -4,7 +4,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/0xbenc/tdef/render"
+	"github.com/0xbenc/termtd/render"
 )
 
 func main() {

@@ -12,7 +12,7 @@ import (
 )
 
 func TestWindowsConsoleLifecycle(t *testing.T) {
-	if os.Getenv("TDEF_CONSOLE_TEST") != "1" {
+	if os.Getenv("TERMTD_CONSOLE_TEST") != "1" {
 		binary, err := os.Executable()
 		if err != nil {
 			t.Fatal(err)
@@ -20,7 +20,7 @@ func TestWindowsConsoleLifecycle(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, binary, "-test.run=^TestWindowsConsoleLifecycle$", "-test.timeout=10s")
-		cmd.Env = append(os.Environ(), "TDEF_CONSOLE_TEST=1")
+		cmd.Env = append(os.Environ(), "TERMTD_CONSOLE_TEST=1")
 		// CREATE_NO_WINDOW supplies a real console without a visible window.
 		cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x08000000}
 		if out, err := cmd.CombinedOutput(); err != nil {

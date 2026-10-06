@@ -1,3 +1,3 @@
-module github.com/0xbenc/tdef
+module github.com/0xbenc/termtd
 
 go 1.26.3

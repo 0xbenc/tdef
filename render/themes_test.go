@@ -3,7 +3,7 @@ package render
 import (
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 // firstWall returns the first wall cell of a map (row-major). Every level has

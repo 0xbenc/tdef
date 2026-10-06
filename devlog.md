@@ -1,4 +1,4 @@
-# tdef devlog
+# termtd devlog
 
 - 2026-09-18 (session start)
 - engine + maps + balance v1 done; TUI in progress
@@ -151,7 +151,7 @@
     semantics, and the LOW sweep (hiscore type guards, SGR reset,
     wheel modifiers, dead code, silent flag fallbacks).
   - 2026-09-19 (title screen + start menu, branch title-screen)
-  - New pre-game flow: animated title screen (beveled TDEF slab logo,
+  - New pre-game flow: animated title screen (beveled TERMTD slab logo,
     a miniature battle demo, tower/enemy roster, best score, blinking
     prompt) -> main menu (Start / Help / High Scores / Quit) -> level
     select (built-in maps, a procedural maze row with an editable
@@ -165,7 +165,7 @@
   - tui: the App now runs six screens (title/menu/help/hiscores/level
     select/game). The loop advances the sim only on ScreenGame
     (stepGame) and ticks the title animation counter on ScreenTitle.
-    Bare `tdef` enters the title flow (RunMenu); explicit -level/-maze
+    Bare `termtd` enters the title flow (RunMenu); explicit -level/-maze
     still start directly (Run); -diff preselects the difficulty. The
     old press-any-key intro and its dead overT field are gone.
   - game: MazeFromSeed centralizes the procedural maze size
@@ -245,7 +245,7 @@
     and cools into a glowing grid; 445-475 the grid holds, then a
     black beat with one ignition spark.
   - 475-544: reboot — the border draws itself from the top-left (pen
-    tip glows), the TDEF slab drops in row by row with a white flash
+    tip glows), the TERMTD slab drops in row by row with a white flash
     on arrival, the tagline types on, then demo/roster/best/footer
     return; the battle comes back at frame 0 state, closing the loop.
   - Two reset effects were prototyped side by side: this shockwave
@@ -287,7 +287,7 @@
     function of (w, h, frame, boot, scores, pal) and the boot replays
     each time you return to the title.
   - Boot v1 (124f, ~4s): ignition point + three expanding rings on
-    black (0-14); a light pen traces the TDEF slab out of digital
+    black (0-14); a light pen traces the TERMTD slab out of digital
     noise, white tip with a cooling trail, each letter flashing white
     as its trace completes (15-75); the slab ignites white over a dim
     grid (76-79); the tagline decodes left to right with a caret
@@ -316,7 +316,7 @@
                settle beat flickers the box before the flash
       - 225+ flash, subtitle, chrome fade (as in v1)
   - The signature "by 0xbenc" is embedded in the bottom border's right
-    section (FG 238, mirroring the TDEF embed in the top border) on the
+    section (FG 238, mirroring the TERMTD embed in the top border) on the
     standby, the battle, the boot fade-in and the reboot; it never
     collides with the centered footer.
   - Verification: gofmt/vet/test -race green; TestTitleBootSequence
@@ -325,7 +325,7 @@
     (chrome up at 449, battle text at 451, seam 450 vs 2705); PTY: all
     seven original flows + a new title_idle_battle flow (waits for the
     idle gate to fire the battle), all passing on the fresh binary.
-    Harness notes: the PTY marker moved from "TDEF" (now only visible
+    Harness notes: the PTY marker moved from "TERMTD" (now only visible
     during the boot) to "by 0xbenc" (first full-chrome frame), and the
     ptydrv smoke now waits for the in-game "winding" HUD line because
     the title intro no longer says "press any key to start".
@@ -495,7 +495,7 @@
   footer fit, pip no-clobber, frame corners) are preserved. Bench pass results
   byte-identical to baseline (canyon/garden/hub/winding 100%, heart 0%, maze
    100%, ALL 83%). Every beat, the boss entrance, the frost tint and the end
-   cinematics were eyeballed via `tdef capture` at 1x and 2x and via temporary
+   cinematics were eyeballed via `termtd capture` at 1x and 2x and via temporary
    eyeball harnesses (deleted after use).
 - Road-corner fix (762b613): the user spotted that the road's corner connectors
   (┌┐└┘) read "backwards" and didn't form one continuous line. roadGlyph had
@@ -526,7 +526,7 @@
   chamber's light beating (two staggered rings swelling out of the lair, ○); and
   the Depths' cold mist drifting down the room with runes (◈) waking on the
   walls. A test asserts each stinger's signature glyph renders (checked over a
-  few frames, since the light animates). Eyeballed via `tdef capture` at 1x and
+  few frames, since the light animates). Eyeballed via `termtd capture` at 1x and
    2x; the boss (heart) isn't reachable via `capture` (it's LoadBoss, not in the
    level list), so its ring is covered by the test instead.
 - 2026-09-22 (tower level tile, branch gameplay-lookdev)
@@ -663,7 +663,7 @@
   used (no BFS shortcuts), useful build space, scaled spawn/split income,
   wave rewards, early bonuses, unchanged prices/refunds and visible payouts.
   Inspected text-rendered empty floors at 1x and 2x. gofmt, go vet,
-  go test -race, build and diff checks pass; rebuilt ./tdef for play.
+  go test -race, build and diff checks pass; rebuilt ./termtd for play.
 
 - 2026-10-02 (scenery in the nonfunctional terrain)
 - Added a dedicated wall-only scenery pass shared by gameplay and map previews.
@@ -692,7 +692,7 @@
 - Reversed the waterfall's animation phase: its drops and gaps now travel
   downward rather than upward. Regression coverage follows the rendered
   pattern through two cycles at all four scales. Waterfall and walkway checks
-  pass; rebuilt ./tdef.
+  pass; rebuilt ./termtd.
 
 - 2026-10-02 (start in the hub)
 - Grak now starts at the Rotunda, the only initially open overworld floor.
@@ -702,7 +702,7 @@
   the Rift to sealed doorway/walking/mouse coverage, and checked that a loss
   leaves it sealed while a hub win opens it only after the unseal completes.
   Existing render fixtures explicitly choose their player position and open
-  floors. Tests with the race detector, vet and build pass; rebuilt ./tdef.
+  floors. Tests with the race detector, vet and build pass; rebuilt ./termtd.
 
 - 2026-10-02 (a figurative overworld Rotunda)
 - Replaced the thin ASCII dragon and scattered gold with three composed
@@ -718,10 +718,10 @@
 - Inspected coloured before/after views and all four scales. Updated the
   hoard check for solid dragon/gold masses at every scale and added a room
   footprint check to guard neighboring corridors. Tests, vet, race checks,
-  build and diff checks pass; rebuilt ./tdef.
+  build and diff checks pass; rebuilt ./termtd.
 
 - 2026-10-02: added a static Malgrath portrait study, accessible with v in the
-  Rotunda or `tdef dragon`. Shares the overworld pose at a larger tile footprint,
+  Rotunda or `termtd dragon`. Shares the overworld pose at a larger tile footprint,
   with filled tapered horns, broad wing folds, a bent foreleg and a curled tail
   enclosing the hoard. Responsive framing; no cutscene timeline or progression
   effects. Escape/enter restores the lair exactly where it was.
@@ -735,21 +735,21 @@
 - 2026-10-02: designed Grak as a squat angular defender with blade ears,
   asymmetric tusks, a scarred broad jaw, worn red mantle, diagonal leather
   strap and a grounded builder’s mallet. Added a static responsive companion
-  portrait: `tdef grak`, g in the Rotunda, and tab between both character
+  portrait: `termtd grak`, g in the Rotunda, and tab between both character
   studies. Lair progression and time remain unchanged while viewing them.
 
 - 2026-10-02: added the definitive Gnoll Slingers lore portrait: a long-muzzled,
   hunched thrower winding a broad sling loop above an ammunition-feeding partner.
   Warm fur, charcoal manes, digitigrade legs, teal wraps and a shared stone
   pouch establish their shape language. Thin cord uses half-cell geometry.
-  `tdef gnolls` opens it directly; tab cycles all three studies. Shared polygon
+  `termtd gnolls` opens it directly; tab cycles all three studies. Shared polygon
   drawing preserves Grak’s geometry. No upgrade variants or gameplay changes.
 
 - 2026-10-02: designed the Orc Gunner lore portrait: a braced green orc in a
   red headcloth, iron shoulder slab and heavy boots, gripping a walnut-stocked
   iron gun with a brass flare and a deep muzzle bore. Bent support elbow,
   squint, tusks, three large cartridges and quiet smoke establish the pose.
-  `tdef gunner` opens it directly; tab from the Gnoll Slingers reaches it.
+  `termtd gunner` opens it directly; tab from the Gnoll Slingers reaches it.
   One definitive portrait, with no upgrade variants or simulation changes.
 
 - 2026-10-02: designed two full lore portraits. Frost Mage: tall dark cloak,
@@ -759,7 +759,7 @@
   composed half-smile, reaching hand, stolen tusk and ivory monster skull.
   Reviewed/refined both at small and large terminal sizes; moved frost glow
   behind the fingers and gave the skull explicit dark half-cell sockets.
-  `tdef frost` and `tdef player` open them; tab cycles all six lore studies.
+  `termtd frost` and `termtd player` open them; tab cycles all six lore studies.
   Both are static definitive forms with no upgrades or simulation changes.
 
 - 2026-10-02: designed the Cannonier lore composition: a sweating, braced
@@ -768,7 +768,7 @@
   hoops, timber braces, two spoked wheels and stacked cannonballs establish
   weight and scale. Added half-cell oval compositing for the round lip, rims
   and balls, preserving the uncovered background/underlying material. Older
-  portraits keep their existing geometry. `tdef cannonier` opens it directly;
+  portraits keep their existing geometry. `termtd cannonier` opens it directly;
   tab from the Player reaches it and the seven studies cycle back to Malgrath.
 
 - 2026-10-02: designed the Ranger lore portrait: a lean, long-eared monster
@@ -776,7 +776,7 @@
   and planted leather boots. A tall recurved bow, taut triangular string,
   feathered arrow and faceted steel arrowhead define the aiming pose. New
   half-cell path strokes preserve the surfaces behind cords and shafts.
-  `tdef ranger` opens the static study; tab from Cannonier reaches it, then
+  `termtd ranger` opens the static study; tab from Cannonier reaches it, then
   wraps to Malgrath. No upgrade variants or simulation changes.
 
 - 2026-10-02: designed the Lightning Mage lore portrait: a wiry horned monster
@@ -784,7 +784,7 @@
   receiving and directing claws, an upturned face, swept ivory horns, split
   violet robe, angular sash and planted feet define the silhouette. Half-cell
   bolts layer dim purple edges around pale electric cores; their width scales
-  down in compact terminals to preserve the figure. `tdef lightning` opens
+  down in compact terminals to preserve the figure. `termtd lightning` opens
   the static study; tab from Ranger reaches it, then wraps to Malgrath. One
   definitive form, with no upgrade variants or simulation changes.
 
@@ -793,7 +793,7 @@
   loaded sling, hinged ballast box and rope-wound windlass. A green winding
   monster grips the crank while an olive spotter braces on the rear rail.
   Dark rear timbers and lit front planes establish depth; open triangles
-  keep the mechanism visible. `tdef trebuchet` opens the static study; tab
+  keep the mechanism visible. `termtd trebuchet` opens the static study; tab
   from Lightning Mage reaches it, then wraps to Malgrath. One definitive
   form per tower, with no upgrades or simulation changes.
 
@@ -803,7 +803,7 @@
   long hooked fingers, wine-lined robe and pale green summoning threads frame
   tarnished guild armor and pointed red shields. Reviewed the large and
   compact compositions; preserved the lit eye in its dark socket and quieted
-  the ground light. `tdef necromancer` opens the static study; tab from
+  the ground light. `termtd necromancer` opens the static study; tab from
   Trebuchet reaches it, then wraps to Malgrath. No simulation changes.
 
 - 2026-10-02: designed the Paladin lore portrait: a severe closed helm over
@@ -812,7 +812,7 @@
   mantle, articulated gauntlets and planted sabatons establish an immovable
   stance. Dark lozenge seals remain stark against pale shield planes; a
   visible bracing grip connects shield and bearer. Reviewed large and compact
-  layouts. `tdef paladin` opens the static study; tab from Necromancer reaches
+  layouts. `termtd paladin` opens the static study; tab from Necromancer reaches
   it, then wraps to Malgrath. No simulation changes.
 
 - 2026-10-02: fixed gameplay's frozen victory/defeat sequence after portrait
@@ -832,7 +832,7 @@
   forward between opposing hooked blades, with a pointed teal hood, two
   trailing lengths of red scarf, leather cuirass, bent braced knees and soft
   boots. Forward and reverse knife grips remain visible; half-cell cutting
-  edges keep the steel continuous in compact terminals. `tdef rogue` opens
+  edges keep the steel continuous in compact terminals. `termtd rogue` opens
   the static study; tab from Paladin reaches it, then wraps to Malgrath.
   No simulation or progression changes.
 
@@ -840,14 +840,14 @@
   hireling rests both bare hands on a broad planted cleaver. Bowed shoulders,
   dented open helmet, salvaged iron on one side and quilted cloth on the other,
   mismatched leg armor, sewn patches and worn belt coins establish a tired
-  practical fighter. `tdef mercenary` opens the static study; Tab from Rogue
+  practical fighter. `termtd mercenary` opens the static study; Tab from Rogue
   reaches it, then wraps to Malgrath. No simulation or progression changes.
 
 - 2026-10-02: designed the Wizard lore portrait with a crooked oversized hat,
   stooped human profile, forked ivory beard and heavy gold-faced violet robe.
   His free hand cups a bright faceted core within a hollow cyan diamond; the
   other grips a bowed staff carrying a suspended crystal. A clasped grimoire
-  hangs at his hip. `tdef wizard` opens the static study; Tab from Mercenary
+  hangs at his hip. `termtd wizard` opens the static study; Tab from Mercenary
   reaches it, then wraps to Malgrath. No simulation or progression changes.
 
 - 2026-10-02: completed the guild portrait roster with Centurion and Squire.
@@ -857,7 +857,7 @@
   floats outside its rim, with a short gladius exposed on the other side.
   Squire leans forward behind a huge two-handed blade in an oversized tilted
   kettle helm, loose mail, short red surcoat and rolled boots, with a borrowed
-  round shield strapped to his back. `tdef centurion` and `tdef squire` open
+  round shield strapped to his back. `termtd centurion` and `termtd squire` open
   the static studies; the cycle now ends Wizard → Centurion → Squire → Malgrath.
   All seven towers and eight enemy types have one definitive lore portrait.
   No simulation, upgrade or progression changes.
@@ -867,7 +867,7 @@
   field notes; compact terminals use a list and stacked, scrollable pages.
   Successful keyboard, mouse and relic placements discover one persistent
   page per tower, without notifications, unread badges or gameplay changes.
-  `j` opens it from the lair or a paused defense; `tdef journal` opens directly.
+  `j` opens it from the lair or a paused defense; `termtd journal` opens directly.
   Returning preserves the lair and paused game. Enemies, places and story
   moments remain outside this first pass. Backed up the local player's save,
   marked every defense complete on all three difficulties, and unlocked all
@@ -917,5 +917,5 @@
   no stalls and multiple successful compositions per floor/difficulty.
   Tactical outcomes, hard alternatives, queue/preview integration and route
   validity have regression coverage. Tests, race checks, vet and four live
-  terminal placement/wave-start checks passed; rebuilt ./tdef. Details and
+  terminal placement/wave-start checks passed; rebuilt ./termtd. Details and
   human-playtest limits are recorded in TACTICS.md. Procedural Depths unchanged.

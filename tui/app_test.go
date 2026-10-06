@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
-	"github.com/0xbenc/tdef/render"
+	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/render"
 )
 
 func TestWaveClearMessageShowsFloorReward(t *testing.T) {

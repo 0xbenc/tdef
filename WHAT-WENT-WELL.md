@@ -25,7 +25,7 @@ Three read-only subagents (architecture / visual-UX / impl+tests) ran
 concretely against the repo before any code was written. The output was
 integrated into a **contract**, not prose: the `Screen` enum, exact
 renderer signatures (`RenderTitle(w, h, frame, scores, pal) *Frame`,
-…), layout formulas, the CLI contract (bare `tdef` → menu flow, explicit
+…), layout formulas, the CLI contract (bare `termtd` → menu flow, explicit
 `-level`/`-maze` → direct start), and a named test list per screen.
 
 Why it worked: implementation became *transcription, not exploration*.
@@ -160,7 +160,7 @@ evidence trail.
   exact expected rows *first*; the test would have caught the maze-row /
   seed-row collision on the first try.
 - **The visual harness and the ANSI reconstructor were throwaway**
-  (`/tmp`). A committed `tdef screens` debug command — render every
+  (`/tmp`). A committed `termtd screens` debug command — render every
   screen to text/ANSI at a given size and frame — would make visual
   regression cheap, shareable, and part of the review loop.
 - **The first PTY test was a false negative**: all keys arrived in one
@@ -168,7 +168,7 @@ evidence trail.
   Spaced input plus state reconstruction is what actually verified the
   flow. PTY tests need timing, and "it exited 0" is a weak assertion.
 - **The stale-binary handoff gap**: the feature was verified in
-  `/tmp/tdef-bin` while the user's `./tdef` in the repo dir was built
+  `/tmp/termtd-bin` while the user's `./termtd` in the repo dir was built
   hours earlier and predated the work. Verification artifacts should be
   rebuilt *where the user runs them*, or the report should say exactly
   which binary to run.

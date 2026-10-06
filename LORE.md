@@ -1,6 +1,6 @@
 # LORE — "The Last Monster"
 
-Working theming for tdef. No code changes yet — this is the source of truth for the
+Working theming for termtd. No code changes yet — this is the source of truth for the
 text/skin pass. `OPEN` markers need a decision.
 
 ## Premise
@@ -123,7 +123,7 @@ The guild's expeditions. Glyphs, stats and debut waves unchanged; names only.
   twentieth expedition turns back. Malgrath endures." to fit the 44-col
   box interior)
 - Tagline `— terminal tower defense —`: kept as the meta layer (the lair, rendered
-  in a terminal). TDEF stays the product name. (decided)
+  in a terminal). TERMTD stays the product name. (decided)
 
 ## Decided
 
@@ -131,7 +131,7 @@ The guild's expeditions. Glyphs, stats and debut waves unchanged; names only.
 - Flak = **Gnoll Slingers**.
 - Boss = **The Player**.
 - Dragon = **Malgrath**; Last Monster = **Grak**.
-- Tagline stays `— terminal tower defense —` (meta layer; TDEF = product name).
+- Tagline stays `— terminal tower defense —` (meta layer; TERMTD = product name).
 - Wave themes reskinned (mapping above).
 
 No open decisions — LORE.md is complete; next step is the code pass.

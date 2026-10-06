@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/0xbenc/tdef/game"
+	"github.com/0xbenc/termtd/game"
 )
 
 func TestDragonMockupReturnsToUnchangedLair(t *testing.T) {
