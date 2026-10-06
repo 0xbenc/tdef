@@ -1,0 +1,34 @@
+{
+  "draw_game_over": {
+    "victory": "VICTORY",
+    "defeat": "DEFEAT",
+    "wave": "wave",
+    "score": "score",
+    "kills": "kills",
+    "combo": "combo",
+    "leaks": "leaks",
+    "time": "time",
+    "towers": "towers",
+    "best": "best",
+    "v_view_ending": "{portrait} view ending",
+    "best_2": "best {best_score}",
+    "new_best": "★ NEW BEST {best_score} ★",
+    "the_lair_is_held_malgrath_endures": "The lair is held. Malgrath endures.",
+    "malgrath_has_fallen_the_lair_is_clean": "Malgrath has fallen. The lair is clean.",
+    "restart": " restart | ",
+    "lair": " lair | ",
+    "quit": " quit"
+  },
+  "end_verdict": {
+    "a_flawless_hold_not_one_breach": "A flawless hold — not one breach.",
+    "a_steady_hold_the_lair_endures": "A steady hold. The lair endures.",
+    "a_hard_fought_hold_the_lair_feels": "A hard-fought hold. The lair feels it.",
+    "the_lair_fell_late_on_wave": "The lair fell late, on wave {wave}.",
+    "the_lair_held_to_wave_so_close": "The lair held to wave {wave}. So close.",
+    "the_lair_fell_early_on_wave": "The lair fell early, on wave {wave}."
+  },
+  "draw_end_beat": {
+    "the_lair_holds": "THE LAIR HOLDS",
+    "the_lair_falls": "THE LAIR FALLS"
+  }
+}

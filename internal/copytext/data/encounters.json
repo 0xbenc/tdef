@@ -1,0 +1,93 @@
+{
+  "waves": {
+    "wave_1": {
+      "theme": "scouts"
+    },
+    "wave_2": {
+      "theme": "scouts"
+    },
+    "wave_3": {
+      "theme": "raid"
+    },
+    "wave_4": {
+      "theme": "raid"
+    },
+    "wave_5": {
+      "theme": "column"
+    },
+    "wave_6": {
+      "theme": "assault"
+    },
+    "wave_7": {
+      "theme": "raid"
+    },
+    "wave_8": {
+      "theme": "column"
+    },
+    "wave_9": {
+      "theme": "column"
+    },
+    "wave_10": {
+      "theme": "assault"
+    },
+    "wave_11": {
+      "theme": "the coven"
+    },
+    "wave_12": {
+      "theme": "the risen"
+    },
+    "wave_13": {
+      "theme": "the vanguard"
+    },
+    "wave_14": {
+      "theme": "the wall"
+    },
+    "wave_15": {
+      "theme": "the player"
+    },
+    "wave_16": {
+      "theme": "column"
+    },
+    "wave_17": {
+      "theme": "siege"
+    },
+    "wave_18": {
+      "theme": "the player"
+    },
+    "wave_19": {
+      "theme": "siege"
+    },
+    "wave_20": {
+      "theme": "the end"
+    }
+  },
+  "wave_telegraph": {
+    "the_guild_has_sent_rogues": "The guild has sent rogues.",
+    "mercenaries_and_they_hit_harder": "Mercenaries — and they hit harder.",
+    "a_swift_raid_loose_arrows_fly_true": "A swift raid. Loose arrows fly true.",
+    "wizards_fast_and_frail_but_deadly": "Wizards — fast and frail, but deadly.",
+    "a_necromancer_walks_among_them_they_rise": "A necromancer walks among them. They rise when he falls.",
+    "a_paladin_leads_the_vanguard": "A paladin leads the vanguard.",
+    "centurions_warded_they_shrug_off_your_blows": "Centurions — warded, they shrug off your blows.",
+    "the_player_has_set_out_if_they": "The Player has set out. If they reach the heart, it ends.",
+    "the_player_returns_stronger": "The Player returns, stronger.",
+    "the_final_expedition_two_players_hold_the": "The final expedition. Two Players. Hold the lair."
+  },
+  "tactical_brief": {
+    "inner_courts_can_cover_the_road_more": "Inner courts can cover the road more than once.",
+    "separate_banks_need_separate_defenses": "Separate banks need separate defenses.",
+    "long_bows_reach_across_the_returning_halls": "Long bows reach across the returning halls.",
+    "slow_the_front_ranks_catch_the_crowd": "Slow the front ranks; catch the crowd at the bends.",
+    "thin_the_outer_ranks_finish_the_survivors": "Thin the outer ranks. Finish the survivors near the heart."
+  },
+  "wave_telegraph_for": {
+    "rogues_in_bursts_cover_the_crossings_and": "Rogues in bursts. Cover the crossings and the far bank.",
+    "a_spaced_rogue_raid_long_bows_can": "A spaced rogue raid. Long bows can follow them down the hall.",
+    "a_packed_rogue_raid_slow_the_front": "A packed rogue raid. Slow the front; fire into the crowd.",
+    "a_rogue_rush_let_the_outer_defense": "A rogue rush. Let the outer defense thin it.",
+    "raiding_parties_cross_in_bursts_hold_more": "Raiding parties cross in bursts. Hold more than one bank.",
+    "a_spaced_column_long_bows_can_cover": "A spaced column. Long bows can cover the returning lanes.",
+    "they_arrive_shoulder_to_shoulder_catch_them": "They arrive shoulder to shoulder. Catch them at the bends.",
+    "a_rushing_front_then_heavy_armor_keep": "A rushing front, then heavy armor. Keep a reserve near the heart."
+  }
+}

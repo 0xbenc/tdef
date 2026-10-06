@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"github.com/0xbenc/termtd/internal/copytext"
 	"strings"
 
 	"github.com/0xbenc/termtd/game"
@@ -17,27 +18,27 @@ type TowerJournalEntry struct {
 
 // One definitive image per tower, independent of its gameplay upgrade level.
 var TowerJournalEntries = []TowerJournalEntry{
-	{"gunner", game.TowerGunner, "Orc Gunner", "the patient thunder",
-		"He learned patience before he learned the gun. While the guild argues over who will strike first, he settles his elbows, lets the smoke clear, and chooses the next fool. I have never heard him boast. I have heard him reload.",
-		"Give him a bend in the road. He will make good use of every second they spend there.", 114, drawGunnerPortrait},
-	{"cannonier", game.TowerCannon, "Cannonier", "two hands, one argument",
-		"One measures the powder. The other insists that more would be better. They have carried that argument through every chamber of the lair, along with a cannon neither could move alone. When the guild arrives shoulder to shoulder, they briefly agree.",
-		"Let them bunch together. A cannonball has little respect for a formation.", 173, drawCannonierPortrait},
-	{"frost", game.TowerFrost, "Frost Mage", "the winter we invited in",
-		"The garden froze the night she arrived. By morning there was a narrow path through the ice, exactly wide enough for Malgrath's drinking bowl. She says she does not care for dragons. I leave the bowl where she can find it.",
-		"Her cold buys time. Put someone beside her who knows how to spend it.", 117, drawFrostPortrait},
-	{"ranger", game.TowerSniper, "Ranger", "a promise at a distance",
-		"She can tell which guild banner is coming before I can see the boots beneath it. We used to argue about how far away a danger had to be before it became our business. Now she draws the bow, and I trust the answer.",
-		"Leave her a long view. Every arrow should reach someone worth the wait.", 144, drawRangerPortrait},
-	{"lightning", game.TowerTesla, "Lightning Mage", "the restless sky",
-		"He claims the storm was following him long before he came underground. I believe him. Even the iron door rings hum when he passes. Malgrath sleeps through thunder now; it is the silence afterward that makes me look up.",
-		"Lightning follows close company. Make the guild regret marching together.", 153, drawLightningPortrait},
-	{"trebuchet", game.TowerMortar, "Trebuchet", "the mountain learns to throw",
-		"We built it from bridge timbers the guild thought we would need to escape. One of the crew winds while the other watches the far road. There is no hurry in either of them. The stone will arrive, and everyone beneath it will notice.",
-		"Give the crew room to see a crowd. Their answer is slow, and very large.", 180, drawTrebuchetPortrait},
-	{"gnolls", game.TowerFlak, "Gnoll Slingers", "a handful of trouble",
-		"They brought no banner, only pockets full of stones and an argument about whose throw was better. I offered them a place by the road. They offered to make it unpleasant. For once, a bargain meant exactly what it sounded like.",
-		"Keep them close to the path. A little stone, thrown often, is still a problem.", 180, drawGnollPortrait},
+	{"gunner", game.TowerGunner, copytext.Text("defenders.gunner.name"), copytext.Text("defenders.gunner.subtitle"),
+		copytext.Text("defenders.gunner.lore"),
+		copytext.Text("defenders.gunner.note"), 114, drawGunnerPortrait},
+	{"cannonier", game.TowerCannon, copytext.Text("defenders.cannonier.name"), copytext.Text("defenders.cannonier.subtitle"),
+		copytext.Text("defenders.cannonier.lore"),
+		copytext.Text("defenders.cannonier.note"), 173, drawCannonierPortrait},
+	{"frost", game.TowerFrost, copytext.Text("defenders.frost.name"), copytext.Text("defenders.frost.subtitle"),
+		copytext.Text("defenders.frost.lore"),
+		copytext.Text("defenders.frost.note"), 117, drawFrostPortrait},
+	{"ranger", game.TowerSniper, copytext.Text("defenders.ranger.name"), copytext.Text("defenders.ranger.subtitle"),
+		copytext.Text("defenders.ranger.lore"),
+		copytext.Text("defenders.ranger.note"), 144, drawRangerPortrait},
+	{"lightning", game.TowerTesla, copytext.Text("defenders.lightning.name"), copytext.Text("defenders.lightning.subtitle"),
+		copytext.Text("defenders.lightning.lore"),
+		copytext.Text("defenders.lightning.note"), 153, drawLightningPortrait},
+	{"trebuchet", game.TowerMortar, copytext.Text("defenders.trebuchet.name"), copytext.Text("defenders.trebuchet.subtitle"),
+		copytext.Text("defenders.trebuchet.lore"),
+		copytext.Text("defenders.trebuchet.note"), 180, drawTrebuchetPortrait},
+	{"gnolls", game.TowerFlak, copytext.Text("defenders.gnolls.name"), copytext.Text("defenders.gnolls.subtitle"),
+		copytext.Text("defenders.gnolls.lore"),
+		copytext.Text("defenders.gnolls.note"), 180, drawGnollPortrait},
 }
 
 func TowerJournalID(kind game.TowerKind) string {
@@ -71,7 +72,7 @@ func JournalEntries(section int) []TowerJournalEntry {
 }
 
 func JournalChapter(section int) string {
-	return []string{"I  ·  THE TOWERS", "II  ·  THE GUILD", "III  ·  THE LAIR", "IV  ·  STORY MOMENTS"}[max(0, min(section, 3))]
+	return []string{copytext.Text("ui.journal_chapter.i_the_towers"), copytext.Text("ui.journal_chapter.ii_the_guild"), copytext.Text("ui.journal_chapter.iii_the_lair"), copytext.Text("ui.journal_chapter.iv_story_moments")}[max(0, min(section, 3))]
 }
 
 type JournalState struct {
@@ -124,20 +125,20 @@ func RenderJournal(w, h int, st JournalState) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to read the journal", 180, 233, false)
+		putString(f, 1, h/2, copytext.Text("ui.render_journal.enlarge_to_read_the_journal"), 180, 233, false)
 		return f
 	}
 	entries := JournalEntries(st.Section)
 	st.Cursor = max(0, min(st.Cursor, len(entries)-1))
-	journalCenter(f, 1, "GRAK'S JOURNAL", 180, true)
+	journalCenter(f, 1, copytext.Text("ui.render_journal.grak_s_journal"), 180, true)
 	chapter := JournalChapter(st.Section)
 	if st.Section == JournalStories && st.Reading && strings.HasPrefix(entries[st.Cursor].ID, "afterward:") {
-		chapter = "IV  ·  AFTERWARD"
+		chapter = copytext.Text("ui.render_journal.iv_afterward")
 	}
 	journalCenter(f, 2, chapter, 240, false)
 	if !st.Reading || !st.Unlocked[entries[st.Cursor].ID] {
 		drawJournalCollection(f, st)
-		journalCenter(f, 4, "Discover entries in the campaign", 240, false)
+		journalCenter(f, 4, copytext.Text("ui.render_journal.discover_entries_in_the_campaign"), 240, false)
 	} else {
 		drawJournalPage(f, st)
 	}
@@ -181,7 +182,7 @@ func drawJournalCollection(f *Frame, st JournalState) {
 		if active {
 			fg = 180
 		}
-		name := "Unwritten"
+		name := copytext.Text("ui.draw_journal_collection.unwritten")
 		if st.Unlocked[e.ID] {
 			name = e.Name
 		}
@@ -221,15 +222,15 @@ func drawJournalCollection(f *Frame, st JournalState) {
 	if len(entries) > len(cards) {
 		journalCenter(f, 3, fmt.Sprintf("%d–%d / %d", base+1, min(base+len(cards), len(entries)), len(entries)), 240, false)
 	}
-	hint := "[ ] chapters · arrows browse · enter read · esc return"
+	hint := copytext.Format("ui.draw_journal_collection.chapters_arrows_browse_enter_read_esc_return", "chapters", "[ ]", "enter", "enter", "arrows", "arrows", "escape", "esc")
 	if f.W < 76 {
-		hint = "[ ] chapter · arrows browse · enter read · esc"
+		hint = copytext.Format("ui.draw_journal_collection.chapter_arrows_browse_enter_read_esc", "chapters", "[ ]", "enter", "enter", "arrows", "arrows", "escape", "esc")
 	}
 	if !st.Unlocked[e.ID] {
 		journalCenter(f, f.H-3, fitMsg(JournalRequirement(st.Section, st.Cursor), f.W-4), 240, false)
 	}
 	if f.W < 52 {
-		hint = "[ ] chapter · enter read · esc"
+		hint = copytext.Format("ui.draw_journal_collection.chapter_enter_read_esc", "chapters", "[ ]", "enter", "enter", "escape", "esc")
 	}
 	journalCenter(f, f.H-2, hint, 240, false)
 }
@@ -266,12 +267,12 @@ func journalLines(e TowerJournalEntry, width int, sections ...int) []string {
 		}
 	}
 	wrap(e.Lore)
-	heading := "IN THE FIELD"
+	heading := copytext.Text("ui.journal_lines.in_the_field")
 	if section == JournalPlaces {
-		heading = "THE WAY THROUGH"
+		heading = copytext.Text("ui.journal_lines.the_way_through")
 	}
 	if section == JournalStories {
-		heading = "REMEMBERED"
+		heading = copytext.Text("ui.journal_lines.remembered")
 	}
 	lines = append(lines, "", heading)
 	wrap(e.Note)
@@ -321,9 +322,9 @@ func drawJournalPage(f *Frame, st JournalState) {
 			f.Put(text.X+text.W, text.Y+text.H-1, '↓', 180, 233)
 		}
 	}
-	hint := "[ ] chapters · ←→ pages · ↑↓ text · esc collection"
+	hint := copytext.Format("ui.draw_journal_page.chapters_pages_text_esc_collection", "chapters", "[ ]", "scroll", "↑↓", "pages", "←→", "escape", "esc")
 	if f.W < 76 {
-		hint = "[ ] chapter · ↑↓ text · esc"
+		hint = copytext.Format("ui.draw_journal_page.chapter_text_esc", "chapters", "[ ]", "scroll", "↑↓", "escape", "esc")
 	}
 	journalCenter(f, f.H-2, hint, 240, false)
 }

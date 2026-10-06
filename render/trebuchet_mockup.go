@@ -1,5 +1,7 @@
 package render
 
+import "github.com/0xbenc/termtd/internal/copytext"
+
 // RenderTrebuchetMockup shows a single definitive siege-engine lore portrait.
 // The open triangles expose the axle, suspended weight, sling and winding line.
 func RenderTrebuchetMockup(w, h int) *Frame {
@@ -9,17 +11,17 @@ func RenderTrebuchetMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view the Trebuchet", 180, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.trebuchet.enlarge_to_view_the_trebuchet"), 180, 233, false)
 	} else {
 		ph := min(h-7, (w-6)*2/5)
 		pw := ph * 5 / 2
 		drawTrebuchetPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		putString(f, (w-9)/2, 1, "TREBUCHET", 180, 233, true)
-		putString(f, (w-25)/2, 2, "a little help with gravity", 240, 233, false)
+		putString(f, (w-9)/2, 1, copytext.Text("characters.trebuchet.trebuchet"), 180, 233, true)
+		putString(f, (w-25)/2, 2, copytext.Text("characters.trebuchet.a_little_help_with_gravity"), 240, 233, false)
 	}
-	hint := "tab Necromancer · esc return · q quit"
+	hint := copytext.Format("characters.trebuchet.tab_necromancer_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab portraits"
+		hint = copytext.Format("characters.trebuchet.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

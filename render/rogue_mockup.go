@@ -1,5 +1,7 @@
 package render
 
+import "github.com/0xbenc/termtd/internal/copytext"
+
 // RenderRogueMockup is the guild's knife-runner: a low, forward-leaning crouch
 // framed by opposing hooked blades and two trailing lengths of red scarf.
 func RenderRogueMockup(w, h int) *Frame {
@@ -9,18 +11,18 @@ func RenderRogueMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view the Rogue", 131, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.rogue.enlarge_to_view_the_rogue"), 131, 233, false)
 	} else {
 		ph := min(h-7, (w-6)/3)
 		pw := ph * 3
 		drawRoguePortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		title, subtitle := "ROGUE", "already behind you"
+		title, subtitle := copytext.Text("characters.rogue.rogue"), copytext.Text("characters.rogue.already_behind_you")
 		putString(f, (w-len(title))/2, 1, title, 131, 233, true)
 		putString(f, (w-len(subtitle))/2, 2, subtitle, 240, 233, false)
 	}
-	hint := "tab Mercenary · esc return · q quit"
+	hint := copytext.Format("characters.rogue.tab_mercenary_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab portraits"
+		hint = copytext.Format("characters.rogue.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

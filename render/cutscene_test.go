@@ -71,16 +71,15 @@ func TestCutsceneRevealSettlesAndResizeNotice(t *testing.T) {
 }
 
 func TestFilmsHaveDistinctCompositionsAndQuietMotion(t *testing.T) {
-	// Closing composition and dialogue answer the opening's motifs. A resting
-	// pose must be distinct from the opening's standing two-shot.
+	// The closing hoard and the opening builder use distinct compositions.
 	a := filmFrame(240, 80)
 	b := filmFrame(240, 80)
-	paintFilmShot(a, CutsceneState{Film: FilmOpening, Frame: 120}, "together")
-	paintFilmShot(b, CutsceneState{Film: FilmEnding, Frame: 120}, "rest")
+	paintFilmShot(a, CutsceneState{Film: FilmOpening, Frame: 120}, "resolve")
+	paintFilmShot(b, CutsceneState{Film: FilmEnding, Frame: 120}, "ending-hoard")
 	if reflect.DeepEqual(a, b) {
 		t.Fatal("ending reused the opening pose")
 	}
-	for _, art := range []string{"gate", "bowl", "eye", "touch", "ember"} {
+	for _, art := range []string{"eye", "mallet", "ending-rescue"} {
 		a, b = filmFrame(240, 80), filmFrame(240, 80)
 		paintFilmShot(a, CutsceneState{Film: FilmEnding, Shot: 7, Frame: 20}, art)
 		paintFilmShot(b, CutsceneState{Film: FilmEnding, Shot: 7, Frame: 95}, art)

@@ -1,0 +1,132 @@
+{
+  "malgrath": {
+    "tier_0": {
+      "line_1": "Malgrath: …the guild again? Good. I was already dying, Grak.",
+      "line_2": "Malgrath: take the hoard. They came for it — take theirs first."
+    },
+    "tier_1": {
+      "line_1": "Malgrath: my breath is short today. Hold the halls."
+    },
+    "tier_2": {
+      "line_1": "Malgrath: the heart steadies. The hoard is nearly safe."
+    },
+    "tier_3": {
+      "line_1": "Malgrath: I remember when we were the ones they feared."
+    },
+    "tier_4": {
+      "line_1": "Malgrath: before you came I was dying. Now I am only resting."
+    }
+  },
+  "ow_dragon_voice_done": {
+    "malgrath_they_will_come_again_grak_we": "Malgrath: they will come again, Grak. We will be ready."
+  },
+  "rooms": {
+    "rift": {
+      "unheld": "the rift still burns where the first expedition broke in",
+      "lost": "the rift smokes — the guild reached the heart here",
+      "held": "the rift is held. no blood on the basalt"
+    },
+    "rotunda": {
+      "unheld": "the heart beats slow in the rotunda",
+      "lost": "the rotunda still aches where they struck",
+      "held": "the heart beats steady in the rotunda"
+    },
+    "halls": {
+      "unheld": "stone corridors ring hollow with old echoes",
+      "lost": "the long halls still smell of blood",
+      "held": "the halls ring empty. the guild lost its way"
+    },
+    "garden": {
+      "unheld": "the water remembers a temple's prayers",
+      "lost": "the garden is stained; the water runs red at the edges",
+      "held": "the garden keeps. the temple stones are quiet"
+    },
+    "depths": {
+      "unheld": "the depths are uncharted; the dark maps itself",
+      "lost": "something in the depths is still hunting",
+      "held": "the depths let you through. barely"
+    },
+    "heart": {
+      "unheld": "the heart chamber. the final expedition waits",
+      "lost": "the guild's champion broke through the heart",
+      "held": "the heart is held. the guild's hunt fails"
+    }
+  },
+  "overworld_footer": {
+    "walk": " walk",
+    "descend": " descend",
+    "renown": " renown",
+    "journal": " journal",
+    "back": " back"
+  },
+  "render_overworld": {
+    "the_lair": "THE LAIR",
+    "the_lair_held": "THE LAIR — HELD"
+  },
+  "draw_owlabel": {
+    "rift": "Rift",
+    "depths": "Depths",
+    "long_halls": "Long Halls",
+    "sunken_garden": "Sunken Garden",
+    "the_heart": "the Heart"
+  },
+  "draw_owvoice": {
+    "the_lair_stirs_in_the_dark": "the lair stirs in the dark",
+    "the_heart_beats_light_runs_the_corridors": "the heart beats — light runs the corridors",
+    "malgrath_grak_the_guild_still_hunts": "Malgrath: …grak. the guild still hunts.",
+    "the_heart_has_unsealed_the_final_expedition": "the heart has unsealed — the final expedition stirs",
+    "relics_1_60g_2_free_gunner_3": "relics {tokens} — {gold_key}) +{gold}g · {tower_key}) free gunner · {lives_key}) +{lives}♥ · {escape} close",
+    "wasd_walk_the_lair_enter_descend_tab": "{walk} walk the lair · {enter} descend · {tab} renown",
+    "malgrath_endures": "Malgrath endures."
+  },
+  "ow_node_line": {
+    "the_heart_has_unsealed_enter_to_face": "the heart has unsealed — enter to face the final expedition",
+    "held_20_20": "held 20/20"
+  },
+  "draw_owchrome_rows": {
+    "heart": "  heart ",
+    "relics": "  relics ",
+    "seed": "seed ",
+    "cut_c_clear": " · {backspace} cut · {clear} clear",
+    "no_seed_enter_rolls_the_uncharted": "no seed — enter rolls the uncharted",
+    "free_gunner": "free gunner",
+    "next_defense": "next defense: ",
+    "t_spend_a_relic": "{target} spend a relic",
+    "i_opening": "{opening} opening",
+    "e_ending": " · {ending} ending",
+    "v_malgrath": " · {portrait} Malgrath",
+    "g_grak": " · {grak} Grak"
+  },
+  "ow_set_banner": {
+    "the_heart_is_held_malgrath_endures": "the heart is held — Malgrath endures"
+  },
+  "depths_locked_message": {
+    "depths_sealed_beat_all_floors_and_the": "Depths sealed: beat all floors and the Heart on this renown"
+  },
+  "handle_overworld": {
+    "the_whole_lair_lit_every_floor_revealed": "the whole lair, lit — every floor revealed"
+  },
+  "ow_launch": {
+    "seed_too_large": "seed too large",
+    "unknown_floor": "unknown floor"
+  },
+  "ow_spend_relic": {
+    "the_lair_grants_60_gold_to_the": "the lair grants +{gold} gold to the next defense",
+    "an_orc_gunner_will_be_waiting_at": "an {tower} will be waiting at the next defense",
+    "the_heart_steadies_1_to_the_next": "the heart steadies: +{lives}♥ to the next defense"
+  },
+  "results": {
+    "held": "{floor} held — 20/20 · the lair stands steadier",
+    "lost": "{floor} broke at {wave} · the lair will mend",
+    "new_best": " · new best {score}",
+    "broke_at": "broke at {wave}",
+    "with_best": "{floor} · best {score} · {result}",
+    "without_best": "{floor} · {result}"
+  },
+  "progress": {
+    "opened": "{floor} breaks open",
+    "opening": "{floor} is opening — wait at the doorway",
+    "sealed": "{floor} is sealed — hold the lair to break it open",
+    "descending": "descending into {floor}…"
+  }
+}

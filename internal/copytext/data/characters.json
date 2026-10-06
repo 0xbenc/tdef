@@ -1,0 +1,121 @@
+{
+  "cannonier": {
+    "enlarge_to_view_the_crew": "enlarge to view the crew",
+    "cannonier": "CANNONIER",
+    "one_more_for_the_guild": "one more for the guild",
+    "tab_ranger_esc_return_q_quit": "{tab} Ranger · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "centurion": {
+    "enlarge_to_view_the_centurion": "enlarge to view the Centurion",
+    "centurion": "CENTURION",
+    "hold_the_line": "hold the line",
+    "tab_squire_esc_return_q_quit": "{tab} Squire · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "dragon": {
+    "enlarge_to_view_malgrath": "enlarge to view Malgrath",
+    "malgrath": "MALGRATH",
+    "the_dying_dragon": "the dying dragon",
+    "esc_enter_return_q_quit": "{escape} / {enter} return · {quit} quit",
+    "tab_grak": "{tab} Grak · "
+  },
+  "frost": {
+    "enlarge_to_view_the_mage": "enlarge to view the mage",
+    "frost_mage": "FROST MAGE",
+    "the_cold_remembers": "the cold remembers",
+    "tab_player_esc_return_q_quit": "{tab} Player · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "gnoll": {
+    "enlarge_to_view_the_slingers": "enlarge to view the slingers",
+    "gnoll_slingers": "GNOLL SLINGERS",
+    "one_winds_one_supplies": "one winds, one supplies",
+    "tab_gunner_esc_return_q_quit": "{tab} Gunner · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "grak": {
+    "enlarge_to_view_grak": "enlarge to view Grak",
+    "grak": "GRAK",
+    "the_last_monster": "the last monster",
+    "tab_gnolls_esc_return_q_quit": "{tab} Gnolls · {escape} return · {quit} quit",
+    "esc_return_tab_gnolls": "{escape} return · {tab} Gnolls"
+  },
+  "gunner": {
+    "enlarge_to_view_the_gunner": "enlarge to view the gunner",
+    "orc_gunner": "ORC GUNNER",
+    "steady_hands_hot_iron": "steady hands, hot iron",
+    "tab_frost_esc_return_q_quit": "{tab} Frost · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "lightning": {
+    "enlarge_to_view_lightning_mage": "enlarge to view Lightning Mage",
+    "lightning_mage": "LIGHTNING MAGE",
+    "the_storm_takes_hold": "the storm takes hold",
+    "tab_trebuchet_esc_return_q_quit": "{tab} Trebuchet · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "mercenary": {
+    "enlarge_to_view_the_mercenary": "enlarge to view the Mercenary",
+    "mercenary": "MERCENARY",
+    "paid_to_be_here": "paid to be here",
+    "tab_wizard_esc_return_q_quit": "{tab} Wizard · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "necromancer": {
+    "enlarge_to_view_the_necromancer": "enlarge to view the Necromancer",
+    "necromancer": "NECROMANCER",
+    "they_rise_when_he_falls": "they rise when he falls",
+    "tab_paladin_esc_return_q_quit": "{tab} Paladin · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "paladin": {
+    "enlarge_to_view_the_paladin": "enlarge to view the Paladin",
+    "paladin": "PALADIN",
+    "the_line_does_not_yield": "the line does not yield",
+    "tab_rogue_esc_return_q_quit": "{tab} Rogue · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "player": {
+    "enlarge_to_view_the_player": "enlarge to view the Player",
+    "the_player": "THE PLAYER",
+    "the_guild_s_champion": "the guild's champion",
+    "tab_cannonier_esc_return_q_quit": "{tab} Cannonier · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "ranger": {
+    "enlarge_to_view_the_ranger": "enlarge to view the Ranger",
+    "ranger": "RANGER",
+    "one_breath_one_shot": "one breath, one shot",
+    "tab_lightning_esc_return_q_quit": "{tab} Lightning · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "rogue": {
+    "enlarge_to_view_the_rogue": "enlarge to view the Rogue",
+    "rogue": "ROGUE",
+    "already_behind_you": "already behind you",
+    "tab_mercenary_esc_return_q_quit": "{tab} Mercenary · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "squire": {
+    "enlarge_to_view_the_squire": "enlarge to view the Squire",
+    "squire": "SQUIRE",
+    "the_first_expedition": "the first expedition",
+    "tab_malgrath_esc_return_q_quit": "{tab} Malgrath · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "trebuchet": {
+    "enlarge_to_view_the_trebuchet": "enlarge to view the Trebuchet",
+    "trebuchet": "TREBUCHET",
+    "a_little_help_with_gravity": "a little help with gravity",
+    "tab_necromancer_esc_return_q_quit": "{tab} Necromancer · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  },
+  "wizard": {
+    "enlarge_to_view_the_wizard": "enlarge to view the Wizard",
+    "wizard": "WIZARD",
+    "the_shape_of_a_spell": "the shape of a spell",
+    "tab_centurion_esc_return_q_quit": "{tab} Centurion · {escape} return · {quit} quit",
+    "esc_return_tab_portraits": "{escape} return · {tab} portraits"
+  }
+}

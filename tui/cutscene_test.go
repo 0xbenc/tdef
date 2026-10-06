@@ -60,6 +60,11 @@ func TestCutsceneReviewInputAndExactReturn(t *testing.T) {
 		t.Fatal("release/wheel advanced film")
 	}
 	a.handle(Event{Rune: ' '})
+	if a.film.Shot != 0 {
+		t.Fatal("advance cut the panorama before its end hold")
+	}
+	a.film.Frame = 10000
+	a.handle(Event{Rune: ' '})
 	if a.film.Shot != 1 || a.film.Revealed || a.film.Frame != 0 {
 		t.Fatal("second advance did not cut cleanly")
 	}
@@ -69,6 +74,7 @@ func TestCutsceneReviewInputAndExactReturn(t *testing.T) {
 	}
 	// Every directed shot can be read and advanced by either keyboard or click.
 	for a.screen == ScreenCutscene {
+		a.film.Frame = 10000
 		a.handle(Event{Mouse: true, Press: true, Btn: 0})
 	}
 	if a.screen != ScreenGame || !reflect.DeepEqual(*a.g, g) || !reflect.DeepEqual(a.ui, ui) || !reflect.DeepEqual(a.ow, ow) || a.acc != 0 {

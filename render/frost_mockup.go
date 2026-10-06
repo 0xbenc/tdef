@@ -1,5 +1,7 @@
 package render
 
+import "github.com/0xbenc/termtd/internal/copytext"
+
 // RenderFrostMockup is the Frost Mage's definitive lore portrait: a still,
 // ancient monster holding a shard beside a crooked, forked crystal staff.
 func RenderFrostMockup(w, h int) *Frame {
@@ -9,17 +11,17 @@ func RenderFrostMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view the mage", 153, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.frost.enlarge_to_view_the_mage"), 153, 233, false)
 	} else {
 		ph := min(h-7, (w-6)/2)
 		pw := ph * 2
 		drawFrostPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		putString(f, (w-10)/2, 1, "FROST MAGE", 153, 233, true)
-		putString(f, (w-18)/2, 2, "the cold remembers", 240, 233, false)
+		putString(f, (w-10)/2, 1, copytext.Text("characters.frost.frost_mage"), 153, 233, true)
+		putString(f, (w-18)/2, 2, copytext.Text("characters.frost.the_cold_remembers"), 240, 233, false)
 	}
-	hint := "tab Player · esc return · q quit"
+	hint := copytext.Format("characters.frost.tab_player_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab portraits"
+		hint = copytext.Format("characters.frost.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

@@ -1,0 +1,50 @@
+{
+  "squire": {
+    "name": "Squire",
+    "subtitle": "the first expedition",
+    "lore": "The helm slips when he runs. He lifts it with one hand and remembers too late that the sword needs both. Someone taught him that dragons hoard gold. No one told him what else might be living beside it.",
+    "note": "Fast feet, ordinary armor. Do not let sympathy open a hole in the line."
+  },
+  "rogue": {
+    "name": "Rogue",
+    "subtitle": "a blade ahead of its shadow",
+    "lore": "I found the scarf caught on a thorn before I heard the footsteps. They send the quick ones where they think we are looking elsewhere. The rogue never looks toward the dragon. Only toward the next place to hide.",
+    "note": "Cover the turns. Speed is dangerous where your towers cannot keep sight."
+  },
+  "mercenary": {
+    "name": "Mercenary",
+    "subtitle": "paid to be here",
+    "lore": "He rests his hands on the cleaver like a man waiting for a cart. His armor has belonged to several people, and none of them had an easy life. I wonder what the guild promised him. I wonder whether they intend to pay.",
+    "note": "He takes more punishment than a recruit. Give him more than a passing shot."
+  },
+  "paladin": {
+    "name": "Paladin",
+    "subtitle": "certain of the wrong thing",
+    "lore": "The shield shines even underground. He has polished the guild mark until he can see himself in it. When he calls us monsters, he sounds relieved. It must be easier to raise a mace when the answer has already been given to you.",
+    "note": "A great deal of steel to break. Concentrate your strongest blows before he reaches the heart."
+  },
+  "necromancer": {
+    "name": "Necromancer",
+    "subtitle": "the guild spends its dead twice",
+    "lore": "We buried the first two squires outside the garden. The next evening they came back wearing the same mud. The necromancer walked behind them, counting. I thought the guild had run out of mercy. It turns out they have found a use for that too.",
+    "note": "His death leaves two more fighters. Keep something ready to catch them."
+  },
+  "player": {
+    "name": "The Player",
+    "subtitle": "the story they came to finish",
+    "lore": "Every banner turns toward this one. Every frightened recruit stands a little straighter. I know that kind of certainty: the belief that the world has arranged itself around your arrival. I hope, when the gate stays shut, they learn that someone was already here.",
+    "note": "Save strength for the champion. A breach costs six lives, not one."
+  },
+  "wizard": {
+    "name": "Wizard",
+    "subtitle": "the shape of a spell",
+    "lore": "His book has more bookmarks than pages. He mutters as though the stone is an inattentive pupil, then bends the air into a shape it was never meant to hold. Even the other guild fighters give him room. I do the same, for different reasons.",
+    "note": "Frail, but quick. Catch him before he slips through an uncovered stretch."
+  },
+  "centurion": {
+    "name": "Centurion",
+    "subtitle": "hold the line",
+    "lore": "The crest shows above the others like a strip of sunset. He does not hurry. His shield arrives with a blue light that turns aside blows, and the recruits gather behind it. The guild calls this protection. They have brought it here to take ours away.",
+    "note": "His ward shrugs off part of every hit. Sustained, concentrated fire wears him down."
+  }
+}

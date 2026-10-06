@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"github.com/0xbenc/termtd/internal/copytext"
 	"math"
 	"strings"
 
@@ -138,11 +139,11 @@ func RenderTooSmall(tw, th, needW, needH int) *Frame {
 		tw, th = 80, 24
 	}
 	f := &Frame{W: tw, H: th, C: make([]Cell, tw*th)}
-	m1 := " termtd: terminal too small"
-	m2 := fmt.Sprintf(" needs at least %dx%d — enlarge the window", needW, needH)
+	m1 := copytext.Text("ui.render_too_small.termtd_terminal_too_small")
+	m2 := copytext.Format("ui.render_too_small.needs_at_least_x_enlarge_the_window", "need_w", fmt.Sprintf("%d", needW), "need_h", fmt.Sprintf("%d", needH))
 	// Kept short: the notice renders in a terminal NARROWER than the
 	// frame, so long lines get clipped at the edges.
-	m3 := "(paused — resize to resume)"
+	m3 := copytext.Text("ui.render_too_small.paused_resize_to_resume")
 	for i := range f.C {
 		f.C[i] = Cell{R: ' '}
 	}
@@ -499,19 +500,19 @@ type MenuSlot struct {
 // with fitMsg when it outgrows the bottom border (TestTowerInfoFitsFrame).
 func towerInfo(t *game.Tower, upCost, refund int) string {
 	if t.Level >= 3 {
-		return fmt.Sprintf(" ▸ %s Lv%d (max)  %s [t]  sell +%d", t.Spec().Name, t.Level, t.TargetMode.Name(), refund)
+		return copytext.Format("ui.tower_info.lv_max_t_sell", "target_key", "t", "tower", t.Spec().Name, "level", fmt.Sprintf("%d", t.Level), "target", t.TargetMode.Name(), "refund", fmt.Sprintf("%d", refund))
 	}
-	return fmt.Sprintf(" ▸ %s Lv%d  %.0fd %.1fr  %s [t]  up %d  sell +%d", t.Spec().Name, t.Level, t.Dmg(), t.Range(), t.TargetMode.Name(), upCost, refund)
+	return copytext.Format("ui.tower_info.lv_d_r_t_up_sell", "target_key", "t", "tower", t.Spec().Name, "level", fmt.Sprintf("%d", t.Level), "damage", fmt.Sprintf("%.0f", t.Dmg()), "range", fmt.Sprintf("%.1f", t.Range()), "target", t.TargetMode.Name(), "up_cost", fmt.Sprintf("%d", upCost), "refund", fmt.Sprintf("%d", refund))
 }
 
 func diffName(d game.Difficulty) string {
 	switch d {
 	case game.Easy:
-		return "easy"
+		return copytext.Text("ui.difficulty.easy")
 	case game.Hard:
-		return "hard"
+		return copytext.Text("ui.difficulty.hard")
 	}
-	return "normal"
+	return copytext.Text("ui.difficulty.normal")
 }
 
 // levelDisplayName maps a level id to the name shown in the header and on
@@ -519,15 +520,15 @@ func diffName(d game.Difficulty) string {
 func levelDisplayName(id string) string {
 	switch {
 	case id == "hub":
-		return "the Rotunda"
+		return copytext.Text("places.rotunda.map_name")
 	case id == "winding":
-		return "the Long Halls"
+		return copytext.Text("places.halls.map_name")
 	case id == "garden":
-		return "the Sunken Garden"
+		return copytext.Text("places.garden.map_name")
 	case id == "canyon":
-		return "the Rift"
+		return copytext.Text("places.rift.map_name")
 	case strings.HasPrefix(id, "maze"):
-		return "the Unmapped Depths"
+		return copytext.Text("places.depths.map_name")
 	}
 	return id
 }
@@ -537,9 +538,9 @@ func levelDisplayName(id string) string {
 // two-column stats, the best-score line and the restart/quit hint.
 func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 	const bg, border = 236, 240
-	title, tc := "VICTORY", 48
+	title, tc := copytext.Text("outcomes.draw_game_over.victory"), 48
 	if g.Status != game.StatusVictory {
-		title, tc = "DEFEAT", 167
+		title, tc = copytext.Text("outcomes.draw_game_over.defeat"), 167
 	}
 	bw, bh := 46, 12
 	bx, by := (f.W-bw)/2, (f.H-bh)/2
@@ -554,27 +555,27 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 		putString(f, bx+col, y, fmt.Sprintf("%-7s", k), 254, bg, true)
 		putString(f, bx+col+7, y, v, 251, bg, false)
 	}
-	put(by+2, 2, "wave", fmt.Sprintf("%d/%d", g.Wave, game.MaxWaves))
-	put(by+2, 24, "score", fmt.Sprintf("%d", g.Score))
-	put(by+3, 2, "kills", fmt.Sprintf("%d", g.TotalKills))
-	put(by+3, 24, "combo", fmt.Sprintf("x%d", g.MaxCombo))
-	put(by+4, 2, "leaks", fmt.Sprintf("%d", g.TotalLeaks))
-	put(by+4, 24, "time", formatTime(g.Time))
-	put(by+5, 2, "towers", fmt.Sprintf("%d", len(g.Towers)))
-	put(by+5, 24, "best", fmt.Sprintf("%d", ui.BestScore))
+	put(by+2, 2, copytext.Text("outcomes.draw_game_over.wave"), fmt.Sprintf("%d/%d", g.Wave, game.MaxWaves))
+	put(by+2, 24, copytext.Text("outcomes.draw_game_over.score"), fmt.Sprintf("%d", g.Score))
+	put(by+3, 2, copytext.Text("outcomes.draw_game_over.kills"), fmt.Sprintf("%d", g.TotalKills))
+	put(by+3, 24, copytext.Text("outcomes.draw_game_over.combo"), fmt.Sprintf("x%d", g.MaxCombo))
+	put(by+4, 2, copytext.Text("outcomes.draw_game_over.leaks"), fmt.Sprintf("%d", g.TotalLeaks))
+	put(by+4, 24, copytext.Text("outcomes.draw_game_over.time"), formatTime(g.Time))
+	put(by+5, 2, copytext.Text("outcomes.draw_game_over.towers"), fmt.Sprintf("%d", len(g.Towers)))
+	put(by+5, 24, copytext.Text("outcomes.draw_game_over.best"), fmt.Sprintf("%d", ui.BestScore))
 	if g.Status == game.StatusVictory && ui.Level == "heart" {
-		putString(f, bx+15, by+6, "v view ending", 180, bg, false)
+		putString(f, bx+15, by+6, copytext.Format("outcomes.draw_game_over.v_view_ending", "portrait", "v"), 180, bg, false)
 	}
-	bestLine := fmt.Sprintf("best %d", ui.BestScore)
+	bestLine := copytext.Format("outcomes.draw_game_over.best_2", "best_score", fmt.Sprintf("%d", ui.BestScore))
 	bold := false
 	if ui.NewBest {
-		bestLine = fmt.Sprintf("★ NEW BEST %d ★", ui.BestScore)
+		bestLine = copytext.Format("outcomes.draw_game_over.new_best", "best_score", fmt.Sprintf("%d", ui.BestScore))
 		bold = true
 	}
 	putString(f, bx+(bw-len([]rune(bestLine)))/2, by+7, bestLine, 220, bg, bold)
-	lore := "The lair is held. Malgrath endures."
+	lore := copytext.Text("outcomes.draw_game_over.the_lair_is_held_malgrath_endures")
 	if g.Status != game.StatusVictory {
-		lore = "Malgrath has fallen. The lair is clean."
+		lore = copytext.Text("outcomes.draw_game_over.malgrath_has_fallen_the_lair_is_clean")
 	}
 	putString(f, bx+(bw-len([]rune(lore)))/2, by+8, lore, 244, bg, false)
 	verdict := endVerdict(g)
@@ -583,7 +584,7 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 		s  string
 		fg int
 	}{
-		{"r", 167}, {" restart | ", 251},
+		{"r", 167}, {copytext.Text("outcomes.draw_game_over.restart"), 251},
 	}
 	if ui.ToLair {
 		parts = append(parts,
@@ -594,7 +595,7 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 			struct {
 				s  string
 				fg int
-			}{" lair | ", 251})
+			}{copytext.Text("outcomes.draw_game_over.lair"), 251})
 	}
 	parts = append(parts,
 		struct {
@@ -604,7 +605,7 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 		struct {
 			s  string
 			fg int
-		}{" quit", 251})
+		}{copytext.Text("outcomes.draw_game_over.quit"), 251})
 	total := 0
 	for _, p := range parts {
 		total += len(p.s)
@@ -624,20 +625,20 @@ func endVerdict(g *game.State) string {
 	if g.Status == game.StatusVictory {
 		switch {
 		case g.TotalLeaks == 0:
-			return "A flawless hold — not one breach."
+			return copytext.Text("outcomes.end_verdict.a_flawless_hold_not_one_breach")
 		case g.TotalLeaks <= 5:
-			return "A steady hold. The lair endures."
+			return copytext.Text("outcomes.end_verdict.a_steady_hold_the_lair_endures")
 		default:
-			return "A hard-fought hold. The lair feels it."
+			return copytext.Text("outcomes.end_verdict.a_hard_fought_hold_the_lair_feels")
 		}
 	}
 	switch {
 	case g.Wave >= 15:
-		return fmt.Sprintf("The lair fell late, on wave %d.", g.Wave)
+		return copytext.Format("outcomes.end_verdict.the_lair_fell_late_on_wave", "wave", fmt.Sprintf("%d", g.Wave))
 	case g.Wave >= 8:
-		return fmt.Sprintf("The lair held to wave %d. So close.", g.Wave)
+		return copytext.Format("outcomes.end_verdict.the_lair_held_to_wave_so_close", "wave", fmt.Sprintf("%d", g.Wave))
 	default:
-		return fmt.Sprintf("The lair fell early, on wave %d.", g.Wave)
+		return copytext.Format("outcomes.end_verdict.the_lair_fell_early_on_wave", "wave", fmt.Sprintf("%d", g.Wave))
 	}
 }
 
@@ -730,7 +731,7 @@ func (s headerSeg) len() int {
 // the level·diff, then wordmark, then pause mark are elided, in that order.
 func headerSegments(g *game.State, ui *UI, pal Colors) []headerSeg {
 	segs := []headerSeg{
-		{runs: []headerRun{{"termtd", pal.Bright, true}}, drop: 1},
+		{runs: []headerRun{{copytext.Text("ui.header_segments.termtd"), pal.Bright, true}}, drop: 1},
 	}
 	if ui.Level != "" {
 		segs = append(segs, headerSeg{
@@ -741,13 +742,13 @@ func headerSegments(g *game.State, ui *UI, pal Colors) []headerSeg {
 	var wave []headerRun
 	switch {
 	case g.Status == game.StatusRunning && g.WaveActive:
-		wave = []headerRun{{fmt.Sprintf("wave %d/%d", g.Wave, game.MaxWaves), pal.Bright, true}}
+		wave = []headerRun{{copytext.Format("ui.header_segments.wave", "wave", fmt.Sprintf("%d", g.Wave), "max_waves", fmt.Sprintf("%d", game.MaxWaves)), pal.Bright, true}}
 		if g.Combo >= 5 {
 			wave = append(wave, headerRun{fmt.Sprintf(" ⚡%d", g.Combo), pal.Gold, true})
 		}
 	case g.Status == game.StatusRunning && g.Wave == 0 && len(g.Towers) == 0:
 		// the siege is held until the player commits their first tower
-		wave = []headerRun{{"build a tower", 220, true}}
+		wave = []headerRun{{copytext.Text("ui.header_segments.build_a_tower"), 220, true}}
 	case g.Status == game.StatusRunning: // inter-wave break
 		nw := g.Wave + 1
 		in := int(g.NextWaveAt-g.Time) + 1
@@ -755,12 +756,12 @@ func headerSegments(g *game.State, ui *UI, pal Colors) []headerSeg {
 			in = 0
 		}
 		wave = []headerRun{
-			{fmt.Sprintf("next %d in %ds (", nw, in), pal.Bright, true},
+			{copytext.Format("ui.header_segments.next_in_s", "wave", fmt.Sprintf("%d", nw), "seconds", fmt.Sprintf("%d", in)), pal.Bright, true},
 			{"n", 167, true},
 			{fmt.Sprintf(" +%dg)", g.Map.ScaleGold(game.EarlyBonus(g.Wave))), pal.Bright, true},
 		}
 	default: // game over: show the final wave
-		wave = []headerRun{{fmt.Sprintf("wave %d/%d", g.Wave, game.MaxWaves), pal.Bright, true}}
+		wave = []headerRun{{copytext.Format("ui.header_segments.wave", "wave", fmt.Sprintf("%d", g.Wave), "max_waves", fmt.Sprintf("%d", game.MaxWaves)), pal.Bright, true}}
 	}
 	segs = append(segs, headerSeg{wave, -1})
 	if ui.Paused {
@@ -915,16 +916,16 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 	}
 	y := f.H - 2
 	if ui.Paused && !ui.Help {
-		hint(y, [][2]string{{"p", " resume "}, {"j", " journal "}, {"↑↓", " move "}, {"⏎", " place "}, {"q", " quit"}})
+		hint(y, [][2]string{{"p", copytext.Text("ui.draw_menu.resume")}, {"j", copytext.Text("ui.draw_menu.journal")}, {"↑↓", copytext.Text("ui.draw_menu.move")}, {"⏎", copytext.Text("ui.draw_menu.place")}, {"q", copytext.Text("ui.draw_menu.quit")}})
 	} else if ui.Help {
 		hint(y, [][2]string{
-			{"↑↓/wasd", " "}, {"⏎/1-7", " "}, {"u", " up "}, {"x", " sell "},
-			{"t", " target "}, {"n", " wave "}, {"p", " pause "}, {"f", " speed"},
+			{"↑↓/wasd", " "}, {"⏎/1-7", " "}, {"u", copytext.Text("ui.draw_menu.up")}, {"x", copytext.Text("ui.draw_menu.sell")},
+			{"t", copytext.Text("ui.draw_menu.target")}, {"n", copytext.Text("ui.draw_menu.wave")}, {"p", copytext.Text("ui.draw_menu.pause")}, {"f", copytext.Text("ui.draw_menu.speed")},
 		})
 	} else {
 		hint(y, [][2]string{
-			{"↑↓", "|move "}, {"⏎", "|place "}, {"u", "|up "}, {"x", "|sell "},
-			{"t", "|target "}, {"n", "|wave "}, {"p", "|pause "}, {"q", "|quit"},
+			{"↑↓", copytext.Text("ui.draw_menu.move_2")}, {"⏎", copytext.Text("ui.draw_menu.place_2")}, {"u", copytext.Text("ui.draw_menu.up_2")}, {"x", copytext.Text("ui.draw_menu.sell_2")},
+			{"t", copytext.Text("ui.draw_menu.target_2")}, {"n", copytext.Text("ui.draw_menu.wave_2")}, {"p", copytext.Text("ui.draw_menu.pause_2")}, {"q", copytext.Text("ui.draw_menu.quit_2")},
 		})
 	}
 
@@ -1051,9 +1052,9 @@ func drawBeats(f *Frame, g *game.State, pal Colors, l Layout, frame int) {
 		drawEdgePulse(f, 196) // the frame throbs red while the exit is struck
 	}
 	if g.WaveActive && g.Time-g.WaveStart < 1.8 {
-		text := fmt.Sprintf("WAVE %d", g.Wave)
+		text := copytext.Format("ui.draw_beats.wave", "wave", fmt.Sprintf("%d", g.Wave))
 		if g.Wave == 1 {
-			text = "THE SIEGE BEGINS"
+			text = copytext.Text("ui.draw_beats.the_siege_begins")
 		}
 		fg := pal.Bright
 		if g.Time-g.WaveStart > 1.1 {
@@ -1063,7 +1064,7 @@ func drawBeats(f *Frame, g *game.State, pal Colors, l Layout, frame int) {
 	}
 	for _, e := range g.Enemies {
 		if e.Kind == game.EnemyBoss && !e.Dead && !e.Leaked && e.Prog < 4 {
-			drawCenterBanner(f, midY, "THE PLAYER", 204)
+			drawCenterBanner(f, midY, copytext.Text("ui.draw_beats.the_player"), 204)
 			drawEdgePulse(f, 204) // a regal purple pulse as the boss appears
 			break
 		}
@@ -1127,9 +1128,9 @@ func drawEndBeat(f *Frame, g *game.State, pal Colors, l Layout, beat int, won bo
 	for y := l.Oy; y < l.Oy+g.Map.H*l.Scale; y++ {
 		putOver(f, sx, y, '│', sweepCol)
 	}
-	text, fg := "THE LAIR HOLDS", pal.Gold
+	text, fg := copytext.Text("outcomes.draw_end_beat.the_lair_holds"), pal.Gold
 	if !won {
-		text, fg = "THE LAIR FALLS", 167
+		text, fg = copytext.Text("outcomes.draw_end_beat.the_lair_falls"), 167
 	}
 	reveal := beat * len(text) / 45
 	if reveal > len(text) {

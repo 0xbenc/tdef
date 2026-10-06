@@ -1,7 +1,7 @@
 package render
 
 import (
-	"fmt"
+	"github.com/0xbenc/termtd/internal/copytext"
 	"math"
 	"strconv"
 	"strings"
@@ -59,23 +59,23 @@ type owNode struct {
 // mouth, the Unmapped Depths are the far dark.
 var owNodes = []owNode{
 	{
-		ID: "rift", Name: "the Rift", Level: "canyon", X: 6, Y: 10, PW: 9, PH: 5,
+		ID: "rift", Name: copytext.Text("places.rift.map_name"), Level: "canyon", X: 6, Y: 10, PW: 9, PH: 5,
 		Chrome: 208, Glyph: '◈',
 	},
 	{
-		ID: "rotunda", Name: "the Rotunda", Level: "hub", X: 22, Y: 6, PW: 15, PH: 7,
+		ID: "rotunda", Name: copytext.Text("places.rotunda.map_name"), Level: "hub", X: 22, Y: 6, PW: 15, PH: 7,
 		Chrome: 178, Glyph: '♥',
 	},
 	{
-		ID: "halls", Name: "the Long Halls", Level: "winding", X: 63, Y: 3, PW: 15, PH: 5,
+		ID: "halls", Name: copytext.Text("places.halls.map_name"), Level: "winding", X: 63, Y: 3, PW: 15, PH: 5,
 		Chrome: 110, Glyph: '≡',
 	},
 	{
-		ID: "garden", Name: "the Sunken Garden", Level: "garden", X: 65, Y: 9, PW: 15, PH: 5,
+		ID: "garden", Name: copytext.Text("places.garden.map_name"), Level: "garden", X: 65, Y: 9, PW: 15, PH: 5,
 		Chrome: 45, Glyph: 'Ω', Water: true,
 	},
 	{
-		ID: "depths", Name: "the Unmapped Depths", Level: "maze", X: 9, Y: 2, PW: 11, PH: 5,
+		ID: "depths", Name: copytext.Text("places.depths.map_name"), Level: "maze", X: 9, Y: 2, PW: 11, PH: 5,
 		Chrome: 98, Glyph: '?', Fog: true,
 	},
 }
@@ -193,49 +193,49 @@ var owProcessionHeroes = [3]struct {
 // current renown (0..4). He speaks slowly; the line turns every 6s.
 var owDragonVoice = [5][]string{
 	{
-		"Malgrath: …the guild again? Good. I was already dying, Grak.",
-		"Malgrath: take the hoard. They came for it — take theirs first.",
+		copytext.Text("overworld.malgrath.tier_0.line_1"),
+		copytext.Text("overworld.malgrath.tier_0.line_2"),
 	},
-	{"Malgrath: my breath is short today. Hold the halls."},
-	{"Malgrath: the heart steadies. The hoard is nearly safe."},
-	{"Malgrath: I remember when we were the ones they feared."},
-	{"Malgrath: before you came I was dying. Now I am only resting."},
+	{copytext.Text("overworld.malgrath.tier_1.line_1")},
+	{copytext.Text("overworld.malgrath.tier_2.line_1")},
+	{copytext.Text("overworld.malgrath.tier_3.line_1")},
+	{copytext.Text("overworld.malgrath.tier_4.line_1")},
 }
 
-const owDragonVoiceDone = "Malgrath: they will come again, Grak. We will be ready."
+var owDragonVoiceDone = copytext.Text("overworld.ow_dragon_voice_done.malgrath_they_will_come_again_grak_we")
 
 // owFloorFlavor is the lair's voice on each floor, by state: 0 never held,
 // 1 the last defense broke, 2 held.
 var owFloorFlavor = map[string][3]string{
 	"rift": {
-		"the rift still burns where the first expedition broke in",
-		"the rift smokes — the guild reached the heart here",
-		"the rift is held. no blood on the basalt",
+		copytext.Text("overworld.rooms.rift.unheld"),
+		copytext.Text("overworld.rooms.rift.lost"),
+		copytext.Text("overworld.rooms.rift.held"),
 	},
 	"rotunda": {
-		"the heart beats slow in the rotunda",
-		"the rotunda still aches where they struck",
-		"the heart beats steady in the rotunda",
+		copytext.Text("overworld.rooms.rotunda.unheld"),
+		copytext.Text("overworld.rooms.rotunda.lost"),
+		copytext.Text("overworld.rooms.rotunda.held"),
 	},
 	"halls": {
-		"stone corridors ring hollow with old echoes",
-		"the long halls still smell of blood",
-		"the halls ring empty. the guild lost its way",
+		copytext.Text("overworld.rooms.halls.unheld"),
+		copytext.Text("overworld.rooms.halls.lost"),
+		copytext.Text("overworld.rooms.halls.held"),
 	},
 	"garden": {
-		"the water remembers a temple's prayers",
-		"the garden is stained; the water runs red at the edges",
-		"the garden keeps. the temple stones are quiet",
+		copytext.Text("overworld.rooms.garden.unheld"),
+		copytext.Text("overworld.rooms.garden.lost"),
+		copytext.Text("overworld.rooms.garden.held"),
 	},
 	"depths": {
-		"the depths are uncharted; the dark maps itself",
-		"something in the depths is still hunting",
-		"the depths let you through. barely",
+		copytext.Text("overworld.rooms.depths.unheld"),
+		copytext.Text("overworld.rooms.depths.lost"),
+		copytext.Text("overworld.rooms.depths.held"),
 	},
 	HeartFloorID: {
-		"the heart chamber. the final expedition waits",
-		"the guild's champion broke through the heart",
-		"the heart is held. the guild's hunt fails",
+		copytext.Text("overworld.rooms.heart.unheld"),
+		copytext.Text("overworld.rooms.heart.lost"),
+		copytext.Text("overworld.rooms.heart.held"),
 	},
 }
 
@@ -326,11 +326,35 @@ type OWReturnFX struct {
 // TUI from hiscore.Lair; the TTL fields are frame-counted transitions,
 // decremented by the TUI's per-frame tick. RenderOverworld stays a pure
 // function of (w, h, state, frame).
+// OWMessageKind controls presentation independently of editable wording.
+type OWMessageKind int
+
+const (
+	OWMessageNeutral OWMessageKind = iota
+	OWMessageSuccess
+	OWMessageDefeat
+	OWMessageLocked
+)
+
+func (kind OWMessageKind) color() int {
+	switch kind {
+	case OWMessageSuccess:
+		return 114
+	case OWMessageDefeat:
+		return 167
+	case OWMessageLocked:
+		return 174
+	default:
+		return 244
+	}
+}
+
 type OWState struct {
 	Cursor    game.Vec
 	Unlocked  map[string]bool
 	Msg       string // transient line (e.g. "sealed")
-	RevealAll bool   // look-dev: every floor at full brightness
+	MsgKind   OWMessageKind
+	RevealAll bool // look-dev: every floor at full brightness
 
 	CameraX   float64 // horizontal focus in world cells, eased by the TUI
 	CameraSet bool    // false lets static/headless callers focus directly on Cursor
@@ -349,6 +373,7 @@ type OWState struct {
 	Descending string // floor id under the descent transition
 	DescendTTL int
 	ReturnMsg  string // the result banner, after a defense
+	ReturnKind OWMessageKind
 	ReturnTTL  int
 	ReturnFX   OWReturnFX     // the result beat, while ReturnTTL > 0
 	Unsealing  map[string]int // floor id -> frames until it opens
@@ -417,7 +442,7 @@ func OWFloorOf(id string) (OWFloor, bool) {
 // OWFloorName is a floor's display name; the boss door reads "the Heart".
 func OWFloorName(id string) string {
 	if id == HeartFloorID {
-		return "the Heart"
+		return copytext.Text("places.heart.map_name")
 	}
 	n := owNodeByID(id)
 	if n == nil {
@@ -447,11 +472,11 @@ func lerp(a, b int, t float64) int {
 // overworldFooter is the control hint group for the screen's bottom border.
 func overworldFooter() []fseg {
 	return []fseg{
-		{key: "wasd", text: " walk"},
-		{key: "⏎", text: " descend"},
-		{key: "tab", text: " renown"},
-		{key: "j", text: " journal"},
-		{key: "esc", text: " back"},
+		{key: "wasd", text: copytext.Text("overworld.overworld_footer.walk")},
+		{key: "⏎", text: copytext.Text("overworld.overworld_footer.descend")},
+		{key: "tab", text: copytext.Text("overworld.overworld_footer.renown")},
+		{key: "j", text: copytext.Text("overworld.overworld_footer.journal")},
+		{key: "esc", text: copytext.Text("overworld.overworld_footer.back")},
 	}
 }
 
@@ -469,9 +494,9 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 	l.Ox = 1
 	l.W = OWW*l.Scale + 2
 	f := &Frame{W: l.W, H: h, C: make([]Cell, l.W*h)}
-	title := "THE LAIR"
+	title := copytext.Text("overworld.render_overworld.the_lair")
 	if st.BossDone {
-		title = "THE LAIR — HELD"
+		title = copytext.Text("overworld.render_overworld.the_lair_held")
 	}
 	screen := screenBox(w, h, title, overworldFooter(), frame%30 < 22, pal)
 
@@ -1039,17 +1064,17 @@ func drawOWLabel(f *Frame, l Layout, n *owNode, v owPadView) {
 	if l.Scale == 1 {
 		switch n.ID {
 		case "rift":
-			label = "Rift"
+			label = copytext.Text("overworld.draw_owlabel.rift")
 		case "depths":
-			label = "Depths"
+			label = copytext.Text("overworld.draw_owlabel.depths")
 		case "halls":
-			label = "Long Halls"
+			label = copytext.Text("overworld.draw_owlabel.long_halls")
 		case "garden":
-			label = "Sunken Garden"
+			label = copytext.Text("overworld.draw_owlabel.sunken_garden")
 		}
 	}
 	if n.ID == "rotunda" && v.boss {
-		label = "the Heart"
+		label = copytext.Text("overworld.draw_owlabel.the_heart")
 	}
 	fg := n.Chrome
 	mark := '◆'
@@ -1354,44 +1379,35 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 		b := OWBootFrames - st.BootTTL
 		switch {
 		case b < 25:
-			s, fg = "the lair stirs in the dark", 244
+			s, fg = copytext.Text("overworld.draw_owvoice.the_lair_stirs_in_the_dark"), 244
 		case b < 50:
-			s, fg = "the heart beats — light runs the corridors", 244
+			s, fg = copytext.Text("overworld.draw_owvoice.the_heart_beats_light_runs_the_corridors"), 244
 		default:
-			s, fg = "Malgrath: …grak. the guild still hunts.", 214
+			s, fg = copytext.Text("overworld.draw_owvoice.malgrath_grak_the_guild_still_hunts"), 214
 		}
 	case st.BlastTTL > 0:
-		s, fg = "the heart has unsealed — the final expedition stirs", 220
+		s, fg = copytext.Text("overworld.draw_owvoice.the_heart_has_unsealed_the_final_expedition"), 220
 	case st.ReturnTTL > 0 && st.ReturnMsg != "":
 		s = st.ReturnMsg
-		fg = 244
-		switch {
-		case strings.Contains(s, "held") || strings.Contains(s, "endures") || strings.Contains(s, "breaks open"):
-			fg = 114
-		case strings.Contains(s, "broke"):
-			fg = 167
-		}
+		fg = st.ReturnKind.color()
 	case st.Descending != "":
-		s = "descending into " + OWFloorName(st.Descending) + "…"
+		s = copytext.Format("overworld.progress.descending", "floor", OWFloorName(st.Descending))
 		fg = 244
 	case st.RelicMenu:
-		s = fmt.Sprintf("relics %d — 1) +60g · 2) free gunner · 3) +1♥ · esc close", st.Tokens)
+		s = copytext.Format("overworld.draw_owvoice.relics_1_60g_2_free_gunner_3", "tokens", strconv.Itoa(st.Tokens), "gold_key", "1", "tower_key", "2", "lives_key", "3", "escape", "esc", "gold", strconv.Itoa(game.RelicGoldBonus), "lives", strconv.Itoa(game.RelicLivesBonus))
 		fg = 220
 	case st.Msg != "":
 		s = st.Msg
-		fg = 244
-		if strings.Contains(s, "sealed") {
-			fg = 174
-		}
+		fg = st.MsgKind.color()
 	default:
 		if st.FirstRun {
 			// Shown even on a pad: a first-time Grak starts on the Rotunda, so
 			// the old "only when the line is empty" trigger never fired.
-			s, fg = "wasd walk the lair · enter descend · tab renown", 240
+			s, fg = copytext.Format("overworld.draw_owvoice.wasd_walk_the_lair_enter_descend_tab", "walk", "wasd", "enter", "enter", "tab", "tab"), 240
 		} else {
 			s, fg = owNodeLine(st, frame)
 			if s == "" && st.BossDone {
-				s, fg = "Malgrath endures.", 255
+				s, fg = copytext.Text("overworld.draw_owvoice.malgrath_endures"), 255
 			}
 		}
 	}
@@ -1416,7 +1432,7 @@ func owNodeLine(st OWState, frame int) (string, int) {
 		if st.BossDone {
 			return owDragonVoiceDone, 255
 		}
-		return "the heart has unsealed — enter to face the final expedition", 220
+		return copytext.Text("overworld.ow_node_line.the_heart_has_unsealed_enter_to_face"), 220
 	case id == "rotunda":
 		tier := st.Hearts
 		if tier < 0 {
@@ -1436,10 +1452,10 @@ func owNodeLine(st OWState, frame int) (string, int) {
 	rfg := 240
 	switch {
 	case rec.Cleared:
-		result = owInfoLine(fl.Name, best, "held 20/20")
+		result = owInfoLine(fl.Name, best, copytext.Text("overworld.ow_node_line.held_20_20"))
 		rfg = 114
 	case rec.BestWave > 0:
-		result = owInfoLine(fl.Name, best, "broke at "+strconv.Itoa(rec.BestWave))
+		result = owInfoLine(fl.Name, best, copytext.Format("overworld.results.broke_at", "wave", strconv.Itoa(rec.BestWave)))
 		rfg = 167
 	}
 	state := 0
@@ -1458,9 +1474,9 @@ func owNodeLine(st OWState, frame int) (string, int) {
 
 func owInfoLine(name, best, result string) string {
 	if best != "" {
-		return name + " · best " + best + " · " + result
+		return copytext.Format("overworld.results.with_best", "floor", name, "score", best, "result", result)
 	}
-	return name + " · " + result
+	return copytext.Format("overworld.results.without_best", "floor", name, "result", result)
 }
 
 // owRun is one colored segment of a chrome line.
@@ -1517,7 +1533,7 @@ func drawOWChromeRows(f *Frame, st OWState) {
 		if id == ledgerFlash {
 			fg, b = 255, true
 		}
-		rs = append(rs, owRun{"  " + id + " ", fg, b})
+		rs = append(rs, owRun{"  " + copytext.Text("places."+id+".ledger_name") + " ", fg, b})
 		switch {
 		case rec.Cleared:
 			rs = append(rs, owRun{"✓" + strconv.Itoa(game.MaxWaves), 114, true})
@@ -1531,7 +1547,7 @@ func drawOWChromeRows(f *Frame, st OWState) {
 	if "heart" == ledgerFlash {
 		hfg, hb = 255, true
 	}
-	rs = append(rs, owRun{"  heart ", hfg, hb})
+	rs = append(rs, owRun{copytext.Text("overworld.draw_owchrome_rows.heart"), hfg, hb})
 	switch {
 	case st.BossDone:
 		rs = append(rs, owRun{"✓", 255, true})
@@ -1556,7 +1572,7 @@ func drawOWChromeRows(f *Frame, st OWState) {
 		rs = append(rs, owRun{"♥×" + strconv.Itoa(st.Hearts), 214, true})
 	}
 	if st.Tokens > 0 {
-		rs = append(rs, owRun{"  relics " + strconv.Itoa(st.Tokens), 220, false})
+		rs = append(rs, owRun{copytext.Text("overworld.draw_owchrome_rows.relics") + strconv.Itoa(st.Tokens), 220, false})
 	}
 	putCenteredRuns(f, h-3, rs)
 
@@ -1566,9 +1582,9 @@ func drawOWChromeRows(f *Frame, st OWState) {
 	switch {
 	case onPad && fl.ID == "depths":
 		if st.Seed != "" {
-			ctx = "seed " + st.Seed + " · ⌫ cut · c clear"
+			ctx = copytext.Text("overworld.draw_owchrome_rows.seed") + st.Seed + copytext.Format("overworld.draw_owchrome_rows.cut_c_clear", "backspace", "⌫", "clear", "c")
 		} else {
-			ctx = "no seed — enter rolls the uncharted"
+			ctx = copytext.Text("overworld.draw_owchrome_rows.no_seed_enter_rolls_the_uncharted")
 		}
 	case st.BonusGold > 0 || st.BonusTower || st.BonusLives > 0:
 		var b []string
@@ -1576,28 +1592,28 @@ func drawOWChromeRows(f *Frame, st OWState) {
 			b = append(b, "+"+strconv.Itoa(st.BonusGold)+"g")
 		}
 		if st.BonusTower {
-			b = append(b, "free gunner")
+			b = append(b, copytext.Text("overworld.draw_owchrome_rows.free_gunner"))
 		}
 		if st.BonusLives > 0 {
 			b = append(b, "+"+strconv.Itoa(st.BonusLives)+"♥")
 		}
-		ctx = "next defense: " + strings.Join(b, " · ")
+		ctx = copytext.Text("overworld.draw_owchrome_rows.next_defense") + strings.Join(b, " · ")
 	case onPad && fl.ID == "rotunda" && st.Tokens > 0 && !st.RelicMenu:
-		ctx = "t spend a relic"
+		ctx = copytext.Format("overworld.draw_owchrome_rows.t_spend_a_relic", "target", "t")
 	}
 	if onPad && fl.ID == "rotunda" && !st.RelicMenu {
 		if ctx != "" {
 			ctx += " · "
 		}
-		ctx += "i opening"
-		if st.BossDone && len([]rune(ctx))+len([]rune(" · e ending")) <= f.W-4 {
-			ctx += " · e ending"
+		ctx += copytext.Format("overworld.draw_owchrome_rows.i_opening", "opening", "i")
+		if st.BossDone && len([]rune(ctx))+len([]rune(copytext.Format("overworld.draw_owchrome_rows.e_ending", "ending", "e"))) <= f.W-4 {
+			ctx += copytext.Format("overworld.draw_owchrome_rows.e_ending", "ending", "e")
 		}
-		if len([]rune(ctx))+len([]rune(" · v Malgrath")) <= f.W-4 {
-			ctx += " · v Malgrath"
+		if len([]rune(ctx))+len([]rune(copytext.Format("overworld.draw_owchrome_rows.v_malgrath", "portrait", "v"))) <= f.W-4 {
+			ctx += copytext.Format("overworld.draw_owchrome_rows.v_malgrath", "portrait", "v")
 		}
-		if len([]rune(ctx))+len([]rune(" · g Grak")) <= f.W-4 {
-			ctx += " · g Grak"
+		if len([]rune(ctx))+len([]rune(copytext.Format("overworld.draw_owchrome_rows.g_grak", "grak", "g"))) <= f.W-4 {
+			ctx += copytext.Format("overworld.draw_owchrome_rows.g_grak", "grak", "g")
 		}
 	}
 	if ctx != "" {

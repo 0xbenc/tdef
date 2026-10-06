@@ -1,5 +1,7 @@
 package render
 
+import "github.com/0xbenc/termtd/internal/copytext"
+
 // RenderGunnerMockup depicts one definitive Orc Gunner lore pose. The iron
 // barrel, braced limbs and concentrated squint establish the character.
 func RenderGunnerMockup(w, h int) *Frame {
@@ -9,17 +11,17 @@ func RenderGunnerMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view the gunner", 114, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.gunner.enlarge_to_view_the_gunner"), 114, 233, false)
 	} else {
 		ph := min(h-7, (w-6)*2/5)
 		pw := ph * 5 / 2
 		drawGunnerPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		putString(f, (w-10)/2, 1, "ORC GUNNER", 114, 233, true)
-		putString(f, (w-22)/2, 2, "steady hands, hot iron", 240, 233, false)
+		putString(f, (w-10)/2, 1, copytext.Text("characters.gunner.orc_gunner"), 114, 233, true)
+		putString(f, (w-22)/2, 2, copytext.Text("characters.gunner.steady_hands_hot_iron"), 240, 233, false)
 	}
-	hint := "tab Frost · esc return · q quit"
+	hint := copytext.Format("characters.gunner.tab_frost_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab portraits"
+		hint = copytext.Format("characters.gunner.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

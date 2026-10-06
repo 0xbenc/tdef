@@ -2,12 +2,13 @@ package render
 
 import (
 	"fmt"
+	"github.com/0xbenc/termtd/internal/copytext"
 	"math"
 	"strings"
 )
 
 // Films are authored shots, not timed gameplay events. Dialogue waits for the
-// reader; the camera, breath, fire and water continue moving during each hold.
+// reader. Establishing shots pan across wider scenes; dialogue holds still.
 type Film int
 
 const (
@@ -20,42 +21,47 @@ type FilmShot struct {
 	Name, Speaker, Dialogue string
 	art                     string
 	view                    filmView
-	driftX, driftY, push    float64
 }
 
-var openingShots = []FilmShot{
-	{Name: "The story they tell", Dialogue: "They told it simply: a dragon, a hoard, a hero.", art: "gate", view: filmView{0, 0, 1, 1}, driftX: .018, push: .035},
-	{Name: "The commission", Speaker: "GUILDMASTER", Dialogue: "Twenty expeditions. Kill the beast. Bring back the gold.", art: "contract", view: filmView{0, 0, 1, 1}, push: .06},
-	{Name: "What they left out", Dialogue: "Nobody mentioned the bowl of water.", art: "bowl", view: filmView{0, 0, 1, 1}, driftX: -.02, push: .04},
-	{Name: "A visitor", Dialogue: "Grak came for the same reason as everyone else.", art: "threshold", view: filmView{0, 0, 1, 1}, push: .025},
-	{Name: "The dragon", Speaker: "MALGRATH", Dialogue: "You came for the gold.", art: "dragon", view: filmView{0, 0, 1, 1}, push: .035},
-	{Name: "The thief", Speaker: "GRAK", Dialogue: "I did.", art: "grak", view: filmView{0, 0, 1, 1}, push: .025},
-	{Name: "An old bargain", Speaker: "MALGRATH", Dialogue: "Then take it. There is not much time.", art: "eye", view: filmView{0, 0, 1, 1}, push: .025},
-	{Name: "A small decision", Speaker: "GRAK", Dialogue: "Gold doesn't get thirsty.", art: "offering", view: filmView{0, 0, 1, 1}, driftY: .015, push: .025},
-	{Name: "The bowl", Dialogue: "He set down the coin. He brought the water closer.", art: "together", view: filmView{0, 0, 1, 1}, driftX: .025, push: .02},
-	{Name: "The question", Speaker: "MALGRATH", Dialogue: "You know what is coming?", art: "eye", view: filmView{.015, 0, .985, 1}, push: .02},
-	{Name: "At the door", Speaker: "GRAK", Dialogue: "Twenty expeditions.", art: "door", view: filmView{0, 0, 1, 1}, push: .06},
-	{Name: "A builder's answer", Speaker: "GRAK", Dialogue: "Then I'd better fix the door.", art: "mallet", view: filmView{0, 0, 1, 1}, driftY: -.018, push: .035},
-	{Name: "The last monster", Dialogue: "Hold the lair. Keep the fire.", art: "resolve", view: filmView{0, 0, 1, 1}, push: .025},
-}
+var openingShots = withOpeningCopy([]FilmShot{
+	{art: "village", view: filmView{0, 0, 1, 1}},
+	{art: "village-search", view: filmView{0, 0, 1, 1}},
+	{art: "ruined-road", view: filmView{0, 0, 1, 1}},
+	{art: "capital-vault", view: filmView{0, 0, 1, 1}},
+	{art: "eye", view: filmView{0, 0, 1, 1}},
+	{art: "grak", view: filmView{0, 0, 1, 1}},
+	{art: "dragon", view: filmView{0, 0, 1, 1}},
+	{art: "grak", view: filmView{0, 0, 1, 1}},
+	{art: "eye", view: filmView{0, 0, 1, 1}},
+	{art: "dragon", view: filmView{0, 0, 1, 1}},
+	{art: "grak", view: filmView{0, 0, 1, 1}},
+	{art: "eye", view: filmView{0, 0, 1, 1}},
+	{art: "mallet", view: filmView{0, 0, 1, 1}},
+	{art: "hoard", view: filmView{0, 0, 1, 1}},
+	{art: "grak", view: filmView{0, 0, 1, 1}},
+	{art: "eye", view: filmView{0, 0, 1, 1}},
+	{art: "resolve", view: filmView{0, 0, 1, 1}},
+})
 
-var endingShots = []FilmShot{
-	{Name: "After the twentieth", Dialogue: "The last expedition leaves its banner in the dust.", art: "aftermath", view: filmView{0, 0, 1, 1}, driftX: .02, push: .035},
-	{Name: "A small fire", Speaker: "MALGRATH", Dialogue: "Grak?", art: "ember", view: filmView{0, 0, 1, 1}, push: .035},
-	{Name: "The answer", Speaker: "GRAK", Dialogue: "Here.", art: "grak", view: filmView{0, 0, 1, 1}, push: .02},
-	{Name: "What remains", Speaker: "MALGRATH", Dialogue: "How much did they take?", art: "eye", view: filmView{0, 0, 1, 1}, driftY: .01, push: .03},
-	{Name: "An inventory", Speaker: "GRAK", Dialogue: "Nothing we need.", art: "bowl", view: filmView{0, 0, 1, 1}, driftX: .015, push: .025},
-	{Name: "The promise he can keep", Speaker: "GRAK", Dialogue: "I cannot give you back your wings.", art: "touch", view: filmView{0, 0, 1, 1}, push: .025},
-	{Name: "The promise he was asked for", Speaker: "MALGRATH", Dialogue: "I wasn't asking.", art: "eye", view: filmView{.015, 0, .985, 1}, push: .02},
-	{Name: "Another breath", Dialogue: "The ember catches. A breath follows it. Then another.", art: "ember", view: filmView{0, 0, 1, 1}, push: -.025},
-	{Name: "A familiar question", Speaker: "MALGRATH", Dialogue: "Is that water?", art: "dragon", view: filmView{0, 0, 1, 1}, push: .035},
-	{Name: "An honest answer", Speaker: "GRAK", Dialogue: "Mostly. The bowl leaks.", art: "grak", view: filmView{0, 0, 1, 1}, driftX: -.01, push: .025},
-	{Name: "A little work", Speaker: "MALGRATH", Dialogue: "Then we will need another.", art: "together", view: filmView{0, 0, 1, 1}, push: -.025},
-	{Name: "Tomorrow", Speaker: "GRAK", Dialogue: "Tomorrow.", art: "morning", view: filmView{0, 0, 1, 1}, driftY: -.015, push: -.02},
-	{Name: "For now", Speaker: "MALGRATH", Dialogue: "For now, stay.", art: "together", view: filmView{0, 0, 1, 1}, driftX: .012, push: .025},
-	{Name: "Still here", Speaker: "GRAK", Dialogue: "I'm here.", art: "rest", view: filmView{0, 0, 1, 1}, push: -.025},
-	{Name: "The heart held", Dialogue: "The fire is small. There is someone to tend it.", art: "rest", view: filmView{0, 0, 1, 1}, push: -.04},
-}
+var endingShots = withEndingCopy([]FilmShot{
+	{art: "ending-fallen", view: filmView{0, 0, 1, 1}},
+	{art: "ending-rescue", view: filmView{0, 0, 1, 1}},
+	{art: "ending-healer", view: filmView{0, 0, 1, 1}},
+	{art: "ending-evacuation", view: filmView{0, 0, 1, 1}},
+	{art: "ending-pursuit", view: filmView{0, 0, 1, 1}},
+	{art: "ending-maze", view: filmView{0, 0, 1, 1}},
+	{art: "ending-depths", view: filmView{0, 0, 1, 1}},
+	{art: "ending-earth", view: filmView{0, 0, 1, 1}},
+	{art: "ending-supplies", view: filmView{0, 0, 1, 1}},
+	{art: "ending-return", view: filmView{0, 0, 1, 1}},
+	{art: "ending-hoard", view: filmView{0, 0, 1, 1}},
+	{art: "grak", view: filmView{0, 0, 1, 1}},
+	{art: "ending-maze", view: filmView{0, 0, 1, 1}},
+	{art: "eye", view: filmView{0, 0, 1, 1}},
+	{art: "ending-supplies", view: filmView{0, 0, 1, 1}},
+	{art: "grak", view: filmView{0, 0, 1, 1}},
+	{art: "ending-hoard", view: filmView{0, 0, 1, 1}},
+})
 
 func FilmShots(film Film) []FilmShot {
 	if film == FilmEnding {
@@ -65,9 +71,9 @@ func FilmShots(film Film) []FilmShot {
 }
 func FilmTitle(film Film) string {
 	if film == FilmEnding {
-		return "THE HEART HELD"
+		return copytext.Text("ui.film_title.the_other_side")
 	}
-	return "THE LAST MONSTER"
+	return copytext.Text("ui.film_title.the_last_monster")
 }
 
 type CutsceneState struct {
@@ -111,8 +117,8 @@ func RenderCutscene(w, h int, st CutsceneState) *Frame {
 	w, h = max(0, w), max(0, h)
 	f := filmFrame(w, h)
 	if w < 62 || h < 19 {
-		journalCenter(f, h/2, "enlarge to 62 × 19 to view", 180, true)
-		journalCenter(f, h-2, "esc skip · q quit", 240, false)
+		journalCenter(f, h/2, copytext.Text("ui.render_cutscene.enlarge_to_62_19_to_view"), 180, true)
+		journalCenter(f, h-2, copytext.Format("ui.render_cutscene.esc_skip_q_quit", "escape", "esc", "quit", "q"), 240, false)
 		return f
 	}
 	shots := FilmShots(st.Film)
@@ -124,17 +130,17 @@ func RenderCutscene(w, h int, st CutsceneState) *Frame {
 	stageH := min(speakerY-4, (w-6)/3)
 	stageW := stageH * 3
 	stageX, stageY := (w-stageW)/2, 3+(speakerY-4-stageH)/2
-	master := filmFrame(240, 80)
-	paintFilmShot(master, st, shot.art)
-	// Ease once, then settle. Camera movement never loops through dialogue.
-	t := math.Min(1, float64(max(0, st.Frame))/210)
-	t = t * t * (3 - 2*t)
-	v := shot.view
-	v.w *= 1 - shot.push*t
-	v.h *= 1 - shot.push*t
-	v.x += (shot.view.w-v.w)/2 + shot.driftX*t
-	v.y += (shot.view.h-v.h)/2 + shot.driftY*t
-	cinemaProject(f, master, Rect{stageX, stageY, stageW, stageH}, v)
+	stage := Rect{stageX, stageY, stageW, stageH}
+	if filmIsPanorama(shot.art) {
+		paintFilmPanorama(f, stage, shot.art, st.Frame)
+	} else {
+		master := filmFrame(240, 80)
+		// Gestures finish once, leaving a stable composition for reading.
+		pose := st
+		pose.Frame = min(120, max(0, st.Frame))
+		paintFilmShot(master, pose, shot.art)
+		cinemaProject(f, master, stage, shot.view)
+	}
 	// A brief fade-in on each cut; no flickering or flashing transitions.
 	fade := math.Min(1, float64(max(0, st.Frame))/12)
 	if fade < 1 {
@@ -163,6 +169,8 @@ func RenderCutscene(w, h int, st CutsceneState) *Frame {
 		col = 180
 	} else if shot.Speaker == "GUILDMASTER" {
 		col = 174
+	} else if shot.Speaker == "HEALER" {
+		col = 117
 	}
 	journalCenter(f, speakerY, shot.Speaker, col, true)
 	left := (w - captionW) / 2
@@ -173,12 +181,15 @@ func RenderCutscene(w, h int, st CutsceneState) *Frame {
 		putString(f, left, captionY+i, string(rr[:visible]), col, 233, false)
 		n -= len(rr) + 1
 	}
-	hint := "enter / space reveal · ← previous · esc skip · q quit"
+	hint := copytext.Format("ui.render_cutscene.enter_space_reveal_previous_esc_skip_q", "advance", "enter / space", "escape", "esc", "quit", "q")
 	if CutsceneVisible(st) >= len([]rune(shot.Dialogue)) {
-		hint = "enter / space next · ← previous · esc skip · q quit"
+		hint = copytext.Format("ui.render_cutscene.enter_space_next_previous_esc_skip_q", "advance", "enter / space", "escape", "esc", "quit", "q")
+		if !CutsceneCanAdvance(st) {
+			hint = copytext.Format("ui.render_cutscene.scene_playing_previous_esc_skip_q_quit", "escape", "esc", "quit", "q")
+		}
 	}
 	if st.Shot == len(shots)-1 && CutsceneVisible(st) >= len([]rune(shot.Dialogue)) {
-		hint = "enter / space return · ← previous · esc skip · q quit"
+		hint = copytext.Format("ui.render_cutscene.enter_space_return_previous_esc_skip_q", "advance", "enter / space", "escape", "esc", "quit", "q")
 	}
 	journalCenter(f, h-2, hint, 240, false)
 	return f

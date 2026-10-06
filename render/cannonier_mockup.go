@@ -1,6 +1,9 @@
 package render
 
-import "math"
+import (
+	"github.com/0xbenc/termtd/internal/copytext"
+	"math"
+)
 
 // RenderCannonierMockup depicts a practiced monster crew loading their cannon.
 // A foreground bore, round wheels and connected work poses carry the story.
@@ -11,17 +14,17 @@ func RenderCannonierMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view the crew", 180, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.cannonier.enlarge_to_view_the_crew"), 180, 233, false)
 	} else {
 		ph := min(h-7, (w-6)/3)
 		pw := ph * 3
 		drawCannonierPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		putString(f, (w-9)/2, 1, "CANNONIER", 180, 233, true)
-		putString(f, (w-22)/2, 2, "one more for the guild", 240, 233, false)
+		putString(f, (w-9)/2, 1, copytext.Text("characters.cannonier.cannonier"), 180, 233, true)
+		putString(f, (w-22)/2, 2, copytext.Text("characters.cannonier.one_more_for_the_guild"), 240, 233, false)
 	}
-	hint := "tab Ranger · esc return · q quit"
+	hint := copytext.Format("characters.cannonier.tab_ranger_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab portraits"
+		hint = copytext.Format("characters.cannonier.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

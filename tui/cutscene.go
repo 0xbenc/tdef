@@ -84,6 +84,9 @@ func (a *App) handleCutscene(e Event) {
 		a.film.Revealed = true
 		return
 	}
+	if !render.CutsceneCanAdvance(a.film) {
+		return
+	}
 	if a.film.Shot+1 >= len(shots) {
 		a.finishCutscene()
 		return

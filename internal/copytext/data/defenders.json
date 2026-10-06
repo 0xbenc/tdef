@@ -1,0 +1,44 @@
+{
+  "gunner": {
+    "name": "Orc Gunner",
+    "subtitle": "the patient thunder",
+    "lore": "He learned patience before he learned the gun. While the guild argues over who will strike first, he settles his elbows, lets the smoke clear, and chooses the next fool. I have never heard him boast. I have heard him reload.",
+    "note": "Give him a bend in the road. He will make good use of every second they spend there."
+  },
+  "cannonier": {
+    "name": "Cannonier",
+    "subtitle": "two hands, one argument",
+    "lore": "One measures the powder. The other insists that more would be better. They have carried that argument through every chamber of the lair, along with a cannon neither could move alone. When the guild arrives shoulder to shoulder, they briefly agree.",
+    "note": "Let them bunch together. A cannonball has little respect for a formation."
+  },
+  "frost": {
+    "name": "Frost Mage",
+    "subtitle": "the winter we invited in",
+    "lore": "The garden froze the night she arrived. By morning there was a narrow path through the ice, exactly wide enough for Malgrath's drinking bowl. She says she does not care for dragons. I leave the bowl where she can find it.",
+    "note": "Her cold buys time. Put someone beside her who knows how to spend it."
+  },
+  "ranger": {
+    "name": "Ranger",
+    "subtitle": "a promise at a distance",
+    "lore": "She can tell which guild banner is coming before I can see the boots beneath it. We used to argue about how far away a danger had to be before it became our business. Now she draws the bow, and I trust the answer.",
+    "note": "Leave her a long view. Every arrow should reach someone worth the wait."
+  },
+  "lightning": {
+    "name": "Lightning Mage",
+    "subtitle": "the restless sky",
+    "lore": "He claims the storm was following him long before he came underground. I believe him. Even the iron door rings hum when he passes. Malgrath sleeps through thunder now; it is the silence afterward that makes me look up.",
+    "note": "Lightning follows close company. Make the guild regret marching together."
+  },
+  "trebuchet": {
+    "name": "Trebuchet",
+    "subtitle": "the mountain learns to throw",
+    "lore": "We built it from bridge timbers the guild thought we would need to escape. One of the crew winds while the other watches the far road. There is no hurry in either of them. The stone will arrive, and everyone beneath it will notice.",
+    "note": "Give the crew room to see a crowd. Their answer is slow, and very large."
+  },
+  "gnolls": {
+    "name": "Gnoll Slingers",
+    "subtitle": "a handful of trouble",
+    "lore": "They brought no banner, only pockets full of stones and an argument about whose throw was better. I offered them a place by the road. They offered to make it unpleasant. For once, a bargain meant exactly what it sounded like.",
+    "note": "Keep them close to the path. A little stone, thrown often, is still a problem."
+  }
+}

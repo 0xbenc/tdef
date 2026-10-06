@@ -1,5 +1,7 @@
 package render
 
+import "github.com/0xbenc/termtd/internal/copytext"
+
 // RenderMercenaryMockup shows a weary guild hireling resting both hands on a
 // planted cleaver. Unequal armor and a scarred open face tell the same story.
 func RenderMercenaryMockup(w, h int) *Frame {
@@ -9,18 +11,18 @@ func RenderMercenaryMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view the Mercenary", 180, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.mercenary.enlarge_to_view_the_mercenary"), 180, 233, false)
 	} else {
 		ph := min(h-7, (w-6)*2/5)
 		pw := ph * 5 / 2
 		drawMercenaryPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		title, subtitle := "MERCENARY", "paid to be here"
+		title, subtitle := copytext.Text("characters.mercenary.mercenary"), copytext.Text("characters.mercenary.paid_to_be_here")
 		putString(f, (w-len(title))/2, 1, title, 180, 233, true)
 		putString(f, (w-len(subtitle))/2, 2, subtitle, 240, 233, false)
 	}
-	hint := "tab Wizard · esc return · q quit"
+	hint := copytext.Format("characters.mercenary.tab_wizard_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab portraits"
+		hint = copytext.Format("characters.mercenary.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

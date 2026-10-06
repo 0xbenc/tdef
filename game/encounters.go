@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"github.com/0xbenc/termtd/internal/copytext"
 	"math"
 	"sort"
 	"strings"
@@ -25,15 +26,15 @@ func TacticalBrief(m *Map) string {
 	}
 	switch m.Encounter {
 	case EncounterRotunda:
-		return "Inner courts can cover the road more than once."
+		return copytext.Text("encounters.tactical_brief.inner_courts_can_cover_the_road_more")
 	case EncounterRift:
-		return "Separate banks need separate defenses."
+		return copytext.Text("encounters.tactical_brief.separate_banks_need_separate_defenses")
 	case EncounterHalls:
-		return "Long bows reach across the returning halls."
+		return copytext.Text("encounters.tactical_brief.long_bows_reach_across_the_returning_halls")
 	case EncounterGarden:
-		return "Slow the front ranks; catch the crowd at the bends."
+		return copytext.Text("encounters.tactical_brief.slow_the_front_ranks_catch_the_crowd")
 	case EncounterHeart:
-		return "Thin the outer ranks. Finish the survivors near the heart."
+		return copytext.Text("encounters.tactical_brief.thin_the_outer_ranks_finish_the_survivors")
 	}
 	return ""
 }
@@ -156,13 +157,13 @@ func WaveTelegraphFor(m *Map, wave int) string {
 	if m != nil && wave == 7 {
 		switch m.Encounter {
 		case EncounterRift:
-			return "Rogues in bursts. Cover the crossings and the far bank."
+			return copytext.Text("encounters.wave_telegraph_for.rogues_in_bursts_cover_the_crossings_and")
 		case EncounterHalls:
-			return "A spaced rogue raid. Long bows can follow them down the hall."
+			return copytext.Text("encounters.wave_telegraph_for.a_spaced_rogue_raid_long_bows_can")
 		case EncounterGarden:
-			return "A packed rogue raid. Slow the front; fire into the crowd."
+			return copytext.Text("encounters.wave_telegraph_for.a_packed_rogue_raid_slow_the_front")
 		case EncounterHeart:
-			return "A rogue rush. Let the outer defense thin it."
+			return copytext.Text("encounters.wave_telegraph_for.a_rogue_rush_let_the_outer_defense")
 		}
 	}
 	if text := WaveTelegraph(wave); text != "" {
@@ -174,13 +175,13 @@ func WaveTelegraphFor(m *Map, wave int) string {
 	if wave == 5 || wave == 10 || wave == 16 {
 		switch m.Encounter {
 		case EncounterRift:
-			return "Raiding parties cross in bursts. Hold more than one bank."
+			return copytext.Text("encounters.wave_telegraph_for.raiding_parties_cross_in_bursts_hold_more")
 		case EncounterHalls:
-			return "A spaced column. Long bows can cover the returning lanes."
+			return copytext.Text("encounters.wave_telegraph_for.a_spaced_column_long_bows_can_cover")
 		case EncounterGarden:
-			return "They arrive shoulder to shoulder. Catch them at the bends."
+			return copytext.Text("encounters.wave_telegraph_for.they_arrive_shoulder_to_shoulder_catch_them")
 		case EncounterHeart:
-			return "A rushing front, then heavy armor. Keep a reserve near the heart."
+			return copytext.Text("encounters.wave_telegraph_for.a_rushing_front_then_heavy_armor_keep")
 		}
 	}
 	return ""

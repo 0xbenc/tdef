@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"github.com/0xbenc/termtd/internal/copytext"
 	"math"
 	"sort"
 	"strings"
@@ -699,7 +700,8 @@ func titleBest(scores map[string]int) (int, string) {
 	return best, name
 }
 
-const titleTagline = "— terminal tower defense —"
+var titleTagline = copytext.Text("branding.title_tagline.terminal_tower_defense")
+
 const titleTextFG = 252 // soft white for readable title labels and prompts
 
 // The title screen is a fully scripted state machine, a pure function of
@@ -900,17 +902,17 @@ func RenderTitle(w, h, frame, boot int, scores map[string]int, pal Colors) *Fram
 // titleFooter is the title screen's footer group.
 func titleFooter() []fseg {
 	return []fseg{
-		{key: "[enter]", text: " start", blink: true},
-		{key: "q", text: " quit"},
+		{key: "[enter]", text: copytext.Text("ui.title_footer.start"), blink: true},
+		{key: "q", text: copytext.Text("ui.title_footer.quit")},
 	}
 }
 
 func drawTitleFooter(f *Frame, lit bool, pal Colors) {
-	drawFooterWithin(f, titleFooter(), lit, pal, f.W-len(titleSig)-3)
+	drawFooterWithin(f, titleFooter(), lit, pal, f.W-len([]rune(titleSig))-3)
 }
 
 func titleScreenBox(w, h int, lit bool, pal Colors) *Frame {
-	f := screenBox(w, h, "TERMTD", nil, lit, pal)
+	f := screenBox(w, h, copytext.Text("branding.title_screen_box.termtd"), nil, lit, pal)
 	drawTitleFooter(f, lit, pal)
 	return f
 }
@@ -998,8 +1000,8 @@ func drawTitleBattleIntro(f *Frame, w, h, off, t int, pal Colors) {
 			f.Set(x+i, y0, c)
 		}
 	}
-	seg(2, "┐IDLE SCREEN┌", pal.Dim, 0)
-	seg(16, "┐WAVE 1┌", pal.Bright, 18)
+	seg(2, copytext.Text("branding.draw_title_battle_intro.idle_screen"), pal.Dim, 0)
+	seg(16, copytext.Text("branding.draw_title_battle_intro.wave_1"), pal.Bright, 18)
 
 	const towerStart, towerDur = 32, 17
 	// Left to right along the path.
@@ -1047,7 +1049,7 @@ func drawTitleBoot(f *Frame, w, h, t, frame int, pal Colors) {
 		drawBootSubtitle(f, w, off, t-titleBootFlashEnd)
 	default:
 		drawTitleLogo(f, w, off, -1)
-		drawTitleTagline(f, w, off, len(titleTagline))
+		drawTitleTagline(f, w, off, len([]rune(titleTagline)))
 		drawBootUI(f, w, h, off, t-titleBootSubEnd, frame, pal)
 	}
 }
@@ -1832,11 +1834,11 @@ func drawBootUI(f *Frame, w, h, off, t, frame int, pal Colors) {
 	if t >= 0 {
 		if t < 8 {
 			drawRoundedBox(f, 0, 0, w, h, 234)
-			embedSegment(f, 0, 2, "TERMTD", '┐', '┌', 234, 244, true)
+			embedSegment(f, 0, 2, copytext.Text("branding.draw_boot_ui.termtd"), '┐', '┌', 234, 244, true)
 			ghostRun(f, (w-44)/2, (w+44)/2-1, h-1)
 		} else {
 			drawRoundedBox(f, 0, 0, w, h, pal.Path)
-			embedSegment(f, 0, 2, "TERMTD", '┐', '┌', pal.Path, pal.Bright, true)
+			embedSegment(f, 0, 2, copytext.Text("branding.draw_boot_ui.termtd"), '┐', '┌', pal.Path, pal.Bright, true)
 			drawTitleFooter(f, lit, pal)
 			drawTitleSig(f)
 		}
@@ -1899,11 +1901,11 @@ func drawTitleBattle(f *Frame, w, h, fr int, scores map[string]int, pal Colors) 
 
 // titleSig is the signature, embedded in the bottom border's right section
 // — mirroring the TERMTD embed in the top border, in soft white.
-const titleSig = "by Kairuku Studios"
+var titleSig = copytext.Text("branding.title_sig.by_kairuku_studios")
 
 // drawTitleSig draws the signature into the bottom border.
 func drawTitleSig(f *Frame) {
-	x := f.W - len(titleSig) - 2
+	x := f.W - len([]rune(titleSig)) - 2
 	for i, ch := range []rune(titleSig) {
 		f.Set(x+i, f.H-1, Cell{R: ch, FG: titleTextFG})
 	}
@@ -1913,7 +1915,7 @@ func drawTitleSig(f *Frame) {
 // battle: logo, tagline, roster, best line, signature.
 func drawTitleChrome(f *Frame, w, h, off int, scores map[string]int, pal Colors) {
 	drawTitleLogo(f, w, off, -1)
-	drawTitleTagline(f, w, off, len(titleTagline))
+	drawTitleTagline(f, w, off, len([]rune(titleTagline)))
 	drawTitleRoster(f, w, h, off, pal)
 	drawTitleBest(f, w, off, scores)
 	drawTitleSig(f)
@@ -1923,9 +1925,9 @@ func drawTitleBest(f *Frame, w, off int, scores map[string]int) {
 	if yy := off + 17; yy > 0 && yy < f.H-1 {
 		best, name := titleBest(scores)
 		if best > 0 {
-			centerPut(f, yy, fmt.Sprintf("★ best %d — %s", best, name), 220, false)
+			centerPut(f, yy, copytext.Format("branding.draw_title_best.best", "best", fmt.Sprintf("%d", best), "name", name), 220, false)
 		} else {
-			centerPut(f, yy, " no scores yet ", titleTextFG, false)
+			centerPut(f, yy, copytext.Text("branding.draw_title_best.no_scores_yet"), titleTextFG, false)
 		}
 	}
 }
@@ -2023,15 +2025,15 @@ func drawTitleDemo(f *Frame, w, h, off, fr int, pal Colors) {
 	if y0 <= 0 || y0+demoRows >= h-1 {
 		return
 	}
-	drawSubBox(f, 1, y0, w-2, demoRows, "IDLE SCREEN", pal)
-	waveText, waveFG := "WAVE 1", pal.Bright
+	drawSubBox(f, 1, y0, w-2, demoRows, copytext.Text("branding.draw_title_demo.idle_screen"), pal)
+	waveText, waveFG := copytext.Text("branding.draw_title_demo.wave_1"), pal.Bright
 	switch {
 	case fr >= titleOverloadEnd-13: // the boss reaches the exit
-		waveText, waveFG = "BREACH", 167
+		waveText, waveFG = copytext.Text("branding.draw_title_demo.breach"), 167
 	case fr >= 900:
-		waveText, waveFG = "WAVE 3", 167
+		waveText, waveFG = copytext.Text("branding.draw_title_demo.wave_3"), 167
 	case fr >= 480:
-		waveText, waveFG = "WAVE 2", pal.Bright
+		waveText, waveFG = copytext.Text("branding.draw_title_demo.wave_2"), pal.Bright
 	}
 	// The IDLE SCREEN label occupies x 2..14 (┐ + 11 + ┌); the wave
 	// segment follows at x 16.
@@ -2244,10 +2246,10 @@ func drawTitleRoster(f *Frame, w, h, off int, pal Colors) {
 			f.Set(x0+labelW+stride*i, yy, Cell{R: g, FG: colors[i], Bold: true})
 		}
 	}
-	line(14, " towers  ",
+	line(14, copytext.Text("branding.draw_title_roster.towers"),
 		[]rune{'G', 'C', 'F', 'S', 'T', 'M', 'L'},
 		[]int{pal.Tower[0], pal.Tower[1], pal.Tower[2], pal.Tower[3], pal.Tower[4], pal.Tower[5], pal.Tower[6]})
-	line(15, " enemies  ",
+	line(15, copytext.Text("branding.draw_title_roster.enemies"),
 		[]rune{'o', 'r', 'g', 't', 's', 'B', 'w', 'D'},
 		[]int{pal.Enemy[0], pal.Enemy[1], pal.Enemy[2], pal.Enemy[3], pal.Enemy[4], pal.Enemy[5], pal.Enemy[6], pal.Enemy[7]})
 }
@@ -2449,7 +2451,7 @@ func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Co
 		f.Set(x, y, Cell{R: r, FG: fg})
 	}
 	if p >= 0.58 {
-		embedSegment(f, 0, 2, "TERMTD", '┐', '┌', 240, pal.Bright, true)
+		embedSegment(f, 0, 2, copytext.Text("branding.draw_title_reboot.termtd"), '┐', '┌', 240, pal.Bright, true)
 	}
 	pPrev := float64(t-1) / float64(dur)
 	for i := 0; i < 5; i++ {
@@ -2462,7 +2464,7 @@ func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Co
 	if p >= 0.55 {
 		drawTitleLogoShadow(f, w, off)
 	}
-	drawTitleTagline(f, w, off, int((p-0.58)/0.14*float64(len(titleTagline))))
+	drawTitleTagline(f, w, off, int((p-0.58)/0.14*float64(len([]rune(titleTagline)))))
 	if p >= 0.72 {
 		drawTitleEmptyBox(f, w, h, off, frame, pal)
 	}
@@ -2482,7 +2484,7 @@ func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Co
 
 // MenuItems is the main menu, in order. Start is the lair itself: the
 // overworld, where Grak walks the floors and descends into one.
-var MenuItems = []string{"Start", "Quick Play", "Help", "High Scores", "Journal", "Credits", "Reset progress", "Quit"}
+var MenuItems = []string{copytext.Text("ui.menu_items.start"), copytext.Text("ui.menu_items.quick_play"), copytext.Text("ui.menu_items.help"), copytext.Text("ui.menu_items.high_scores"), copytext.Text("ui.menu_items.journal"), copytext.Text("ui.menu_items.credits"), copytext.Text("ui.menu_items.reset_progress"), copytext.Text("ui.menu_items.quit")}
 
 const (
 	MenuStart = iota
@@ -2518,8 +2520,8 @@ func MenuRects(w, h int) []Rect {
 	items := menuLayout(h)
 	maxW := 0
 	for _, it := range MenuItems {
-		if len(it) > maxW {
-			maxW = len(it)
+		if len([]rune(it)) > maxW {
+			maxW = len([]rune(it))
 		}
 	}
 	x := (w - (maxW + 3)) / 2
@@ -2533,10 +2535,10 @@ func MenuRects(w, h int) []Rect {
 func RenderMenu(w, h, sel int, pal Colors) *Frame {
 	footerPal := pal
 	footerPal.Dim = titleTextFG
-	f := screenBox(w, h, "MAIN MENU", []fseg{
-		{key: "↑↓", text: " move"},
-		{key: "enter", text: " select"},
-		{key: "q", text: " quit"},
+	f := screenBox(w, h, copytext.Text("ui.render_menu.main_menu"), []fseg{
+		{key: "↑↓", text: copytext.Text("ui.render_menu.move")},
+		{key: "enter", text: copytext.Text("ui.render_menu.select")},
+		{key: "q", text: copytext.Text("ui.render_menu.quit")},
 	}, true, footerPal)
 	items := menuLayout(h)
 	for i, name := range MenuItems {
@@ -2559,24 +2561,24 @@ func RenderMenu(w, h, sel int, pal Colors) *Frame {
 // ---------------------------------------------------------------- help
 
 func RenderHelp(w, h int, pal Colors) *Frame {
-	f := screenBox(w, h, "GRAK'S LEDGER", []fseg{{key: "esc", text: " back"}}, true, pal)
+	f := screenBox(w, h, copytext.Text("ui.render_help.grak_s_ledger"), []fseg{{key: "esc", text: copytext.Text("ui.render_help.back")}}, true, pal)
 	off := screenOff(h)
 	rows := [][2]string{
-		{"move", "arrows / wasd"},
-		{"place", "1-7 pick · enter or click"},
-		{"upgrade", "u"},
-		{"sell", "x"},
-		{"target", "t (game) · t relics (lair)"},
-		{"wave", "n (early = bonus gold)"},
-		{"pause", "p"},
-		{"journal", "j (lair or paused), [ ] chapters"},
-		{"films", "i opening · e ending (Rotunda)"},
-		{"speed", "f or wheel"},
-		{"descend", "enter, on a floor (the lair)"},
-		{"renown", "tab (the lair)"},
-		{"seed", "0-9 on the Depths (the lair)"},
-		{"cancel", "esc"},
-		{"quit", "q"},
+		{copytext.Text("ui.render_help.move"), copytext.Format("ui.help.move_controls", "arrows", "arrows", "walk", "wasd")},
+		{copytext.Text("ui.render_help.place"), copytext.Format("ui.render_help.1_7_pick_enter_or_click", "towers", "1-7", "enter", "enter")},
+		{copytext.Text("ui.render_help.upgrade"), "u"},
+		{copytext.Text("ui.render_help.sell"), "x"},
+		{copytext.Text("ui.render_help.target"), copytext.Format("ui.render_help.t_game_t_relics_lair", "target", "t")},
+		{copytext.Text("ui.render_help.wave"), copytext.Format("ui.render_help.n_early_bonus_gold", "wave", "n")},
+		{copytext.Text("ui.render_help.pause"), "p"},
+		{copytext.Text("ui.render_help.journal"), copytext.Format("ui.render_help.j_lair_or_paused_chapters", "chapters", "[ ]", "journal", "j")},
+		{copytext.Text("ui.render_help.films"), copytext.Format("ui.render_help.i_opening_e_ending_rotunda", "opening", "i", "ending", "e")},
+		{copytext.Text("ui.render_help.speed"), copytext.Format("ui.help.speed_controls", "speed", "f")},
+		{copytext.Text("ui.render_help.descend"), copytext.Format("ui.render_help.enter_on_a_floor_the_lair", "enter", "enter")},
+		{copytext.Text("ui.render_help.renown"), copytext.Format("ui.render_help.tab_the_lair", "tab", "tab")},
+		{copytext.Text("ui.render_help.seed"), copytext.Format("ui.render_help.0_9_on_the_depths_the_lair", "digits", "0-9")},
+		{copytext.Text("ui.render_help.cancel"), "esc"},
+		{copytext.Text("ui.render_help.quit"), "q"},
 	}
 	// Fixed-width two-column table: labels right-aligned in an 8-col field,
 	// values in one column, so the rows line up instead of ragged-centering.
@@ -2591,7 +2593,7 @@ func RenderHelp(w, h int, pal Colors) *Frame {
 		x0 = 1
 	}
 	if y := off + 3; y > 0 && y < h-1 {
-		centerPut(f, y, "how to hold the lair against twenty expeditions", pal.Dim, false)
+		centerPut(f, y, copytext.Text("ui.render_help.how_to_hold_the_lair_against_twenty"), pal.Dim, false)
 	}
 	for i, r := range rows {
 		y := off + 4 + i
@@ -2631,9 +2633,9 @@ func SortScores(scores map[string]int) []ScoreEntry {
 // RenderHighScores draws the hiscore table. top is the scroll offset (first
 // visible entry); it is clamped here, so callers can pass a stale value.
 func RenderHighScores(w, h, top int, scores map[string]int, pal Colors) *Frame {
-	f := screenBox(w, h, "HIGH SCORES", []fseg{
-		{key: "↑↓", text: " scroll"},
-		{key: "esc", text: " back"},
+	f := screenBox(w, h, copytext.Text("ui.render_high_scores.high_scores"), []fseg{
+		{key: "↑↓", text: copytext.Text("ui.render_high_scores.scroll")},
+		{key: "esc", text: copytext.Text("ui.render_high_scores.back")},
 	}, true, pal)
 	off := screenOff(h)
 	const tableW = 37 // len("  %3d %-20s %10d")
@@ -2655,7 +2657,7 @@ func RenderHighScores(w, h, top int, scores map[string]int, pal Colors) *Frame {
 		top = maxTop
 	}
 	if hdr := off + 2; hdr > 0 && hdr < h-1 {
-		putString(f, x0, hdr, fmt.Sprintf("  %3s %-20s %10s", " #", "NAME", "SCORE"), pal.Path, 0, false)
+		putString(f, x0, hdr, fmt.Sprintf("  %3s %-20s %10s", " #", copytext.Text("ui.render_high_scores.name"), copytext.Text("ui.render_high_scores.score")), pal.Path, 0, false)
 		if top > 0 {
 			f.Set(x0+37, hdr, Cell{R: '▲', FG: pal.Path})
 		}
@@ -2665,7 +2667,7 @@ func RenderHighScores(w, h, top int, scores map[string]int, pal Colors) *Frame {
 	}
 	if len(entries) == 0 {
 		if bodyTop > 0 && bodyTop < h-1 {
-			centerPut(f, bodyTop, " no scores yet ", 238, false)
+			centerPut(f, bodyTop, copytext.Text("ui.render_high_scores.no_scores_yet"), 238, false)
 		}
 		return f
 	}
@@ -2724,7 +2726,7 @@ type LSState struct {
 	Preview *game.Map
 }
 
-const lsMazeRow = "the Unmapped Depths"
+var lsMazeRow = copytext.Text("places.depths.map_name")
 
 // lsLayout returns the first item row, seed row, difficulty row and first
 // preview row of the level-select screen. The list holds nLevels+1 rows
@@ -2741,9 +2743,9 @@ func lsLayout(h, nLevels int) (first, seed, diff, prev int) {
 
 // lsMaxRowWidth is the widest selectable row (the maze row is the longest).
 func lsMaxRowWidth(names []string) int {
-	maxW := len(lsMazeRow)
+	maxW := len([]rune(lsMazeRow))
 	for _, n := range names {
-		if w := len(levelDisplayName(n)); w > maxW {
+		if w := len([]rune(levelDisplayName(n))); w > maxW {
 			maxW = w
 		}
 	}
@@ -2760,13 +2762,13 @@ func LSRects(v LSState, w, h int) (rows []Rect, diffs [3]Rect, seedRect Rect) {
 	}
 	_, labels := diffLayout(w)
 	for i, l := range labels {
-		diffs[i] = Rect{X: l.X - 1, Y: diff, W: len(l.S) + 2, H: 1}
+		diffs[i] = Rect{X: l.X - 1, Y: diff, W: len([]rune(l.S)) + 2, H: 1}
 	}
 	body := v.Seed
-	if len(body) < len("(empty = random)") {
-		body = "(empty = random)"
+	if len(body) < len([]rune(copytext.Text("ui.setup.random_seed"))) {
+		body = copytext.Text("ui.setup.random_seed")
 	}
-	s := " seed: " + body + "▌"
+	s := copytext.Text("ui.setup.seed_label") + body + "▌"
 	seedRect = Rect{X: (w - len([]rune(s))) / 2, Y: seed, W: len([]rune(s)), H: 1}
 	return
 }
@@ -2779,27 +2781,27 @@ func diffLayout(w int) (lineX int, labels [3]struct {
 	X int
 	S string
 }) {
-	names := [3]string{"easy", "normal", "hard"}
-	line := " difficulty:"
+	names := [3]string{copytext.Text("ui.difficulty.easy"), copytext.Text("ui.difficulty.normal"), copytext.Text("ui.difficulty.hard")}
+	line := copytext.Text("ui.setup.difficulty_label")
 	for _, n := range names {
 		line += " [" + n + "]"
 	}
-	lineX = (w - len(line)) / 2
-	x := lineX + len(" difficulty:")
+	lineX = (w - len([]rune(line))) / 2
+	x := lineX + len([]rune(copytext.Text("ui.setup.difficulty_label")))
 	for i, n := range names {
 		labels[i] = struct {
 			X int
 			S string
 		}{x + 2, n}
-		x += len(n) + 3
+		x += len([]rune(n)) + 3
 	}
 	return
 }
 
 func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
-	f := screenBox(w, h, "QUICK PLAY · HIGH SCORES ONLY", []fseg{
-		{key: "enter", text: " start"},
-		{key: "esc", text: " back"},
+	f := screenBox(w, h, copytext.Text("ui.render_level_select.quick_play_high_scores_only"), []fseg{
+		{key: "enter", text: copytext.Text("ui.render_level_select.start")},
+		{key: "esc", text: copytext.Text("ui.render_level_select.back")},
 	}, true, pal)
 	first, seed, diff, prev := lsLayout(h, len(v.Levels))
 	guard := func(y int) bool { return y > 0 && y < h-1 }
@@ -2825,20 +2827,20 @@ func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
 			body := v.Seed
 			bodyFG := pal.Bright
 			if body == "" {
-				body, bodyFG = "(empty = random)", pal.Path
+				body, bodyFG = copytext.Text("ui.setup.random_seed"), pal.Path
 			}
-			full := " seed: " + body
+			full := copytext.Text("ui.setup.seed_label") + body
 			x0 := (w - len([]rune(full))) / 2
-			putString(f, x0, seed, " seed: ", pal.Path, 0, false)
-			putString(f, x0+len(" seed: "), seed, body, bodyFG, 0, false)
+			putString(f, x0, seed, copytext.Text("ui.setup.seed_label"), pal.Path, 0, false)
+			putString(f, x0+len([]rune(copytext.Text("ui.setup.seed_label"))), seed, body, bodyFG, 0, false)
 			f.Set(x0+len([]rune(full)), seed, Cell{R: '▌', FG: pal.Bright})
 		} else {
-			centerPut(f, seed, " seed: (empty = random)", pal.Path, false)
+			centerPut(f, seed, copytext.Text("ui.setup.seed_label")+copytext.Text("ui.setup.random_seed"), pal.Path, false)
 		}
 	}
 	if guard(diff) {
 		lineX, labels := diffLayout(w)
-		putString(f, lineX, diff, " difficulty:", pal.Dim, 0, false)
+		putString(f, lineX, diff, copytext.Text("ui.setup.difficulty_label"), pal.Dim, 0, false)
 		for i, l := range labels {
 			f.Set(l.X-1, diff, Cell{R: '[', FG: pal.Path})
 			fg, bold := pal.Dim, false
@@ -2870,7 +2872,7 @@ func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
 		if scale > 0 {
 			bw, bh := v.Preview.W*scale+2, v.Preview.H*scale+2
 			bx := (w - bw) / 2
-			drawSubBox(f, bx, p, bw, bh, "PREVIEW", pal)
+			drawSubBox(f, bx, p, bw, bh, copytext.Text("ui.render_level_select.preview"), pal)
 			l := Layout{Ox: bx + 1, Oy: p + 1, Scale: scale, W: w, H: h}
 			lvlID := "maze"
 			if v.Cursor >= 0 && v.Cursor < len(v.Levels) {
@@ -2878,7 +2880,7 @@ func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
 			}
 			drawMapPreview(f, v.Preview, pal, themeForLevel(lvlID), l, 0)
 		} else if guard(p) {
-			centerPut(f, p, " (preview needs more room) ", 238, false)
+			centerPut(f, p, copytext.Text("ui.render_level_select.preview_needs_more_room"), 238, false)
 		}
 	}
 	return f

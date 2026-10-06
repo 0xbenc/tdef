@@ -1,5 +1,7 @@
 package render
 
+import "github.com/0xbenc/termtd/internal/copytext"
+
 // RenderNecromancerMockup depicts the guild's death-worker above two returning
 // squires. A bent back, hooked staff and suspended hand frame the summons.
 func RenderNecromancerMockup(w, h int) *Frame {
@@ -9,18 +11,18 @@ func RenderNecromancerMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view the Necromancer", 151, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.necromancer.enlarge_to_view_the_necromancer"), 151, 233, false)
 	} else {
 		ph := min(h-7, (w-6)*2/5)
 		pw := ph * 5 / 2
 		drawNecromancerPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		title, subtitle := "NECROMANCER", "they rise when he falls"
+		title, subtitle := copytext.Text("characters.necromancer.necromancer"), copytext.Text("characters.necromancer.they_rise_when_he_falls")
 		putString(f, (w-len(title))/2, 1, title, 151, 233, true)
 		putString(f, (w-len(subtitle))/2, 2, subtitle, 240, 233, false)
 	}
-	hint := "tab Paladin · esc return · q quit"
+	hint := copytext.Format("characters.necromancer.tab_paladin_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab portraits"
+		hint = copytext.Format("characters.necromancer.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

@@ -1,0 +1,47 @@
+{
+  "title_tagline": {
+    "terminal_tower_defense": "— terminal tower defense —"
+  },
+  "title_screen_box": {
+    "termtd": "TERMTD"
+  },
+  "draw_title_battle_intro": {
+    "idle_screen": "┐IDLE SCREEN┌",
+    "wave_1": "┐WAVE 1┌"
+  },
+  "draw_boot_ui": {
+    "termtd": "TERMTD"
+  },
+  "title_sig": {
+    "by_kairuku_studios": "by Kairuku Studios"
+  },
+  "draw_title_best": {
+    "best": "★ best {best} — {name}",
+    "no_scores_yet": " no scores yet "
+  },
+  "draw_title_demo": {
+    "idle_screen": "IDLE SCREEN",
+    "wave_1": "WAVE 1",
+    "breach": "BREACH",
+    "wave_3": "WAVE 3",
+    "wave_2": "WAVE 2"
+  },
+  "draw_title_roster": {
+    "towers": " towers  ",
+    "enemies": " enemies  "
+  },
+  "draw_title_reboot": {
+    "termtd": "TERMTD"
+  },
+  "render_credits": {
+    "credits": "CREDITS",
+    "back": " back",
+    "termtd": "TERMTD",
+    "a_game_by": "A game by",
+    "kairuku_studios": "Kairuku Studios",
+    "created_by": "Created by",
+    "0xbenc": "0xbenc",
+    "published_by": "Published by",
+    "off_court_creations": "Off Court Creations"
+  }
+}

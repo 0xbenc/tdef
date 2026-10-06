@@ -2,8 +2,15 @@ package game
 
 import (
 	"fmt"
+	"github.com/0xbenc/termtd/internal/copytext"
 	"math"
 	"strings"
+)
+
+// Campaign relic bonuses are also used when describing the reward in the UI.
+const (
+	RelicGoldBonus  = 60
+	RelicLivesBonus = 1
 )
 
 type TowerSpec struct {
@@ -21,41 +28,41 @@ type TowerSpec struct {
 
 var TowerSpecs = [TowerCount]TowerSpec{
 	{
-		Name: "Orc Gunner", Short: 'G',
+		Name: copytext.Text("defenders.gunner.name"), Short: 'G',
 		Cost: [3]int{50, 45, 70}, Dmg: [3]float64{9, 14, 22},
 		Range: [3]float64{3.0, 3.4, 3.8}, RoT: [3]float64{1.3, 1.5, 1.8},
 	},
 	{
-		Name: "Cannonier", Short: 'C',
+		Name: copytext.Text("defenders.cannonier.name"), Short: 'C',
 		Cost: [3]int{100, 90, 140}, Dmg: [3]float64{24, 40, 64},
 		Range: [3]float64{2.8, 3.2, 3.6}, RoT: [3]float64{0.55, 0.6, 0.65},
 		Splash: 1.3,
 	},
 	{
-		Name: "Frost Mage", Short: 'F',
+		Name: copytext.Text("defenders.frost.name"), Short: 'F',
 		Cost: [3]int{75, 65, 100}, Dmg: [3]float64{5, 8, 12},
 		Range: [3]float64{2.6, 2.9, 3.2}, RoT: [3]float64{0.9, 1.0, 1.1},
 		SlowPct: 0.45, SlowDur: 1.6,
 	},
 	{
-		Name: "Ranger", Short: 'S',
+		Name: copytext.Text("defenders.ranger.name"), Short: 'S',
 		Cost: [3]int{150, 130, 200}, Dmg: [3]float64{70, 120, 190},
 		Range: [3]float64{6.0, 6.6, 7.2}, RoT: [3]float64{0.35, 0.4, 0.45},
 	},
 	{
-		Name: "Lightning Mage", Short: 'T',
+		Name: copytext.Text("defenders.lightning.name"), Short: 'T',
 		Cost: [3]int{200, 160, 240}, Dmg: [3]float64{30, 48, 75},
 		Range: [3]float64{3.2, 3.5, 3.9}, RoT: [3]float64{0.8, 0.9, 1.0},
 		Chain: [3]int{2, 3, 4},
 	},
 	{
-		Name: "Trebuchet", Short: 'M',
+		Name: copytext.Text("defenders.trebuchet.name"), Short: 'M',
 		Cost: [3]int{250, 220, 320}, Dmg: [3]float64{70, 105, 160},
 		Range: [3]float64{5.0, 5.5, 6.0}, RoT: [3]float64{0.45, 0.5, 0.55},
 		Splash: 2.2,
 	},
 	{
-		Name: "Gnoll Slingers", Short: 'L',
+		Name: copytext.Text("defenders.gnolls.name"), Short: 'L',
 		Cost: [3]int{80, 70, 110}, Dmg: [3]float64{6, 9, 14},
 		Range: [3]float64{2.2, 2.5, 2.8}, RoT: [3]float64{3.0, 3.5, 4.0},
 	},
@@ -77,14 +84,14 @@ type EnemySpec struct {
 }
 
 var EnemySpecs = [EnemyCount]EnemySpec{
-	{Name: "Squire", Short: 'o', HP: 16, Speed: 3.2, Bounty: 2},
-	{Name: "Rogue", Short: 'r', HP: 34, Speed: 2.6, Bounty: 5},
-	{Name: "Mercenary", Short: 'g', HP: 65, Speed: 1.6, Bounty: 8},
-	{Name: "Paladin", Short: 't', HP: 240, Speed: 1.05, Bounty: 20},
-	{Name: "Necromancer", Short: 's', HP: 110, Speed: 1.4, Bounty: 12, SplitN: 2, SplitHP: 0.5},
-	{Name: "The Player", Short: 'B', HP: 1600, Speed: 0.8, Bounty: 140, Lives: 6},
-	{Name: "Wizard", Short: 'w', HP: 9, Speed: 2.3, Bounty: 3},
-	{Name: "Centurion", Short: 'D', HP: 180, Speed: 1.15, Bounty: 24, Armor: 0.4},
+	{Name: copytext.Text("enemies.squire.name"), Short: 'o', HP: 16, Speed: 3.2, Bounty: 2},
+	{Name: copytext.Text("enemies.rogue.name"), Short: 'r', HP: 34, Speed: 2.6, Bounty: 5},
+	{Name: copytext.Text("enemies.mercenary.name"), Short: 'g', HP: 65, Speed: 1.6, Bounty: 8},
+	{Name: copytext.Text("enemies.paladin.name"), Short: 't', HP: 240, Speed: 1.05, Bounty: 20},
+	{Name: copytext.Text("enemies.necromancer.name"), Short: 's', HP: 110, Speed: 1.4, Bounty: 12, SplitN: 2, SplitHP: 0.5},
+	{Name: copytext.Text("enemies.player.name"), Short: 'B', HP: 1600, Speed: 0.8, Bounty: 140, Lives: 6},
+	{Name: copytext.Text("enemies.wizard.name"), Short: 'w', HP: 9, Speed: 2.3, Bounty: 3},
+	{Name: copytext.Text("enemies.centurion.name"), Short: 'D', HP: 180, Speed: 1.15, Bounty: 24, Armor: 0.4},
 }
 
 const (
@@ -188,26 +195,26 @@ type WaveDef struct {
 // Index 1..MaxWaves; index 0 is unused.
 var waves = [...]WaveDef{
 	{}, // 0 unused
-	{Theme: "scouts", Groups: []spawnGroup{{EnemyMinion, 14, 1.0}}},
-	{Theme: "scouts", Groups: []spawnGroup{{EnemyMinion, 30, 0.8}}},
-	{Theme: "raid", Groups: []spawnGroup{{EnemyMinion, 15, 0.8}, {EnemyRunner, 8, 0.8}}},
-	{Theme: "raid", Groups: []spawnGroup{{EnemyMinion, 10, 0.7}, {EnemyRunner, 24, 0.7}}},
-	{Theme: "column", Groups: []spawnGroup{{EnemyMinion, 22, 0.6}, {EnemyRunner, 28, 0.6}}},
-	{Theme: "assault", Groups: []spawnGroup{{EnemyMinion, 13, 0.7}, {EnemyGrunt, 15, 0.7}}},
-	{Theme: "raid", Groups: []spawnGroup{{EnemyRunner, 50, 0.35}}},
-	{Theme: "column", Groups: []spawnGroup{{EnemyMinion, 27, 0.5}, {EnemyRunner, 30, 0.5}}},
-	{Theme: "column", Groups: []spawnGroup{{EnemyRunner, 32, 0.5}, {EnemyGrunt, 15, 0.5}}},
-	{Theme: "assault", Groups: []spawnGroup{{EnemyGrunt, 32, 0.7}}},
-	{Theme: "the coven", Groups: []spawnGroup{{EnemyGrunt, 12, 0.5}, {EnemyWisp, 11, 0.5}}},
-	{Theme: "the risen", Groups: []spawnGroup{{EnemySplitter, 10, 0.8}}},
-	{Theme: "the vanguard", Groups: []spawnGroup{{EnemyTank, 5, 0.8}, {EnemyRunner, 20, 0.8}}},
-	{Theme: "the wall", Groups: []spawnGroup{{EnemyGrunt, 12, 0.6}, {EnemyShield, 3, 0.6}}},
-	{Theme: "the player", Groups: []spawnGroup{{EnemyMinion, 8, 1.5}}, Bosses: 1},
-	{Theme: "column", Groups: []spawnGroup{{EnemyRunner, 8, 0.5}, {EnemyGrunt, 28, 0.5}, {EnemySplitter, 16, 0.5}, {EnemyShield, 2, 0.5}}},
-	{Theme: "siege", Groups: []spawnGroup{{EnemyRunner, 16, 0.4}, {EnemyGrunt, 38, 0.4}, {EnemySplitter, 6, 0.4}, {EnemyShield, 3, 0.4}, {EnemyTank, 3, 0.4}}},
-	{Theme: "the player", Groups: []spawnGroup{{EnemyGrunt, 30, 0.7}, {EnemyTank, 10, 0.7}, {EnemyShield, 8, 0.7}}, Bosses: 1},
-	{Theme: "siege", Groups: []spawnGroup{{EnemyRunner, 34, 0.3}, {EnemyGrunt, 46, 0.3}, {EnemySplitter, 20, 0.3}, {EnemyShield, 8, 0.3}, {EnemyTank, 6, 0.3}, {EnemyWisp, 12, 0.3}}},
-	{Theme: "the end", Groups: []spawnGroup{{EnemyTank, 12, 1.0}, {EnemyWisp, 24, 1.0}, {EnemySplitter, 15, 1.0}, {EnemyShield, 7, 1.0}}, Bosses: 2},
+	{Theme: copytext.Text("encounters.waves.wave_1.theme"), Groups: []spawnGroup{{EnemyMinion, 14, 1.0}}},
+	{Theme: copytext.Text("encounters.waves.wave_2.theme"), Groups: []spawnGroup{{EnemyMinion, 30, 0.8}}},
+	{Theme: copytext.Text("encounters.waves.wave_3.theme"), Groups: []spawnGroup{{EnemyMinion, 15, 0.8}, {EnemyRunner, 8, 0.8}}},
+	{Theme: copytext.Text("encounters.waves.wave_4.theme"), Groups: []spawnGroup{{EnemyMinion, 10, 0.7}, {EnemyRunner, 24, 0.7}}},
+	{Theme: copytext.Text("encounters.waves.wave_5.theme"), Groups: []spawnGroup{{EnemyMinion, 22, 0.6}, {EnemyRunner, 28, 0.6}}},
+	{Theme: copytext.Text("encounters.waves.wave_6.theme"), Groups: []spawnGroup{{EnemyMinion, 13, 0.7}, {EnemyGrunt, 15, 0.7}}},
+	{Theme: copytext.Text("encounters.waves.wave_7.theme"), Groups: []spawnGroup{{EnemyRunner, 50, 0.35}}},
+	{Theme: copytext.Text("encounters.waves.wave_8.theme"), Groups: []spawnGroup{{EnemyMinion, 27, 0.5}, {EnemyRunner, 30, 0.5}}},
+	{Theme: copytext.Text("encounters.waves.wave_9.theme"), Groups: []spawnGroup{{EnemyRunner, 32, 0.5}, {EnemyGrunt, 15, 0.5}}},
+	{Theme: copytext.Text("encounters.waves.wave_10.theme"), Groups: []spawnGroup{{EnemyGrunt, 32, 0.7}}},
+	{Theme: copytext.Text("encounters.waves.wave_11.theme"), Groups: []spawnGroup{{EnemyGrunt, 12, 0.5}, {EnemyWisp, 11, 0.5}}},
+	{Theme: copytext.Text("encounters.waves.wave_12.theme"), Groups: []spawnGroup{{EnemySplitter, 10, 0.8}}},
+	{Theme: copytext.Text("encounters.waves.wave_13.theme"), Groups: []spawnGroup{{EnemyTank, 5, 0.8}, {EnemyRunner, 20, 0.8}}},
+	{Theme: copytext.Text("encounters.waves.wave_14.theme"), Groups: []spawnGroup{{EnemyGrunt, 12, 0.6}, {EnemyShield, 3, 0.6}}},
+	{Theme: copytext.Text("encounters.waves.wave_15.theme"), Groups: []spawnGroup{{EnemyMinion, 8, 1.5}}, Bosses: 1},
+	{Theme: copytext.Text("encounters.waves.wave_16.theme"), Groups: []spawnGroup{{EnemyRunner, 8, 0.5}, {EnemyGrunt, 28, 0.5}, {EnemySplitter, 16, 0.5}, {EnemyShield, 2, 0.5}}},
+	{Theme: copytext.Text("encounters.waves.wave_17.theme"), Groups: []spawnGroup{{EnemyRunner, 16, 0.4}, {EnemyGrunt, 38, 0.4}, {EnemySplitter, 6, 0.4}, {EnemyShield, 3, 0.4}, {EnemyTank, 3, 0.4}}},
+	{Theme: copytext.Text("encounters.waves.wave_18.theme"), Groups: []spawnGroup{{EnemyGrunt, 30, 0.7}, {EnemyTank, 10, 0.7}, {EnemyShield, 8, 0.7}}, Bosses: 1},
+	{Theme: copytext.Text("encounters.waves.wave_19.theme"), Groups: []spawnGroup{{EnemyRunner, 34, 0.3}, {EnemyGrunt, 46, 0.3}, {EnemySplitter, 20, 0.3}, {EnemyShield, 8, 0.3}, {EnemyTank, 6, 0.3}, {EnemyWisp, 12, 0.3}}},
+	{Theme: copytext.Text("encounters.waves.wave_20.theme"), Groups: []spawnGroup{{EnemyTank, 12, 1.0}, {EnemyWisp, 24, 1.0}, {EnemySplitter, 15, 1.0}, {EnemyShield, 7, 1.0}}, Bosses: 2},
 }
 
 func BuildWave(wave int) []SpawnEntry {
@@ -248,25 +255,25 @@ func WaveTheme(wave int) string {
 func WaveTelegraph(wave int) string {
 	switch wave {
 	case 3:
-		return "The guild has sent rogues."
+		return copytext.Text("encounters.wave_telegraph.the_guild_has_sent_rogues")
 	case 6:
-		return "Mercenaries — and they hit harder."
+		return copytext.Text("encounters.wave_telegraph.mercenaries_and_they_hit_harder")
 	case 7:
-		return "A swift raid. Loose arrows fly true."
+		return copytext.Text("encounters.wave_telegraph.a_swift_raid_loose_arrows_fly_true")
 	case 11:
-		return "Wizards — fast and frail, but deadly."
+		return copytext.Text("encounters.wave_telegraph.wizards_fast_and_frail_but_deadly")
 	case 12:
-		return "A necromancer walks among them. They rise when he falls."
+		return copytext.Text("encounters.wave_telegraph.a_necromancer_walks_among_them_they_rise")
 	case 13:
-		return "A paladin leads the vanguard."
+		return copytext.Text("encounters.wave_telegraph.a_paladin_leads_the_vanguard")
 	case 14:
-		return "Centurions — warded, they shrug off your blows."
+		return copytext.Text("encounters.wave_telegraph.centurions_warded_they_shrug_off_your_blows")
 	case 15:
-		return "The Player has set out. If they reach the heart, it ends."
+		return copytext.Text("encounters.wave_telegraph.the_player_has_set_out_if_they")
 	case 18:
-		return "The Player returns, stronger."
+		return copytext.Text("encounters.wave_telegraph.the_player_returns_stronger")
 	case 20:
-		return "The final expedition. Two Players. Hold the lair."
+		return copytext.Text("encounters.wave_telegraph.the_final_expedition_two_players_hold_the")
 	}
 	return ""
 }

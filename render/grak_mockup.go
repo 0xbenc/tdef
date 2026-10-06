@@ -1,5 +1,7 @@
 package render
 
+import "github.com/0xbenc/termtd/internal/copytext"
+
 // RenderGrakMockup presents a static character study in the same terminal
 // tile language as Malgrath: large masses, a few planes and sparse details.
 func RenderGrakMockup(w, h int) *Frame {
@@ -9,17 +11,17 @@ func RenderGrakMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view Grak", 150, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.grak.enlarge_to_view_grak"), 150, 233, false)
 	} else {
 		ph := min(h-7, (w-6)/2)
 		pw := ph * 2
 		drawGrakPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		putString(f, (w-4)/2, 1, "GRAK", 150, 233, true)
-		putString(f, (w-16)/2, 2, "the last monster", 240, 233, false)
+		putString(f, (w-4)/2, 1, copytext.Text("characters.grak.grak"), 150, 233, true)
+		putString(f, (w-16)/2, 2, copytext.Text("characters.grak.the_last_monster"), 240, 233, false)
 	}
-	hint := "tab Gnolls · esc return · q quit"
+	hint := copytext.Format("characters.grak.tab_gnolls_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab Gnolls"
+		hint = copytext.Format("characters.grak.esc_return_tab_gnolls", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

@@ -1,5 +1,7 @@
 package render
 
+import "github.com/0xbenc/termtd/internal/copytext"
+
 // RenderWizardMockup is a static lore study of the guild's frail spellcaster.
 func RenderWizardMockup(w, h int) *Frame {
 	w, h = max(0, w), max(0, h)
@@ -8,18 +10,18 @@ func RenderWizardMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view the Wizard", 147, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.wizard.enlarge_to_view_the_wizard"), 147, 233, false)
 	} else {
 		ph := min(h-7, (w-6)*2/5)
 		pw := ph * 5 / 2
 		drawWizardPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		putString(f, (w-6)/2, 1, "WIZARD", 147, 233, true)
-		subtitle := "the shape of a spell"
+		putString(f, (w-6)/2, 1, copytext.Text("characters.wizard.wizard"), 147, 233, true)
+		subtitle := copytext.Text("characters.wizard.the_shape_of_a_spell")
 		putString(f, (w-len(subtitle))/2, 2, subtitle, 240, 233, false)
 	}
-	hint := "tab Centurion · esc return · q quit"
+	hint := copytext.Format("characters.wizard.tab_centurion_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab portraits"
+		hint = copytext.Format("characters.wizard.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

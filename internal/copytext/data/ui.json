@@ -1,0 +1,223 @@
+{
+  "journal_chapter": {
+    "i_the_towers": "I  ·  THE TOWERS",
+    "ii_the_guild": "II  ·  THE GUILD",
+    "iii_the_lair": "III  ·  THE LAIR",
+    "iv_story_moments": "IV  ·  STORY MOMENTS"
+  },
+  "render_journal": {
+    "enlarge_to_read_the_journal": "enlarge to read the journal",
+    "grak_s_journal": "GRAK'S JOURNAL",
+    "iv_afterward": "IV  ·  AFTERWARD",
+    "discover_entries_in_the_campaign": "Discover entries in the campaign"
+  },
+  "draw_journal_collection": {
+    "unwritten": "Unwritten",
+    "chapters_arrows_browse_enter_read_esc_return": "{chapters} chapters · {arrows} browse · {enter} read · {escape} return",
+    "chapter_arrows_browse_enter_read_esc": "{chapters} chapter · {arrows} browse · {enter} read · {escape}",
+    "chapter_enter_read_esc": "{chapters} chapter · {enter} read · {escape}"
+  },
+  "journal_lines": {
+    "in_the_field": "IN THE FIELD",
+    "the_way_through": "THE WAY THROUGH",
+    "remembered": "REMEMBERED"
+  },
+  "draw_journal_page": {
+    "chapters_pages_text_esc_collection": "{chapters} chapters · {pages} pages · {scroll} text · {escape} collection",
+    "chapter_text_esc": "{chapters} chapter · {scroll} text · {escape}"
+  },
+  "build_story_journal_entries": {
+    "afterward_2": "Afterward",
+    "earned_after_victories_in_the_heart_or": "Earned after {wins} victories in the Heart or Unmapped Depths. A bonus memory beyond the main story."
+  },
+  "journal_requirement": {
+    "encounter_this_guild_fighter_to_write_its": "Encounter this guild fighter to write its page.",
+    "visit_this_part_of_the_lair_to": "Visit this part of the lair to write its page.",
+    "place_a_tower_to_write_its_page": "Place a tower to write its page."
+  },
+  "title_footer": {
+    "start": " start",
+    "quit": " quit"
+  },
+  "menu_items": {
+    "start": "Start",
+    "quick_play": "Quick Play",
+    "help": "Help",
+    "high_scores": "High Scores",
+    "journal": "Journal",
+    "credits": "Credits",
+    "reset_progress": "Reset progress",
+    "quit": "Quit"
+  },
+  "render_menu": {
+    "main_menu": "MAIN MENU",
+    "move": " move",
+    "select": " select",
+    "quit": " quit"
+  },
+  "render_help": {
+    "grak_s_ledger": "GRAK'S LEDGER",
+    "back": " back",
+    "move": "move",
+    "place": "place",
+    "1_7_pick_enter_or_click": "{towers} pick · {enter} or click",
+    "upgrade": "upgrade",
+    "sell": "sell",
+    "target": "target",
+    "t_game_t_relics_lair": "{target} (game) · {target} relics (lair)",
+    "wave": "wave",
+    "n_early_bonus_gold": "{wave} (early = bonus gold)",
+    "pause": "pause",
+    "journal": "journal",
+    "j_lair_or_paused_chapters": "{journal} (lair or paused), {chapters} chapters",
+    "films": "films",
+    "i_opening_e_ending_rotunda": "{opening} opening · {ending} ending (Rotunda)",
+    "speed": "speed",
+    "descend": "descend",
+    "enter_on_a_floor_the_lair": "{enter}, on a floor (the lair)",
+    "renown": "renown",
+    "tab_the_lair": "{tab} (the lair)",
+    "seed": "seed",
+    "0_9_on_the_depths_the_lair": "{digits} on the Depths (the lair)",
+    "cancel": "cancel",
+    "quit": "quit",
+    "how_to_hold_the_lair_against_twenty": "how to hold the lair against twenty expeditions"
+  },
+  "render_high_scores": {
+    "high_scores": "HIGH SCORES",
+    "scroll": " scroll",
+    "back": " back",
+    "name": "NAME",
+    "score": "SCORE",
+    "no_scores_yet": " no scores yet "
+  },
+  "render_level_select": {
+    "quick_play_high_scores_only": "QUICK PLAY · HIGH SCORES ONLY",
+    "start": " start",
+    "back": " back",
+    "preview": "PREVIEW",
+    "preview_needs_more_room": " (preview needs more room) "
+  },
+  "render_too_small": {
+    "termtd_terminal_too_small": " termtd: terminal too small",
+    "needs_at_least_x_enlarge_the_window": " needs at least {need_w}x{need_h} — enlarge the window",
+    "paused_resize_to_resume": "(paused — resize to resume)"
+  },
+  "tower_info": {
+    "lv_max_t_sell": " ▸ {tower} Lv{level} (max)  {target} [{target_key}]  sell +{refund}",
+    "lv_d_r_t_up_sell": " ▸ {tower} Lv{level}  {damage}d {range}r  {target} [{target_key}]  up {up_cost}  sell +{refund}"
+  },
+  "header_segments": {
+    "termtd": "termtd",
+    "wave": "wave {wave}/{max_waves}",
+    "build_a_tower": "build a tower",
+    "next_in_s": "next {wave} in {seconds}s ("
+  },
+  "draw_menu": {
+    "resume": " resume ",
+    "journal": " journal ",
+    "move": " move ",
+    "place": " place ",
+    "quit": " quit",
+    "up": " up ",
+    "sell": " sell ",
+    "target": " target ",
+    "wave": " wave ",
+    "pause": " pause ",
+    "speed": " speed",
+    "move_2": "|move ",
+    "place_2": "|place ",
+    "up_2": "|up ",
+    "sell_2": "|sell ",
+    "target_2": "|target ",
+    "wave_2": "|wave ",
+    "pause_2": "|pause ",
+    "quit_2": "|quit"
+  },
+  "draw_beats": {
+    "wave": "WAVE {wave}",
+    "the_siege_begins": "THE SIEGE BEGINS",
+    "the_player": "THE PLAYER"
+  },
+  "reset_progress_items": {
+    "cancel": "Cancel",
+    "reset_all_progress": "Reset all progress"
+  },
+  "render_reset_progress": {
+    "move": " move",
+    "select": " select",
+    "cancel": " cancel",
+    "main_menu": " main menu",
+    "reset_progress": "RESET PROGRESS",
+    "all_progress_has_been_reset": "All progress has been reset.",
+    "your_next_start_begins_a_new_journey": "Your next Start begins a new journey.",
+    "reset_all_progress": "Reset all progress?",
+    "clears_floor_progress_relics_and_high_scores": "Clears floor progress, relics, and high scores.",
+    "also_clears_journal_discoveries_and_story_progress": "Also clears journal discoveries and story progress.",
+    "this_cannot_be_undone": "This cannot be undone.",
+    "could_not_reset_all_progress_try_again": "Could not reset all progress. Try again."
+  },
+  "film_title": {
+    "the_other_side": "THE OTHER SIDE",
+    "the_last_monster": "THE LAST MONSTER"
+  },
+  "render_cutscene": {
+    "enlarge_to_62_19_to_view": "enlarge to 62 × 19 to view",
+    "esc_skip_q_quit": "{escape} skip · {quit} quit",
+    "enter_space_reveal_previous_esc_skip_q": "{advance} reveal · ← previous · {escape} skip · {quit} quit",
+    "enter_space_next_previous_esc_skip_q": "{advance} next · ← previous · {escape} skip · {quit} quit",
+    "scene_playing_previous_esc_skip_q_quit": "scene playing · ← previous · {escape} skip · {quit} quit",
+    "enter_space_return_previous_esc_skip_q": "{advance} return · ← previous · {escape} skip · {quit} quit"
+  },
+  "step_game": {
+    "the_player_breached_6": "the Player breached! -6 ♥"
+  },
+  "start_game": {
+    "seed_too_large": "seed too large"
+  },
+  "place": {
+    "can_t_build_there": "can't build there"
+  },
+  "upgrade_selected": {
+    "max_level": "max level"
+  },
+  "cycle_target": {
+    "no_tower_here": "no tower here"
+  },
+  "start_wave": {
+    "the_siege_waits_build_a_tower_to": "the siege waits — build a tower to begin"
+  },
+  "targeting": {
+    "first": "first",
+    "strongest": "strongest",
+    "closest": "closest"
+  },
+  "journal": {
+    "earned_floor": "Earned by holding {floor} on {renown}.",
+    "afterward_requirement": "{wins} Heart / Depths wins · Afterward",
+    "floor_requirement": "Win {floor} · {renown}"
+  },
+  "status": {
+    "breach": "breach! -{lives} ♥",
+    "wave_cleared": "wave {wave} cleared +{gold}g",
+    "upgraded": "{tower} -> Lv{level}",
+    "need_gold": "need {gold} gold",
+    "sold": "sold for {gold}",
+    "target_changed": "{tower} target: {target}",
+    "wave_incoming": "wave {wave} incoming"
+  },
+  "difficulty": {
+    "easy": "easy",
+    "normal": "normal",
+    "hard": "hard"
+  },
+  "help": {
+    "move_controls": "{arrows} / {walk}",
+    "speed_controls": "{speed} or wheel"
+  },
+  "setup": {
+    "difficulty_label": " difficulty:",
+    "seed_label": " seed: ",
+    "random_seed": "(empty = random)"
+  }
+}

@@ -1,6 +1,9 @@
 package game
 
-import "math"
+import (
+	"github.com/0xbenc/termtd/internal/copytext"
+	"math"
+)
 
 type Vec struct {
 	X, Y int
@@ -79,11 +82,11 @@ func (m TargetMode) Short() string {
 func (m TargetMode) Name() string {
 	switch m {
 	case TargetFirst:
-		return "first"
+		return copytext.Text("ui.targeting.first")
 	case TargetStrongest:
-		return "strongest"
+		return copytext.Text("ui.targeting.strongest")
 	case TargetClosest:
-		return "closest"
+		return copytext.Text("ui.targeting.closest")
 	}
 	return "?"
 }

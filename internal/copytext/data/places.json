@@ -1,0 +1,54 @@
+{
+  "rotunda": {
+    "short_name": "Rotunda",
+    "name": "The Rotunda",
+    "subtitle": "a roof around a promise",
+    "lore": "The builders meant this chamber for an audience. Malgrath made it a place to sleep. The gold is softer than the stone, he told me once, though I think he only liked the sound it made when he settled. I still sweep a path to the water.",
+    "note": "Inner courts cover several passes with one defense. Holding the Rotunda opens the way to the Rift.",
+    "map_name": "the Rotunda",
+    "ledger_name": "rotunda"
+  },
+  "rift": {
+    "short_name": "Rift",
+    "name": "The Rift",
+    "subtitle": "a wound that learned to glow",
+    "lore": "There was a bridge here before either of us arrived. The stone remembers its ends; the middle remembers nothing. Heat comes through the crack at night. Malgrath used to warm his wings above it. Now I keep watch from the cooler bank.",
+    "note": "Separate banks need separate defenses. Holding the Rift opens the Long Halls.",
+    "map_name": "the Rift",
+    "ledger_name": "rift"
+  },
+  "halls": {
+    "short_name": "Long Halls",
+    "name": "The Long Halls",
+    "subtitle": "footsteps before faces",
+    "lore": "Every doorway is smaller than the one before it, until the far end seems built for someone else entirely. Malgrath disliked the echoes. I liked knowing who was coming. These days I can count a guild formation without seeing a single boot.",
+    "note": "The long road rewards reach and repeated coverage. Holding the Halls opens the Garden.",
+    "map_name": "the Long Halls",
+    "ledger_name": "halls"
+  },
+  "garden": {
+    "short_name": "Sunken Garden",
+    "name": "The Sunken Garden",
+    "subtitle": "something growing in the dark",
+    "lore": "The roots found the water before we did. I thought the pale leaves meant the tree was dying. Malgrath said I was judging it by the wrong sky. There are flowers here that have never seen daylight. They open anyway.",
+    "note": "Slow the front ranks and catch the crowd at the bends. Holding every fixed floor unseals the Heart.",
+    "map_name": "the Sunken Garden",
+    "ledger_name": "garden"
+  },
+  "heart": {
+    "short_name": "Heart",
+    "name": "The Heart",
+    "subtitle": "what the walls are for",
+    "lore": "There is no gold in the deepest chamber. Only warmth, and a hollow worn into the stone by a body that once filled the sky. I used to call every room in this place a defense. Here I remember what I am defending.",
+    "note": "Thin the outer ranks; finish survivors near the heart. Win all four fixed floors on this renown to enter. Holding the Heart opens the Depths.",
+    "map_name": "the Heart"
+  },
+  "depths": {
+    "short_name": "Unmapped Depths",
+    "name": "The Unmapped Depths",
+    "subtitle": "the stone has another answer",
+    "lore": "My first map was wrong by morning. My second was wrong before I finished it. The lair continues beneath the places we know, folding its roads around something I have not found. I take a torch, and leave the old map where Malgrath can see it.",
+    "note": "Routes change with the seed. The Depths open after the four floors and Heart are held on this renown.",
+    "map_name": "the Unmapped Depths"
+  }
+}

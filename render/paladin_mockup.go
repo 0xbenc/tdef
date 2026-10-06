@@ -1,5 +1,7 @@
 package render
 
+import "github.com/0xbenc/termtd/internal/copytext"
+
 // RenderPaladinMockup is the guild's immovable vanguard: a closed helm above
 // a monumental pointed shield, with a flanged mace held upright at its side.
 func RenderPaladinMockup(w, h int) *Frame {
@@ -9,18 +11,18 @@ func RenderPaladinMockup(w, h int) *Frame {
 		f.C[i] = Cell{R: ' ', FG: 240, BG: 233}
 	}
 	if w < 32 || h < 16 {
-		putString(f, 1, h/2, "enlarge to view the Paladin", 230, 233, false)
+		putString(f, 1, h/2, copytext.Text("characters.paladin.enlarge_to_view_the_paladin"), 230, 233, false)
 	} else {
 		ph := min(h-7, (w-6)*2/5)
 		pw := ph * 5 / 2
 		drawPaladinPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
-		title, subtitle := "PALADIN", "the line does not yield"
+		title, subtitle := copytext.Text("characters.paladin.paladin"), copytext.Text("characters.paladin.the_line_does_not_yield")
 		putString(f, (w-len(title))/2, 1, title, 230, 233, true)
 		putString(f, (w-len(subtitle))/2, 2, subtitle, 240, 233, false)
 	}
-	hint := "tab Rogue · esc return · q quit"
+	hint := copytext.Format("characters.paladin.tab_rogue_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
-		hint = "esc return · tab portraits"
+		hint = copytext.Format("characters.paladin.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
 	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
 	return f

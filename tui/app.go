@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"github.com/0xbenc/termtd/internal/copytext"
 	"strconv"
 	"time"
 
@@ -312,9 +313,9 @@ func (a *App) stepGame(real float64) {
 			n := prevLives - a.g.Lives
 			a.term.Write([]byte("\a"))
 			if n == 6 {
-				a.msg("the Player breached! -6 ♥")
+				a.msg(copytext.Text("ui.step_game.the_player_breached_6"))
 			} else {
-				a.msg("breach! -" + strconv.Itoa(n) + " ♥")
+				a.msg(copytext.Format("ui.status.breach", "lives", strconv.Itoa(n)))
 			}
 		}
 		if prevWaveActive && !a.g.WaveActive && a.g.Wave < game.MaxWaves {
@@ -327,7 +328,7 @@ func (a *App) stepGame(real float64) {
 				a.ui.Message = tg
 				a.msgTTL = game.AutoWaveDelayFor(a.g.Wave)
 			} else {
-				a.msg("wave " + strconv.Itoa(prevWave) + " cleared +" + strconv.Itoa(a.g.Map.ScaleGold(game.WaveBonus(prevWave))) + "g")
+				a.msg(copytext.Format("ui.status.wave_cleared", "wave", strconv.Itoa(prevWave), "gold", strconv.Itoa(a.g.Map.ScaleGold(game.WaveBonus(prevWave)))))
 			}
 		}
 	} else {
@@ -421,16 +422,20 @@ func (a *App) owSetBanner(won bool, best int, isNew bool) {
 	var msg string
 	switch {
 	case won && a.owFloorID == render.HeartFloorID:
-		msg = "the heart is held — Malgrath endures"
+		msg = copytext.Text("overworld.ow_set_banner.the_heart_is_held_malgrath_endures")
 	case won:
-		msg = name + " held — 20/20 · the lair stands steadier"
+		msg = copytext.Format("overworld.results.held", "floor", name)
 	default:
-		msg = name + " broke at " + strconv.Itoa(a.g.Wave) + " · the lair will mend"
+		msg = copytext.Format("overworld.results.lost", "floor", name, "wave", strconv.Itoa(a.g.Wave))
 	}
 	if isNew {
-		msg += " · new best " + strconv.Itoa(best)
+		msg += copytext.Format("overworld.results.new_best", "score", strconv.Itoa(best))
 	}
 	st.ReturnMsg = msg
+	st.ReturnKind = render.OWMessageDefeat
+	if won {
+		st.ReturnKind = render.OWMessageSuccess
+	}
 	st.ReturnTTL = 180
 	st.ReturnFX = render.OWReturnFX{Floor: a.owFloorID, Won: won}
 }
@@ -826,7 +831,7 @@ func (a *App) startGame() {
 	if a.ls.Cursor == len(a.ls.Levels) {
 		seed, ok := a.parseSeed()
 		if !ok {
-			a.ls.Err = "seed too large"
+			a.ls.Err = copytext.Text("ui.start_game.seed_too_large")
 			return
 		}
 		m, err := game.MazeFromSeed(seed)
@@ -1143,7 +1148,7 @@ func (a *App) place() {
 			a.ui.PlacingOn = false
 		}
 	} else {
-		a.msg("can't build there")
+		a.msg(copytext.Text("ui.place.can_t_build_there"))
 	}
 }
 
@@ -1156,13 +1161,13 @@ func (a *App) upgradeSelected() {
 		return
 	}
 	if t.Level >= 3 {
-		a.msg("max level")
+		a.msg(copytext.Text("ui.upgrade_selected.max_level"))
 		return
 	}
 	if a.g.Upgrade(t) {
-		a.msg(t.Spec().Name + " -> Lv" + strconv.Itoa(t.Level))
+		a.msg(copytext.Format("ui.status.upgraded", "tower", t.Spec().Name, "level", strconv.Itoa(t.Level)))
 	} else {
-		a.msg("need " + strconv.Itoa(a.g.UpgradeCost(t)) + " gold")
+		a.msg(copytext.Format("ui.status.need_gold", "gold", strconv.Itoa(a.g.UpgradeCost(t))))
 	}
 }
 
@@ -1176,17 +1181,17 @@ func (a *App) sellSelected() {
 	}
 	refund := a.g.Sell(t)
 	a.ui.Selected = -1
-	a.msg("sold for " + strconv.Itoa(refund))
+	a.msg(copytext.Format("ui.status.sold", "gold", strconv.Itoa(refund)))
 }
 
 func (a *App) cycleTarget() {
 	t, mode := a.g.CycleTarget(a.ui.Cursor)
 	if t == nil {
-		a.msg("no tower here")
+		a.msg(copytext.Text("ui.cycle_target.no_tower_here"))
 		return
 	}
 	a.ui.Selected = t.ID
-	a.msg(t.Spec().Name + " target: " + mode.Name())
+	a.msg(copytext.Format("ui.status.target_changed", "tower", t.Spec().Name, "target", mode.Name()))
 }
 
 func (a *App) startWave() {
@@ -1199,11 +1204,11 @@ func (a *App) startWave() {
 	// The siege waits for the player to commit a tower; the early-start key
 	// can't bypass that.
 	if a.g.Wave == 0 && len(a.g.Towers) == 0 {
-		a.msg("the siege waits — build a tower to begin")
+		a.msg(copytext.Text("ui.start_wave.the_siege_waits_build_a_tower_to"))
 		return
 	}
 	a.g.StartWave()
-	a.msg("wave " + strconv.Itoa(a.g.Wave) + " incoming")
+	a.msg(copytext.Format("ui.status.wave_incoming", "wave", strconv.Itoa(a.g.Wave)))
 }
 
 func (a *App) quit() {

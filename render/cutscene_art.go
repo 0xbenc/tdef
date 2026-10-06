@@ -9,6 +9,14 @@ func paintFilmShot(f *Frame, st CutsceneState, art string) {
 	ending := st.Film == FilmEnding
 	t := math.Min(1, float64(st.Frame)/120)
 	switch art {
+	case "ending-fallen", "ending-rescue", "ending-healer", "ending-evacuation", "ending-maze", "ending-supplies", "ending-return", "ending-hoard":
+		paintEndingStill(p, st, art)
+	case "ending-pursuit", "ending-depths", "ending-earth":
+		paintEndingPanorama(f, Rect{0, 0, f.W, f.H}, art, st.Frame)
+	case "village", "village-search", "ruined-road", "capital-vault":
+		paintFilmPanorama(f, Rect{0, 0, f.W, f.H}, art, st.Frame)
+	case "hoard":
+		filmHoard(p)
 	case "gate", "morning":
 		filmGate(p, st.Frame, art == "morning")
 	case "contract":
@@ -39,6 +47,22 @@ func paintFilmShot(f *Frame, st CutsceneState, art string) {
 		filmEmber(p, st.Frame, st.Shot >= 7)
 	case "touch":
 		filmTouch(p, t)
+	}
+}
+
+func filmHoard(p portraitPainter) {
+	p.poly(236, portraitPoint{0, .7}, portraitPoint{1, .55}, portraitPoint{1, 1}, portraitPoint{0, 1})
+	for i := 0; i < 28; i++ {
+		u := .08 + float64(i%7)*.12
+		v := .61 + float64(i/7)*.095 - float64(i%3)*.025
+		filmCoin(p, u, v, .046)
+	}
+	// The dragon's claw rests over the money he is agreeing to spend.
+	p.poly(95, portraitPoint{1, .12}, portraitPoint{.72, .15}, portraitPoint{.58, .31}, portraitPoint{.52, .55}, portraitPoint{.67, .68}, portraitPoint{1, .64})
+	p.poly(131, portraitPoint{1, .16}, portraitPoint{.75, .2}, portraitPoint{.63, .34}, portraitPoint{.59, .51}, portraitPoint{.73, .6}, portraitPoint{1, .56})
+	for i := 0; i < 3; i++ {
+		u := .61 + float64(i)*.12
+		p.poly(180, portraitPoint{u, .54}, portraitPoint{u + .085, .57}, portraitPoint{u + .02, .7})
 	}
 }
 
@@ -346,21 +370,45 @@ func filmDoor(p portraitPainter, frame int) {
 
 func filmMallet(p portraitPainter, t float64) {
 	poly := p.poly
-	poly(236, portraitPoint{.04, .78}, portraitPoint{.86, .76}, portraitPoint{1, 1}, portraitPoint{0, 1})
-	p.stroke(94, 11, portraitPoint{.64, .17}, portraitPoint{.27, .94})
-	p.stroke(180, 2, portraitPoint{.62, .19}, portraitPoint{.26, .91})
-	poly(238, portraitPoint{.39, .16}, portraitPoint{.51, .045}, portraitPoint{.88, .32}, portraitPoint{.91, .43}, portraitPoint{.8, .57}, portraitPoint{.67, .57})
-	poly(246, portraitPoint{.4, .17}, portraitPoint{.51, .055}, portraitPoint{.87, .325}, portraitPoint{.78, .39})
-	poly(240, portraitPoint{.78, .39}, portraitPoint{.87, .325}, portraitPoint{.9, .43}, portraitPoint{.8, .56}, portraitPoint{.73, .5})
-	shift := (1 - t) * .06
-	poly(95, portraitPoint{1, .54}, portraitPoint{.81, .58}, portraitPoint{.8, .84}, portraitPoint{1, .9})
-	poly(65, portraitPoint{.84, .61}, portraitPoint{.59, .57 + shift}, portraitPoint{.48, .72 + shift}, portraitPoint{.55, .82 + shift}, portraitPoint{.83, .77})
-	poly(107, portraitPoint{.78, .6}, portraitPoint{.58, .57 + shift}, portraitPoint{.5, .7 + shift}, portraitPoint{.6, .74 + shift}, portraitPoint{.83, .69})
-	for i := 0; i < 3; i++ {
-		v := .625 + float64(i)*.048 + shift
-		p.stroke(150, 5, portraitPoint{.46, v}, portraitPoint{.57, v + .035})
+	// Upright tool, low workbench, and one clean diagonal arm. The stone
+	// head and wooden shaft keep the same materials as Grak's portrait.
+	poly(236, portraitPoint{0, .87}, portraitPoint{1, .87}, portraitPoint{1, 1}, portraitPoint{0, 1})
+	poly(94, portraitPoint{.3, .2}, portraitPoint{.35, .19}, portraitPoint{.54, 1}, portraitPoint{.49, 1})
+	poly(137, portraitPoint{.305, .21}, portraitPoint{.318, .21}, portraitPoint{.507, 1}, portraitPoint{.49, 1})
+	poly(238, portraitPoint{.16, .1}, portraitPoint{.49, .05}, portraitPoint{.57, .11}, portraitPoint{.6, .26}, portraitPoint{.53, .34}, portraitPoint{.2, .36}, portraitPoint{.15, .3})
+	poly(246, portraitPoint{.16, .1}, portraitPoint{.49, .05}, portraitPoint{.57, .11}, portraitPoint{.23, .18})
+	poly(240, portraitPoint{.23, .18}, portraitPoint{.57, .11}, portraitPoint{.6, .26}, portraitPoint{.53, .34}, portraitPoint{.24, .35})
+	poly(244, portraitPoint{.16, .1}, portraitPoint{.23, .18}, portraitPoint{.24, .35}, portraitPoint{.2, .36}, portraitPoint{.15, .3})
+	// A short reach settles into a grip. Large planar masses carry the
+	// anatomy; three bevelled knuckles replace the old striped fingers.
+	reach := (1 - t) * .045
+	hand := func(color int, points ...portraitPoint) {
+		for i := range points {
+			points[i].x += reach
+			points[i].y -= reach * .3
+		}
+		poly(color, points...)
 	}
-	p.stroke(65, 1.4, portraitPoint{.52, .65 + shift}, portraitPoint{.56, .755 + shift})
+	hand(95, portraitPoint{1.04, .51}, portraitPoint{.83, .52}, portraitPoint{.78, .59}, portraitPoint{.81, .83}, portraitPoint{1.04, .95})
+	hand(52, portraitPoint{.88, .74}, portraitPoint{1.04, .78}, portraitPoint{1.04, .95}, portraitPoint{.81, .83})
+	hand(65, portraitPoint{.81, .58}, portraitPoint{.6, .55}, portraitPoint{.48, .61}, portraitPoint{.46, .73}, portraitPoint{.6, .81}, portraitPoint{.84, .81})
+	hand(107, portraitPoint{.81, .58}, portraitPoint{.6, .55}, portraitPoint{.49, .61}, portraitPoint{.52, .69}, portraitPoint{.64, .73}, portraitPoint{.81, .73})
+	hand(150, portraitPoint{.63, .565}, portraitPoint{.81, .59}, portraitPoint{.78, .63}, portraitPoint{.61, .6})
+	// Leather cuff separates the sleeve from the forearm without clutter.
+	hand(94, portraitPoint{.78, .55}, portraitPoint{.83, .56}, portraitPoint{.86, .81}, portraitPoint{.8, .81}, portraitPoint{.74, .6})
+	hand(137, portraitPoint{.78, .55}, portraitPoint{.83, .56}, portraitPoint{.84, .62}, portraitPoint{.77, .61})
+	// Palm wraps behind the shaft; fingers curl over its near face.
+	hand(107, portraitPoint{.48, .54}, portraitPoint{.58, .56}, portraitPoint{.62, .65}, portraitPoint{.57, .75}, portraitPoint{.46, .76}, portraitPoint{.4, .67}, portraitPoint{.4, .59})
+	hand(65, portraitPoint{.4, .63}, portraitPoint{.49, .65}, portraitPoint{.54, .75}, portraitPoint{.46, .76}, portraitPoint{.4, .7})
+	for i := 0; i < 3; i++ {
+		y := .58 + float64(i)*.065
+		x := .385 + float64(i)*.015
+		hand(107, portraitPoint{x, y}, portraitPoint{x + .05, y - .025}, portraitPoint{x + .13, y - .008}, portraitPoint{x + .13, y + .035}, portraitPoint{x + .04, y + .045}, portraitPoint{x, y + .025})
+		hand(150, portraitPoint{x, y}, portraitPoint{x + .05, y - .025}, portraitPoint{x + .1, y - .014}, portraitPoint{x + .085, y + .009}, portraitPoint{x + .03, y + .019})
+	}
+	// One opposing thumb, laid diagonally across the top of the grip.
+	hand(107, portraitPoint{.54, .55}, portraitPoint{.57, .59}, portraitPoint{.5, .65}, portraitPoint{.46, .63}, portraitPoint{.465, .59})
+	hand(150, portraitPoint{.54, .55}, portraitPoint{.555, .575}, portraitPoint{.49, .62}, portraitPoint{.465, .59})
 }
 func filmResolve(p portraitPainter, frame int) {
 	filmDoor(p, frame)

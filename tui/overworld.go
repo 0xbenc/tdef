@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"github.com/0xbenc/termtd/internal/copytext"
 	"math"
 	"strconv"
 	"time"
@@ -32,7 +33,7 @@ func RunOverworld() error {
 }
 
 // owFloorOrder is the lair's depth order — the wheel browser's sequence.
-const depthsLockedMessage = "Depths sealed: beat all floors and the Heart on this renown"
+var depthsLockedMessage = copytext.Text("overworld.depths_locked_message.depths_sealed_beat_all_floors_and_the")
 
 var owFloorOrder = []string{"rift", "rotunda", "halls", "garden", "depths"}
 
@@ -91,9 +92,11 @@ func (a *App) handleOverworld(e Event) {
 	case 'r', 'R':
 		a.ow.RevealAll = !a.ow.RevealAll
 		if a.ow.RevealAll {
-			a.ow.Msg = "the whole lair, lit — every floor revealed"
+			a.ow.Msg = copytext.Text("overworld.handle_overworld.the_whole_lair_lit_every_floor_revealed")
+			a.ow.MsgKind = render.OWMessageNeutral
 		} else {
 			a.ow.Msg = ""
+			a.ow.MsgKind = render.OWMessageNeutral
 		}
 	case 'i', 'I':
 		if a.owCursorFloor() == "rotunda" {
@@ -159,6 +162,7 @@ func (a *App) owWalk(dx, dy int) {
 // leave a trail behind the old cell.
 func (a *App) owStep(dx, dy int) {
 	a.ow.Msg = ""
+	a.ow.MsgKind = render.OWMessageNeutral
 	n := game.Vec{X: a.ow.Cursor.X + dx, Y: a.ow.Cursor.Y + dy}
 	if render.OWCanWalk(n.X, n.Y, a.ow) {
 		a.ow.PushTrail(a.ow.Cursor)
@@ -192,6 +196,7 @@ func (a *App) owTick() {
 		st.ReturnTTL--
 		if st.ReturnTTL == 0 {
 			st.ReturnMsg = ""
+			st.ReturnKind = render.OWMessageNeutral
 			st.ReturnFX = render.OWReturnFX{}
 		}
 	}
@@ -209,7 +214,8 @@ func (a *App) owTick() {
 		if ttl <= 0 {
 			delete(st.Unsealing, id)
 			st.Unlocked[id] = true
-			st.ReturnMsg = render.OWFloorName(id) + " breaks open"
+			st.ReturnMsg = copytext.Format("overworld.progress.opened", "floor", render.OWFloorName(id))
+			st.ReturnKind = render.OWMessageSuccess
 			st.ReturnTTL = 90
 		} else {
 			st.Unsealing[id] = ttl
@@ -259,6 +265,7 @@ func (a *App) owEnter() {
 	}
 	st.RelicMenu = false
 	st.Msg = ""
+	st.MsgKind = render.OWMessageNeutral
 	st.Descending = id
 	st.DescendTTL = render.OWDescendFrames
 }
@@ -271,6 +278,7 @@ func (a *App) owLaunch(id string) {
 	if id == hiscore.DepthsFloor && !a.lair.DepthsReady(st.Diff) {
 		st.Descending, st.DescendTTL = "", 0
 		st.Msg = depthsLockedMessage
+		st.MsgKind = render.OWMessageLocked
 		return
 	}
 	a.diff = render.Difficulties[st.Diff]
@@ -293,7 +301,8 @@ func (a *App) owLaunch(id string) {
 	case "depths":
 		seed, ok := parseOWSeed(st.Seed)
 		if !ok {
-			st.Msg = "seed too large"
+			st.Msg = copytext.Text("overworld.ow_launch.seed_too_large")
+			st.MsgKind = render.OWMessageNeutral
 			a.fromOW = false
 			return
 		}
@@ -302,7 +311,8 @@ func (a *App) owLaunch(id string) {
 	default:
 		fl, ok := render.OWFloorOf(id)
 		if !ok {
-			st.Msg = "unknown floor"
+			st.Msg = copytext.Text("overworld.ow_launch.unknown_floor")
+			st.MsgKind = render.OWMessageNeutral
 			a.fromOW = false
 			return
 		}
@@ -311,6 +321,7 @@ func (a *App) owLaunch(id string) {
 	}
 	if err != nil {
 		st.Msg = err.Error()
+		st.MsgKind = render.OWMessageNeutral
 		a.fromOW = false
 		return
 	}
@@ -353,14 +364,17 @@ func (a *App) owSpendRelic(kind int) {
 	}
 	switch kind {
 	case 0:
-		st.BonusGold += 60
-		st.Msg = "the lair grants +60 gold to the next defense"
+		st.BonusGold += game.RelicGoldBonus
+		st.Msg = copytext.Format("overworld.ow_spend_relic.the_lair_grants_60_gold_to_the", "gold", strconv.Itoa(game.RelicGoldBonus))
+		st.MsgKind = render.OWMessageNeutral
 	case 1:
 		st.BonusTower = true
-		st.Msg = "an Orc Gunner will be waiting at the next defense"
+		st.Msg = copytext.Format("overworld.ow_spend_relic.an_orc_gunner_will_be_waiting_at", "tower", game.TowerSpecs[game.TowerGunner].Name)
+		st.MsgKind = render.OWMessageNeutral
 	case 2:
-		st.BonusLives++
-		st.Msg = "the heart steadies: +1♥ to the next defense"
+		st.BonusLives += game.RelicLivesBonus
+		st.Msg = copytext.Format("overworld.ow_spend_relic.the_heart_steadies_1_to_the_next", "lives", strconv.Itoa(game.RelicLivesBonus))
+		st.MsgKind = render.OWMessageNeutral
 	}
 	st.Tokens--
 	a.lair.Tokens = st.Tokens
@@ -514,6 +528,7 @@ func (a *App) owVisitFloor(id string) {
 	st := &a.ow
 	target := fl.Center
 	st.Msg = ""
+	st.MsgKind = render.OWMessageNeutral
 	if !render.OWFloorOpen(id, *st) {
 		approach, ok := render.OWFloorApproach(id)
 		if !ok {
@@ -542,10 +557,13 @@ func (a *App) owBrowseFloor() string {
 
 func (a *App) owSealedMessage(id string) {
 	if a.ow.Unsealing[id] > 0 {
-		a.ow.Msg = render.OWFloorName(id) + " is opening — wait at the doorway"
+		a.ow.Msg = copytext.Format("overworld.progress.opening", "floor", render.OWFloorName(id))
+		a.ow.MsgKind = render.OWMessageNeutral
 	} else if id == hiscore.DepthsFloor {
 		a.ow.Msg = depthsLockedMessage
+		a.ow.MsgKind = render.OWMessageLocked
 	} else {
-		a.ow.Msg = render.OWFloorName(id) + " is sealed — hold the lair to break it open"
+		a.ow.Msg = copytext.Format("overworld.progress.sealed", "floor", render.OWFloorName(id))
+		a.ow.MsgKind = render.OWMessageLocked
 	}
 }
