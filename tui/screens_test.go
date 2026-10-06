@@ -50,6 +50,7 @@ func TestMenuTransitions(t *testing.T) {
 		2:                  ScreenHelp,
 		3:                  ScreenHiscores,
 		render.MenuJournal: ScreenJournal,
+		render.MenuCredits: ScreenCredits,
 	} {
 		a.screen = ScreenMenu
 		a.menuSel = sel
@@ -118,6 +119,13 @@ func TestTitleAnyKeyToMenu(t *testing.T) {
 }
 
 func TestHelpAndHiscoresReturnToMenu(t *testing.T) {
+	for _, e := range []Event{{Key: KeyEscape}, {Key: KeyEnter}} {
+		c := &App{screen: ScreenCredits, menuSel: render.MenuCredits}
+		c.handle(e)
+		if c.screen != ScreenMenu || c.menuSel != render.MenuCredits {
+			t.Error("credits must return to the same main-menu selection")
+		}
+	}
 	h := &App{screen: ScreenHelp}
 	h.handle(Event{Key: KeyEnter})
 	if h.screen != ScreenMenu {

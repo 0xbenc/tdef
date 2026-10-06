@@ -77,7 +77,7 @@ func TestRenderTitleFitsFrame(t *testing.T) {
 			" towers ", " enemies ",
 			"★ best 9999999999", // best line (longest plausible key)
 			"[enter] start", "q quit",
-			"by 0xbenc", // signature in the bottom border
+			"by Kairuku Studios", // signature in the bottom border
 		} {
 			if !strings.Contains(text, want) {
 				t.Errorf("w=%d h=%d: standby missing %q:\n%s", w, h, want, text)
@@ -558,55 +558,55 @@ func TestTitleBootSequence(t *testing.T) {
 	if n < 200 {
 		t.Fatalf("boot 183: %d non-blank cells, want the arc + slab + box", n)
 	}
-	// Boot 204: the whole slab burns white over the grid.
-	f204 := RenderTitle(w, h, 204, 204, nil, Palette())
+	// The ignition beat: the whole slab burns white over the grid.
+	fFlash := RenderTitle(w, h, titleBootFlashStart+1, titleBootFlashStart+1, nil, Palette())
 	for _, s := range titlePenPath {
-		if c := f204.C[(off+2+s.row)*w+x0+s.relX]; c.FG != 255 || !c.Bold {
-			t.Fatalf("boot 204 slab cell (letter %d) = %+v, want white", s.li, c)
+		if c := fFlash.C[(off+2+s.row)*w+x0+s.relX]; c.FG != 255 || !c.Bold {
+			t.Fatalf("ignition slab cell (letter %d) = %+v, want white", s.li, c)
 		}
 	}
-	if c := f204.C[0]; c.R != '·' || c.FG != 234 {
-		t.Fatalf("boot 204 grid = %+v, want ·/234", c)
+	if c := fFlash.C[0]; c.R != '·' || c.FG != 234 {
+		t.Fatalf("ignition grid = %+v, want ·/234", c)
 	}
-	// Boot 213: the subtitle decodes left to right with a caret.
-	f213 := RenderTitle(w, h, 213, 213, nil, Palette())
+	// The subtitle beat: the subtitle decodes left to right with a caret.
+	fSubtitle := RenderTitle(w, h, titleBootFlashEnd+6, titleBootFlashEnd+6, nil, Palette())
 	tag := []rune(titleTagline)
 	sx, sy := (w-len(tag))/2, off+8
-	if c := f213.C[sy*w+sx+11]; c.FG != 255 || !c.Bold {
-		t.Fatalf("boot 213 subtitle head = %+v, want white bold", c)
+	if c := fSubtitle.C[sy*w+sx+11]; c.FG != 255 || !c.Bold {
+		t.Fatalf("subtitle subtitle head = %+v, want white bold", c)
 	}
-	if c := f213.C[sy*w+sx+12]; c.R != '█' || c.FG != 251 {
-		t.Fatalf("boot 213 caret = %+v, want █/251", c)
+	if c := fSubtitle.C[sy*w+sx+12]; c.R != '█' || c.FG != 251 {
+		t.Fatalf("subtitle caret = %+v, want █/251", c)
 	}
-	// Boot 223: the chrome fades in — border and footer still ghosted,
+	// The early UI beat: the chrome fades in — border and footer still ghosted,
 	// the signature not yet up. (x=20 is clear of the TERMTD title.)
-	f223 := RenderTitle(w, h, 223, 223, nil, Palette())
-	if c := f223.C[0*w+20]; c.FG != 234 {
-		t.Fatalf("boot 223 border = %+v, want ghost 234", c)
+	fEarlyChrome := RenderTitle(w, h, titleBootSubEnd+2, titleBootSubEnd+2, nil, Palette())
+	if c := fEarlyChrome.C[0*w+20]; c.FG != 234 {
+		t.Fatalf("early chrome border = %+v, want ghost 234", c)
 	}
-	if c := f223.C[(h-1)*w+40]; c.R != '·' || c.FG != 234 {
-		t.Fatalf("boot 223 footer = %+v, want ghost", c)
+	if c := fEarlyChrome.C[(h-1)*w+40]; c.R != '·' || c.FG != 234 {
+		t.Fatalf("early chrome footer = %+v, want ghost", c)
 	}
-	if c := f223.C[(h-1)*w+(w-11)]; c.R != '─' {
-		t.Fatalf("boot 223 sig slot = %+v, want border dash", c)
+	if c := fEarlyChrome.C[(h-1)*w+(w-len(titleSig)-2)]; c.R != '─' {
+		t.Fatalf("early chrome sig slot = %+v, want border dash", c)
 	}
-	// Boot 237: border and battlefield have landed, roster still ghosting,
+	// The late UI beat: border and battlefield have landed, roster still ghosting,
 	// the signature embedded in the bottom border.
-	f237 := RenderTitle(w, h, 237, 237, nil, Palette())
-	if c := f237.C[0*w+20]; c.FG != 240 {
-		t.Fatalf("boot 237 border = %+v, want 240", c)
+	fLateChrome := RenderTitle(w, h, titleBootSubEnd+16, titleBootSubEnd+16, nil, Palette())
+	if c := fLateChrome.C[0*w+20]; c.FG != 240 {
+		t.Fatalf("late chrome border = %+v, want 240", c)
 	}
-	if c := f237.C[(off+14)*w+40]; c.R != '·' || c.FG != 234 {
-		t.Fatalf("boot 237 roster = %+v, want ghost", c)
+	if c := fLateChrome.C[(off+14)*w+40]; c.R != '·' || c.FG != 234 {
+		t.Fatalf("late chrome roster = %+v, want ghost", c)
 	}
-	if c := f237.C[(h-1)*w+(w-11)]; c.R != 'b' || c.FG != 238 {
-		t.Fatalf("boot 237 sig start = %+v, want b/238", c)
+	if c := fLateChrome.C[(h-1)*w+(w-len(titleSig)-2)]; c.R != 'b' || c.FG != titleTextFG {
+		t.Fatalf("late chrome sig start = %+v, want b/soft white", c)
 	}
-	if c := f237.C[(h-1)*w+(w-3)]; c.R != 'c' || c.FG != 238 {
-		t.Fatalf("boot 237 sig end = %+v, want c/238", c)
+	if c := fLateChrome.C[(h-1)*w+(w-3)]; c.R != 's' || c.FG != titleTextFG {
+		t.Fatalf("late chrome sig end = %+v, want s/soft white", c)
 	}
-	// Boot 250 (the last boot frame) == the standby at the same clock.
-	if a, b := RenderTitle(w, h, 250, 250, nil, Palette()), RenderTitle(w, h, 250, 251, nil, Palette()); !reflect.DeepEqual(a, b) {
+	// The last boot frame == the standby at the same clock.
+	if a, b := RenderTitle(w, h, titleBootLen-1, titleBootLen-1, nil, Palette()), RenderTitle(w, h, titleBootLen-1, titleBootLen, nil, Palette()); !reflect.DeepEqual(a, b) {
 		t.Fatal("the boot's last frame differs from the standby")
 	}
 }
@@ -656,15 +656,15 @@ func TestTitleSigInBottomBorder(t *testing.T) {
 		w, h := size[0], size[1]
 		f := titleStandbyAt(w, h, 0, 0, nil)
 		text := f.Text()
-		if !strings.Contains(text, "by 0xbenc") {
+		if !strings.Contains(text, "by Kairuku Studios") {
 			t.Errorf("w=%d h=%d: standby missing the signature:\n%s", w, h, text)
 		}
 		x0 := w - len(titleSig) - 2
-		if c := f.C[(h-1)*w+x0]; c.R != 'b' || c.FG != 238 {
-			t.Errorf("w=%d h=%d: sig start = %+v, want b/238", w, h, c)
+		if c := f.C[(h-1)*w+x0]; c.R != 'b' || c.FG != titleTextFG {
+			t.Errorf("w=%d h=%d: sig start = %+v, want b/soft white", w, h, c)
 		}
-		if c := f.C[(h-1)*w+x0+len(titleSig)-1]; c.R != 'c' || c.FG != 238 {
-			t.Errorf("w=%d h=%d: sig end = %+v, want c/238", w, h, c)
+		if c := f.C[(h-1)*w+x0+len(titleSig)-1]; c.R != 's' || c.FG != titleTextFG {
+			t.Errorf("w=%d h=%d: sig end = %+v, want s/soft white", w, h, c)
 		}
 		// The border cell between the footer and the signature is intact.
 		lines := strings.Split(text, "\n")
@@ -672,7 +672,7 @@ func TestTitleSigInBottomBorder(t *testing.T) {
 		if !strings.Contains(row, "[enter] start") || !strings.Contains(row, "q quit") {
 			t.Errorf("w=%d h=%d: footer broken by the signature: %q", w, h, row)
 		}
-		if c := f.C[(h-1)*w+x0-3]; c.R != '─' || c.FG != 240 {
+		if c := f.C[(h-1)*w+x0-1]; c.R != '─' || c.FG != 240 {
 			t.Errorf("w=%d h=%d: border before the signature = %+v, want ─/240", w, h, c)
 		}
 	}

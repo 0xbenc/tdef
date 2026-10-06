@@ -44,6 +44,7 @@ const (
 	ScreenJournal
 	ScreenCutscene
 	ScreenResetProgress
+	ScreenCredits
 )
 
 type App struct {
@@ -452,6 +453,8 @@ func (a *App) drawScreen() {
 		a.blit(render.RenderResetProgress(w, h, a.resetSel, a.resetDone, a.resetErr, a.pal))
 	case ScreenHelp:
 		a.blit(render.RenderHelp(w, h, a.pal))
+	case ScreenCredits:
+		a.blit(render.RenderCredits(w, h, a.pal))
 	case ScreenHiscores:
 		a.blit(render.RenderHighScores(w, h, a.hsTop, a.scores, a.pal))
 	case ScreenLevelSelect:
@@ -551,7 +554,7 @@ func (a *App) handle(e Event) {
 		a.handleMenu(e)
 	case ScreenResetProgress:
 		a.handleResetProgress(e)
-	case ScreenHelp:
+	case ScreenHelp, ScreenCredits:
 		a.handleHelp(e)
 	case ScreenHiscores:
 		a.handleHiscores(e)
@@ -598,7 +601,7 @@ func (a *App) handleMenu(e Event) {
 		a.moveMenu(-1)
 	case 's', 'S':
 		a.moveMenu(1)
-	case '1', '2', '3', '4', '5', '6', '7':
+	case '1', '2', '3', '4', '5', '6', '7', '8':
 		a.activateMenu(int(e.Rune - '1'))
 	}
 	switch e.Key {
@@ -634,7 +637,7 @@ func (a *App) handleMenuMouse(e Event) {
 	}
 }
 
-// handleHelp: any key (or click) goes back to the menu; q quits.
+// Help and credits: any key (or click) goes back to the menu; q quits.
 func (a *App) handleHelp(e Event) {
 	if e.Key == KeyCtrlC || (!e.Mouse && (e.Rune == 'q' || e.Rune == 'Q')) {
 		a.quit()
@@ -797,6 +800,8 @@ func (a *App) activateMenu(i int) {
 		a.toScreen(ScreenHiscores)
 	case render.MenuJournal:
 		a.openJournal()
+	case render.MenuCredits:
+		a.toScreen(ScreenCredits)
 	case render.MenuResetProgress:
 		a.toScreen(ScreenResetProgress)
 	case render.MenuQuit:

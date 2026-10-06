@@ -51,6 +51,11 @@ func screenBox(w, h int, title string, footer []fseg, lit bool, pal Colors) *Fra
 // ┘key text ─ key text└, keys in bold hotkey red, text dim, segments
 // joined by " ─ ". A blinking segment dims as a unit when !lit.
 func drawFooter(f *Frame, segs []fseg, lit bool, pal Colors) {
+	drawFooterWithin(f, segs, lit, pal, f.W-1)
+}
+
+// right is the exclusive limit, allowing a credit to share the footer row.
+func drawFooterWithin(f *Frame, segs []fseg, lit bool, pal Colors, right int) {
 	type run struct {
 		s  string
 		fg int
@@ -73,6 +78,7 @@ func drawFooter(f *Frame, segs []fseg, lit bool, pal Colors) {
 		total += len([]rune(r.s))
 	}
 	x := (f.W - total) / 2
+	x = min(x, right-total)
 	if x < 1 {
 		x = 1
 	}
@@ -675,12 +681,12 @@ var titleLetters = [6][5]string{
 	{"XXXXXX", "XXXXXX", "..XX..", "..XX..", "..XX.."},
 	{"XXXXXX", "XX....", "XXXXX.", "XX....", "XXXXXX"},
 	{"XXXXX.", "XX..XX", "XXXXX.", "XX.XX.", "XX..XX"},
-	{"XX..XX", "XXXXXX", "XXXXXX", "XX..XX", "XX..XX"},
+	{"X....X", "XX..XX", "X.XX.X", "X....X", "X....X"},
 	{"XXXXXX", "XXXXXX", "..XX..", "..XX..", "..XX.."},
 	{"XXXXX.", "XX..XX", "XX..XX", "XX..XX", "XXXXX."},
 }
 
-var titleColors = [6]int{46, 220, 203, 171, 51, 208}
+var titleColors = [6]int{46, 220, 203, 171, 214, 117}
 
 // titleBest returns the highest score and its key (0, "" when empty).
 func titleBest(scores map[string]int) (int, string) {
@@ -694,12 +700,13 @@ func titleBest(scores map[string]int) (int, string) {
 }
 
 const titleTagline = "— terminal tower defense —"
+const titleTextFG = 252 // soft white for readable title labels and prompts
 
 // The title screen is a fully scripted state machine, a pure function of
 // (frame, boot): `frame` is the 30fps tick counter (ambient timing) and
 // `boot` is frames since this visit to the title started.
 //
-//	boot 0-250   the cinematic (~8s): a black beat, then the slab's
+//	boot 0-314   the cinematic (~10.5s): a black beat, then the slab's
 //	             bounding box draws itself with a scan flicker (the light
 //	             pen's curtain-up); a light pen traces the TERMTD slab out of
 //	             digital noise (each letter flashing white as it locks in);
@@ -708,10 +715,12 @@ const titleTagline = "— terminal tower defense —"
 //	             a 2x2 braille blob, Cannon shell + AOE burst into a 3x5
 //	             bug, Sniper charge + piercing beam through an (o_o) guy,
 //	             Tesla chain lightning into a >_< guy — each dying with its
-//	             own animation; the slab ignites white, the subtitle
+//	             own animation; the final T launches a trebuchet stone,
+//	             D freezes an approaching formation, and the stone
+//	             shatters it; the slab ignites white, the subtitle
 //	             decodes, then the frame chrome and an empty battlefield
 //	             fade in
-//	boot 251+    the attract loop, every titleAttractCycle frames:
+//	boot 315+    the attract loop, every titleAttractCycle frames:
 //
 //	15s idle     standby: full UI, empty battlefield — no towers, no
 //	             enemies, no IDLE SCREEN/WAVE text
@@ -728,13 +737,14 @@ const titleTagline = "— terminal tower defense —"
 //	             (1605-1615); the screen reboots (1615-1684) back to the
 //	             standby state, where the 15s clock starts again.
 const (
-	titleBootIntroEnd   = 8   // 0-7:      the slab box self-draws with scan flicker; the pen tip lands
-	titleBootPenEnd     = 73  // 8-72:     the light pen traces the TERMTD slab
-	titleBootWeaponsEnd = 203 // 73-202:   the letters fire: Gunner, Cannon, Sniper, Tesla
-	titleBootFlashStart = 203 // 203-206:  the slab ignites white
-	titleBootFlashEnd   = 207 //
-	titleBootSubEnd     = 221 // 207-220:  the subtitle decodes
-	titleBootLen        = 251 // 221-250:  the rest of the UI fades in
+	titleBootIntroEnd   = 8  // the slab box self-draws with scan flicker; the pen tip lands
+	titleBootPenEnd     = 73 // the light pen traces the TERMTD slab
+	titleBootComboStart = titleBootPenEnd + 118
+	titleBootWeaponsEnd = titleBootComboStart + bootComboLen
+	titleBootFlashStart = titleBootWeaponsEnd
+	titleBootFlashEnd   = titleBootFlashStart + 4
+	titleBootSubEnd     = titleBootFlashEnd + 14
+	titleBootLen        = titleBootSubEnd + 30
 )
 
 const (
@@ -873,6 +883,7 @@ func bootPenIndex(t int) int {
 // tick counter and `boot` is the number of frames this title visit has been
 // up (any keypress leaves the title, so idle time == boot time).
 func RenderTitle(w, h, frame, boot int, scores map[string]int, pal Colors) *Frame {
+	pal.Dim = titleTextFG
 	if boot < titleBootLen {
 		f := blankFrame(w, h)
 		drawTitleBoot(f, w, h, boot, frame, pal)
@@ -894,12 +905,22 @@ func titleFooter() []fseg {
 	}
 }
 
+func drawTitleFooter(f *Frame, lit bool, pal Colors) {
+	drawFooterWithin(f, titleFooter(), lit, pal, f.W-len(titleSig)-3)
+}
+
+func titleScreenBox(w, h int, lit bool, pal Colors) *Frame {
+	f := screenBox(w, h, "TERMTD", nil, lit, pal)
+	drawTitleFooter(f, lit, pal)
+	return f
+}
+
 // drawTitleStandby is the idle title: full UI, empty battlefield — no
 // towers, no enemies, no IDLE SCREEN/WAVE text, just the path and its
 // ambient energy packet.
 func drawTitleStandby(w, h, frame int, scores map[string]int, pal Colors) *Frame {
 	lit := (frame/15)%2 == 0
-	f := screenBox(w, h, "TERMTD", titleFooter(), lit, pal)
+	f := titleScreenBox(w, h, lit, pal)
 	off := screenOff(h)
 	drawTitleChrome(f, w, h, off, scores, pal)
 	drawTitleEmptyBox(f, w, h, off, frame, pal)
@@ -920,7 +941,7 @@ func drawTitleBattleSeq(w, h, frame, local int, scores map[string]int, pal Color
 	switch {
 	case fr < titleOverloadEnd:
 		lit := (frame/15)%2 == 0
-		f := screenBox(w, h, "TERMTD", titleFooter(), lit, pal)
+		f := titleScreenBox(w, h, lit, pal)
 		drawTitleBattle(f, w, h, fr, scores, pal)
 		if fr >= titleOverloadEnd-13 {
 			drawTitleOverload(f, w, h, fr-titleOverloadEnd+13, pal)
@@ -1423,7 +1444,8 @@ func drawBootZap(f *Frame, tx, ty, s, die int) {
 // drawBootWeapons is the fan: the first four letters fire a different
 // game weapon at a creature in a frame corner — T (Gunner) at the braille
 // blob lower-left, E (Cannon) at the 3x5 bug upper-left, R (Sniper) at the
-// (o_o) guy upper-right, M (Tesla) at the >_< guy lower-right. t is 0..129.
+// (o_o) guy upper-right, M (Tesla) at the >_< guy lower-right. The last two
+// letters finish together: T's trebuchet stone shatters D's frozen formation.
 func drawBootWeapons(f *Frame, w, h, off, t int) {
 	drawBootBox(f, w, off, 98, 0, 234)
 	drawBootSlab(f, w, off)
@@ -1431,8 +1453,9 @@ func drawBootWeapons(f *Frame, w, h, off, t int) {
 	drawBootCannon(f, w, h, off, t)
 	drawBootSniper(f, w, h, off, t)
 	drawBootTesla(f, w, h, off, t)
+	drawBootSiegeFinale(f, w, h, off, t-(titleBootComboStart-titleBootPenEnd))
 	// Settle beat: the box flickers once before the flash.
-	if t == 126 || t == 127 {
+	if t == titleBootWeaponsEnd-titleBootPenEnd-4 || t == titleBootWeaponsEnd-titleBootPenEnd-3 {
 		drawBootBox(f, w, off, 98, 0, 240)
 	}
 }
@@ -1784,7 +1807,7 @@ func drawBootSubtitle(f *Frame, w, off, t int) {
 	for i, ch := range r {
 		switch {
 		case i < n-1:
-			f.Set(x0+i, y, Cell{R: ch, FG: 245})
+			f.Set(x0+i, y, Cell{R: ch, FG: titleTextFG})
 		case i == n-1:
 			f.Set(x0+i, y, Cell{R: ch, FG: 255, Bold: true})
 		default:
@@ -1814,7 +1837,7 @@ func drawBootUI(f *Frame, w, h, off, t, frame int, pal Colors) {
 		} else {
 			drawRoundedBox(f, 0, 0, w, h, pal.Path)
 			embedSegment(f, 0, 2, "TERMTD", '┐', '┌', pal.Path, pal.Bright, true)
-			drawFooter(f, titleFooter(), lit, pal)
+			drawTitleFooter(f, lit, pal)
 			drawTitleSig(f)
 		}
 	}
@@ -1875,14 +1898,14 @@ func drawTitleBattle(f *Frame, w, h, fr int, scores map[string]int, pal Colors) 
 }
 
 // titleSig is the signature, embedded in the bottom border's right section
-// — mirroring the TERMTD embed in the top border, but muted.
-const titleSig = "by 0xbenc"
+// — mirroring the TERMTD embed in the top border, in soft white.
+const titleSig = "by Kairuku Studios"
 
 // drawTitleSig draws the signature into the bottom border.
 func drawTitleSig(f *Frame) {
 	x := f.W - len(titleSig) - 2
 	for i, ch := range []rune(titleSig) {
-		f.Set(x+i, f.H-1, Cell{R: ch, FG: 238})
+		f.Set(x+i, f.H-1, Cell{R: ch, FG: titleTextFG})
 	}
 }
 
@@ -1902,7 +1925,7 @@ func drawTitleBest(f *Frame, w, off int, scores map[string]int) {
 		if best > 0 {
 			centerPut(f, yy, fmt.Sprintf("★ best %d — %s", best, name), 220, false)
 		} else {
-			centerPut(f, yy, " no scores yet ", 238, false)
+			centerPut(f, yy, " no scores yet ", titleTextFG, false)
 		}
 	}
 }
@@ -1988,7 +2011,7 @@ func drawTitleTagline(f *Frame, w, off, n int) {
 	if n > len(r) {
 		n = len(r)
 	}
-	centerPut(f, off+8, string(r[:n]), 245, false)
+	centerPut(f, off+8, string(r[:n]), titleTextFG, false)
 }
 
 // drawTitleDemo animates the scripted battle inside a full-width
@@ -2216,7 +2239,7 @@ func drawTitleRoster(f *Frame, w, h, off int, pal Colors) {
 		if x0 < 0 {
 			x0 = 0
 		}
-		putString(f, x0, yy, label, 245, 0, false)
+		putString(f, x0, yy, label, titleTextFG, 0, false)
 		for i, g := range glyphs {
 			f.Set(x0+labelW+stride*i, yy, Cell{R: g, FG: colors[i], Bold: true})
 		}
@@ -2451,7 +2474,7 @@ func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Co
 		drawTitleSig(f)
 	}
 	if p >= 0.95 {
-		drawFooter(f, titleFooter(), (frame/15)%2 == 0, pal)
+		drawTitleFooter(f, (frame/15)%2 == 0, pal)
 	}
 }
 
@@ -2459,7 +2482,7 @@ func drawTitleReboot(f *Frame, w, h, frame, t int, scores map[string]int, pal Co
 
 // MenuItems is the main menu, in order. Start is the lair itself: the
 // overworld, where Grak walks the floors and descends into one.
-var MenuItems = []string{"Start", "Quick Play", "Help", "High Scores", "Journal", "Reset progress", "Quit"}
+var MenuItems = []string{"Start", "Quick Play", "Help", "High Scores", "Journal", "Credits", "Reset progress", "Quit"}
 
 const (
 	MenuStart = iota
@@ -2467,6 +2490,7 @@ const (
 	MenuHelp
 	MenuHighScores
 	MenuJournal
+	MenuCredits
 	MenuResetProgress
 	MenuQuit
 )
@@ -2507,11 +2531,13 @@ func MenuRects(w, h int) []Rect {
 }
 
 func RenderMenu(w, h, sel int, pal Colors) *Frame {
+	footerPal := pal
+	footerPal.Dim = titleTextFG
 	f := screenBox(w, h, "MAIN MENU", []fseg{
 		{key: "↑↓", text: " move"},
 		{key: "enter", text: " select"},
 		{key: "q", text: " quit"},
-	}, true, pal)
+	}, true, footerPal)
 	items := menuLayout(h)
 	for i, name := range MenuItems {
 		if i >= len(items) {
