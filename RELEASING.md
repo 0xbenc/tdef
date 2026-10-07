@@ -102,25 +102,16 @@ See [Butler authentication](https://itch.io/docs/butler/login.html) for the
 credential location on other OSes. Both publisher credentials and `ITCH_TARGET`
 are checked before a stable GitHub release is published.
 
-## 1.2.0: Specialists and guided recruitment
+## Prepare a release
 
-This release renames the game to termtd and adds four specialist defenders,
-guided recruitment across the first two campaign defenses, and improved keyboard
-placement and targeting controls. Story cinematics now include a coordinated
-siege finale and studio credits, with game copy extracted into editable JSON.
+The current release line is 1.2.0. Use the intended version consistently in the
+release tag, itch user version, release notes, and post-release checks. Examples
+below use `VERSION=1.2.0`; change that value for another release. Prerelease tags
+publish GitHub assets without updating the stable itch or Homebrew channels.
 
-Quick Play keeps campaign progress separate. Existing TDEF saves are read when
-the new termtd save files are absent; subsequent saves use the new names.
-The main menu also includes a confirmed reset for all player progress.
-
-## 1.1.0: Windows support
-
-This release adds Windows 10/11 downloads for Intel/AMD and ARM, native console
-keyboard/mouse/resize support, and itch Play actions that open a console window.
-Browser downloads include Play.cmd, which keeps startup errors visible. CI now
-tests Windows alongside Linux and macOS; all six release targets are packaged.
-
-## Prepare 1.1.0
+Player archives contain LICENSE, README.md, LORE.md, and PLAYING.md. The lore
+summary follows the current opening and avoids ending spoilers. Development
+balance reports remain in TACTICS.md in the repository.
 
 Review and commit the intended game changes and release configuration first.
 Generated images and release artifacts under `output/` and `dist/` are ignored.
@@ -163,7 +154,8 @@ the console settings and startup errors remain visible through Play.cmd.
 To preview the stable channel commands using staged stable-version packages:
 
 ```sh
-python3 packaging/itch/publish.py --target kairuku-studios/termtd --version 1.1.0 --dry-run
+VERSION=1.2.0
+python3 packaging/itch/publish.py --target kairuku-studios/termtd --version "$VERSION" --dry-run
 ```
 
 Remove `--dry-run` only when intentionally publishing those staged packages.
@@ -171,9 +163,10 @@ Remove `--dry-run` only when intentionally publishing those staged packages.
 When ready to publish the committed revision:
 
 ```sh
-git tag -a v1.1.0 -m 'TERMTD 1.1.0: Windows support'
+VERSION=1.2.0
+git tag -a "v$VERSION" -m "TERMTD $VERSION"
 git push origin main
-git push origin v1.1.0
+git push origin "v$VERSION"
 ```
 
 After the release workflow succeeds:
@@ -191,17 +184,13 @@ If the GitHub release succeeds but the tap push fails, use its existing
 do not rebuild the published archives with different checksums. The publisher
 leaves the tap unchanged if that formula is already current.
 
-## Rename rollout
+## Save compatibility
 
-Before the first termtd release, rename the itch.io project slug to `termtd`
-and update the repository Actions variable `ITCH_TARGET` to
-`kairuku-studios/termtd`. Repository secrets retain their existing names.
-The release workflow publishes `Formula/termtd.rb` into `0xbenc/homebrew-tap`;
-retire the old `Formula/tdef.rb` there once the new formula is available.
-Existing release archives retain their original names. New tags produce
-`termtd` archives, executables, and `TERMTD.app`.
+Player data uses `~/.termtd-hiscores.json`, `~/.termtd-journal.json`, and
+`~/.termtd-lair.json`. If a new file is absent, the game reads its old `.tdef-`
+counterpart. Subsequent saves use the new name and leave old files intact.
+Reset progress removes both sets so legacy data cannot reappear.
 
-Player data now uses `~/.termtd-hiscores.json`, `~/.termtd-journal.json`, and
-`~/.termtd-lair.json`. When a new file is absent, the game reads its old
-`.tdef-` counterpart. Subsequent saves use the new name and leave the old
-file intact. Existing new files always take precedence.
+These files record campaign results, roster unlocks, discoveries, relic tokens,
+and scores. They do not resume a defense in progress. Save errors are shown in
+the game, retained in memory, and retried automatically or with Ctrl+L.

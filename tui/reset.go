@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/0xbenc/termtd/hiscore"
 	"github.com/0xbenc/termtd/render"
+	"time"
 )
 
 func (a *App) handleResetProgress(e Event) {
@@ -46,15 +47,17 @@ func (a *App) activateResetProgress() {
 		return
 	}
 	err := hiscore.ResetProgress()
-	// Reload even on failure: filesystem errors may leave a partial reset.
-	a.scores = hiscore.Load()
-	a.lair = hiscore.LoadLair()
-	a.journal = hiscore.LoadJournal()
 	if err != nil {
 		a.resetErr = err.Error()
 		a.resetSel = 0
 		return
 	}
+	a.scores = hiscore.Load()
+	a.lair = hiscore.LoadLair()
+	a.journal = hiscore.LoadJournal()
+	a.saveErrors = [3]error{}
+	a.saveRetryAt = time.Time{}
+	a.saveQuitArmed = false
 	a.journalUI = render.JournalState{}
 	a.journalMigrated = false
 	a.hsTop = 0

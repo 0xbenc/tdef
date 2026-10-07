@@ -71,7 +71,7 @@ func (a *App) ensureJournal() {
 		changed = true
 	}
 	if changed {
-		hiscore.SaveJournal(a.journal)
+		a.saveJournal()
 	}
 }
 
@@ -92,7 +92,7 @@ func (a *App) recordEnemyDiscoveries() {
 		}
 	}
 	if changed {
-		hiscore.SaveJournal(a.journal)
+		a.saveJournal()
 	}
 }
 
@@ -101,7 +101,7 @@ func (a *App) discoverPlace(id string) {
 		if id == known {
 			a.ensureJournal()
 			if a.journal.DiscoverPlace(id) {
-				hiscore.SaveJournal(a.journal)
+				a.saveJournal()
 			}
 			return
 		}
@@ -139,7 +139,7 @@ func (a *App) discoverTower(k game.TowerKind) {
 	}
 	a.ensureJournal()
 	if a.journal.DiscoverTower(render.TowerJournalID(k)) {
-		hiscore.SaveJournal(a.journal)
+		a.saveJournal()
 	}
 }
 

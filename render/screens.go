@@ -2561,9 +2561,11 @@ func RenderMenu(w, h, sel int, pal Colors) *Frame {
 // ---------------------------------------------------------------- help
 
 func RenderHelp(w, h int, pal Colors) *Frame {
-	f := screenBox(w, h, copytext.Text("ui.render_help.grak_s_ledger"), []fseg{{key: "esc", text: copytext.Text("ui.render_help.back")}}, true, pal)
-	off := screenOff(h)
-	rows := [][2]string{
+	return RenderHelpPage(w, h, HelpState{}, pal)
+}
+
+func helpControls() [][2]string {
+	return [][2]string{
 		{copytext.Text("ui.render_help.move"), copytext.Format("ui.help.move_controls", "arrows", "arrows", "walk", "wasd")},
 		{copytext.Text("ui.render_help.place"), copytext.Format("ui.render_help.1_7_pick_enter_or_click", "towers", "1-7", "enter", "enter")},
 		{copytext.Text("ui.render_help.upgrade"), "u"},
@@ -2580,30 +2582,6 @@ func RenderHelp(w, h int, pal Colors) *Frame {
 		{copytext.Text("ui.render_help.cancel"), "esc"},
 		{copytext.Text("ui.render_help.quit"), "q"},
 	}
-	// Fixed-width two-column table: labels right-aligned in an 8-col field,
-	// values in one column, so the rows line up instead of ragged-centering.
-	tableW := 0
-	for _, r := range rows {
-		if n := len(fmt.Sprintf("%8s   %s", r[0], r[1])); n > tableW {
-			tableW = n
-		}
-	}
-	x0 := (w - tableW) / 2
-	if x0 < 1 {
-		x0 = 1
-	}
-	if y := off + 3; y > 0 && y < h-1 {
-		centerPut(f, y, copytext.Text("ui.render_help.how_to_hold_the_lair_against_twenty"), pal.Dim, false)
-	}
-	for i, r := range rows {
-		y := off + 4 + i
-		if y <= 0 || y >= h-1 {
-			continue
-		}
-		putString(f, x0+8-len([]rune(r[0])), y, r[0], pal.Dim, 0, false)
-		putString(f, x0+11, y, r[1], pal.Bright, 0, false)
-	}
-	return f
 }
 
 // ---------------------------------------------------------- high scores

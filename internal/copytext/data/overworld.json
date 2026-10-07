@@ -111,6 +111,7 @@
     "unknown_floor": "unknown floor"
   },
   "ow_spend_relic": {
+    "gunner_already_reserved": "A free gunner is already reserved. Relic kept.",
     "the_lair_grants_60_gold_to_the": "+{gold} gold for the next defense",
     "an_orc_gunner_will_be_waiting_at": "free {tower} for the next defense",
     "the_heart_steadies_1_to_the_next": "+{lives}♥ for the next defense"

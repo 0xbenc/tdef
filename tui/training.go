@@ -70,7 +70,7 @@ func (a *App) syncTraining() {
 	progress := a.lair.EnsureTraining()
 	if progress.Unlocked != a.g.UnlockedTowers {
 		progress.Unlocked = a.g.UnlockedTowers
-		hiscore.SaveLair(a.lair)
+		a.saveCampaign()
 	}
 	if a.g.LessonPending {
 		a.ui.Paused = true

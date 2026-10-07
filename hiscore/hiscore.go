@@ -96,17 +96,24 @@ func pruneMaze(t Table) {
 	}
 }
 
-// Update records score under key and reports whether it is a new high
-// score. It returns the best AFTER the update, so a record run reports the
-// new record, not the previous one. Saving is best-effort: a failed write
-// just means no hiscore this run.
-func Update(key string, score int) (best int, isNew bool) {
-	t := Load()
+// RecordScore updates an in-memory table, including the maze retention cap.
+// The caller owns persistence and can retain this table after a failed save.
+func RecordScore(t Table, key string, score int) (best int, isNew bool) {
 	if score > t[key] {
 		t[key] = score
 		isNew = true
 		pruneMaze(t)
-		Save(t)
 	}
 	return t[key], isNew
+}
+
+// Update is the legacy best-effort convenience API. The game uses
+// RecordScore and Save separately to report failures and retry.
+func Update(key string, score int) (best int, isNew bool) {
+	t := Load()
+	best, isNew = RecordScore(t, key, score)
+	if isNew {
+		Save(t)
+	}
+	return best, isNew
 }

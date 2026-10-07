@@ -1582,8 +1582,7 @@ func drawOWChromeRows(f *Frame, st OWState) {
 	// Row h-2: context — the Depths' seed, pending bonuses, the relic offer.
 	var ctx string
 	keyPositions := map[int]bool{}
-	appendHint := func(path, placeholder, key string) {
-		formatted := copytext.Format(path, placeholder, "\x00")
+	appendHint := func(formatted, key string) {
 		prefix, suffix, _ := strings.Cut(formatted, "\x00")
 		start := len([]rune(ctx + prefix))
 		for i := range []rune(key) {
@@ -1612,21 +1611,21 @@ func drawOWChromeRows(f *Frame, st OWState) {
 		}
 		ctx = copytext.Text("overworld.draw_owchrome_rows.next_defense") + strings.Join(b, " · ")
 	case onPad && fl.ID == "rotunda" && st.Tokens > 0 && !st.RelicMenu:
-		appendHint("overworld.draw_owchrome_rows.t_spend_a_relic", "target", "t")
+		appendHint(copytext.Format("overworld.draw_owchrome_rows.t_spend_a_relic", "target", "\x00"), "t")
 	}
 	if onPad && fl.ID == "rotunda" && !st.RelicMenu {
 		if ctx != "" {
 			ctx += " · "
 		}
-		appendHint("overworld.draw_owchrome_rows.i_opening", "opening", "i")
+		appendHint(copytext.Format("overworld.draw_owchrome_rows.i_opening", "opening", "\x00"), "i")
 		if st.BossDone && len([]rune(ctx))+len([]rune(copytext.Format("overworld.draw_owchrome_rows.e_ending", "ending", "e"))) <= f.W-4 {
-			appendHint("overworld.draw_owchrome_rows.e_ending", "ending", "e")
+			appendHint(copytext.Format("overworld.draw_owchrome_rows.e_ending", "ending", "\x00"), "e")
 		}
 		if len([]rune(ctx))+len([]rune(copytext.Format("overworld.draw_owchrome_rows.v_malgrath", "portrait", "v"))) <= f.W-4 {
-			appendHint("overworld.draw_owchrome_rows.v_malgrath", "portrait", "v")
+			appendHint(copytext.Format("overworld.draw_owchrome_rows.v_malgrath", "portrait", "\x00"), "v")
 		}
 		if len([]rune(ctx))+len([]rune(copytext.Format("overworld.draw_owchrome_rows.g_grak", "grak", "g"))) <= f.W-4 {
-			appendHint("overworld.draw_owchrome_rows.g_grak", "grak", "g")
+			appendHint(copytext.Format("overworld.draw_owchrome_rows.g_grak", "grak", "\x00"), "g")
 		}
 	}
 	if ctx != "" {

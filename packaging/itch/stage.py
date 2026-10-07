@@ -50,7 +50,7 @@ def stage(dist: pathlib.Path, out: pathlib.Path) -> None:
         if directory.exists():
             shutil.rmtree(directory)
         directory.mkdir(parents=True)
-        for name in ["LICENSE", "README.md", "LORE.md", "TACTICS.md"]:
+        for name in ["LICENSE", "README.md", "LORE.md", "PLAYING.md"]:
             shutil.copyfile(ROOT / name, directory / name)
         shutil.copyfile(HERE / "README-PLAY.txt", directory / "README-PLAY.txt")
         (directory / "VERSION.txt").write_text(version + "\n")

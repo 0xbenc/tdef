@@ -40,6 +40,8 @@
 | [render/draw.go](render/draw.go) | Gameplay HUD, defender stats, wave banners, result flavor and verdicts: `towerInfo`, `headerSegments`, `drawBeats`, `drawGameOver`, `endVerdict`, `drawEndBeat`, `RenderTooSmall`. |
 | [render/keyboard.go](render/keyboard.go), [render/specialists.go](render/specialists.go) | Keyboard action hints, targeting explanations and specialist HUD/roster copy. |
 | [render/screens.go](render/screens.go) | Title/demo/records, menus, help, high scores and setup: `titleSig`, `drawTitleBest`, `drawTitleDemo`, `MenuItems`, `RenderHelp`, `RenderHighScores`, `RenderLevelSelect`. |
+| [render/help.go](render/help.go), [tui/help.go](tui/help.go) | Responsive help topics, control cards, scrolling and paused return to the defense: `RenderHelpPage`, `HelpMaxScroll`, `handleHelp`. |
+| [render/save.go](render/save.go), [tui/save.go](tui/save.go) | Persistent save-failure notice, retained snapshots and retries: `DrawSaveFailure`, `retrySaves`. |
 | [render/credits.go](render/credits.go), [render/reset.go](render/reset.go) | Credits and reset confirmation/result copy: `RenderCredits`, `RenderResetProgress`. |
 | `render/*_mockup.go`, [render/specialist_portraits.go](render/specialist_portraits.go) | Character/defender/enemy portrait artwork; mockup renderers bind standalone portrait captions and controls from `characters.json`. |
 | [internal/copytext/copy.go](internal/copytext/copy.go), [internal/copytext/contracts.go](internal/copytext/contracts.go) | Shared JSON embedding, lookup, templates, required keys and placeholders. |
@@ -50,4 +52,4 @@
 |---|---|
 | [internal/copytext/README.txt](internal/copytext/README.txt) | Shared JSON editing, placeholders, validation and rebuilding. |
 | [render/copy/README.txt](render/copy/README.txt) | Cinematic JSON fields, shot ordering and preview commands. |
-| [LORE.md](LORE.md) | Historical premise, terminology and draft theming; implementation claims may be outdated. |
+| [LORE.md](LORE.md) | Current premise and setting, without the ending. |

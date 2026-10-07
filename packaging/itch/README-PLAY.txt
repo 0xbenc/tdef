@@ -30,9 +30,13 @@ Controls
   Arrows / WASD: move or select     Enter: confirm or place
   1–7: choose a tower              U / X: upgrade / sell
   N: call the next wave            P / F: pause / speed
-  J: journal in the lair           Q: quit
+  J: journal (lair or paused)      H: help (pauses defense)
+  [ / ]: roster pages             R: aim Runeforge
+  T: targeting                    Q: quit
 
-Your campaign saves in your home folder and survives replacing this download.
+Completed defenses and discoveries save in your home folder and survive
+replacing this download. Unfinished defenses restart. Use a terminal of at least
+62 columns by 19 rows. See PLAYING.md for tactics, progression, and controls.
 These launchers do not need an installer or change your shell's PATH.
 
 For a command available everywhere, use Homebrew:

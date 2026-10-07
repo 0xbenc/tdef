@@ -127,9 +127,9 @@ func TestHelpAndHiscoresReturnToMenu(t *testing.T) {
 		}
 	}
 	h := &App{screen: ScreenHelp}
-	h.handle(Event{Key: KeyEnter})
+	h.handle(Event{Key: KeyEscape})
 	if h.screen != ScreenMenu {
-		t.Errorf("help + enter = %v, want menu", h.screen)
+		t.Errorf("help + escape = %v, want menu", h.screen)
 	}
 	s := &App{screen: ScreenHiscores, scores: map[string]int{"a": 1, "b": 2, "c": 3}}
 	s.handle(Event{Key: KeyDown})

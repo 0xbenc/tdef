@@ -155,6 +155,9 @@ func TestRelicTowerAlsoDiscoversItsPage(t *testing.T) {
 	a.bonusTower = true
 	m, _ := game.LoadLevel("hub")
 	a.enterGame(m, "hub", game.Normal)
+	if a.g.Gold != game.NewStateDiff(m, game.Normal).Gold {
+		t.Fatal("free relic gunner spent starting gold")
+	}
 	if len(a.g.Towers) != 1 || !hiscore.LoadJournal().Towers["gunner"] {
 		t.Fatal("free placement did not discover gunner")
 	}

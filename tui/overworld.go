@@ -106,6 +106,8 @@ func (a *App) handleOverworld(e Event) {
 		if a.owCursorFloor() == "rotunda" && a.lair.BossHeld(a.ow.Diff) {
 			a.startCutscene(render.FilmEnding, ScreenOverworld, false)
 		}
+	case 'h', 'H':
+		a.openHelp()
 	case 'j', 'J':
 		a.openJournal()
 	case 'g', 'G':
@@ -368,6 +370,12 @@ func (a *App) owSpendRelic(kind int) {
 		st.Msg = copytext.Format("overworld.ow_spend_relic.the_lair_grants_60_gold_to_the", "gold", strconv.Itoa(game.RelicGoldBonus))
 		st.MsgKind = render.OWMessageNeutral
 	case 1:
+		if st.BonusTower {
+			st.Msg = copytext.Text("overworld.ow_spend_relic.gunner_already_reserved")
+			st.MsgKind = render.OWMessageNeutral
+			st.RelicMenu = false
+			return
+		}
 		st.BonusTower = true
 		st.Msg = copytext.Format("overworld.ow_spend_relic.an_orc_gunner_will_be_waiting_at", "tower", game.TowerSpecs[game.TowerGunner].Name)
 		st.MsgKind = render.OWMessageNeutral
@@ -378,7 +386,8 @@ func (a *App) owSpendRelic(kind int) {
 	}
 	st.Tokens--
 	a.lair.Tokens = st.Tokens
-	hiscore.SaveLair(a.lair)
+	a.lair.BonusGold, a.lair.BonusTower, a.lair.BonusLives = st.BonusGold, st.BonusTower, st.BonusLives
+	a.saveCampaign()
 	st.RelicMenu = false
 }
 
@@ -394,7 +403,10 @@ func (a *App) owRefresh() {
 		st.Diff = diffIndex(a.diff)
 	}
 	d := st.Diff
-	a.lair = hiscore.LoadLair()
+	if a.lair == nil || a.saveErrors[saveCampaign] == nil {
+		a.lair = hiscore.LoadLair()
+	}
+	st.BonusGold, st.BonusTower, st.BonusLives = a.lair.BonusGold, a.lair.BonusTower, a.lair.BonusLives
 	recs := map[string]render.OWRec{}
 	for _, id := range []string{"rift", "rotunda", "halls", "garden", "depths", render.HeartFloorID} {
 		r := a.lair.Floor(id, d)
@@ -402,7 +414,10 @@ func (a *App) owRefresh() {
 	}
 	st.Records = recs
 	st.Scores = map[string]int{}
-	scores := hiscore.Load()
+	scores := a.scores
+	if a.saveErrors[saveScores] == nil {
+		scores = hiscore.Load()
+	}
 	for lvl, id := range map[string]string{
 		"canyon": "rift", "hub": "rotunda", "winding": "halls", "garden": "garden",
 		"heart": render.HeartFloorID,

@@ -49,6 +49,12 @@ const (
 )
 
 type App struct {
+	help               render.HelpState
+	helpReturn         Screen
+	helpWasPaused      bool
+	saveErrors         [3]error
+	saveRetryAt        time.Time
+	saveQuitArmed      bool
 	trainingReplay     int
 	trainingReplayMask uint32
 	recruitPlanning    bool
@@ -183,12 +189,22 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 		a.g.Lives += a.bonusLives
 		if a.bonusTower {
 			if cell, ok := firstGrass(m); ok {
+				// Build normally so the defender keeps its usual sale value,
+				// but the relic pays its cost instead of the player.
+				cost := game.TowerSpecs[game.TowerGunner].Cost[0]
+				a.g.Gold += cost
 				if a.g.Build(cell, game.TowerGunner) != nil {
 					a.discoverTower(game.TowerGunner)
+				} else {
+					a.g.Gold -= cost
 				}
 			}
 		}
 		a.bonusGold, a.bonusTower, a.bonusLives = 0, false, 0
+		if a.lair != nil && (a.lair.BonusGold > 0 || a.lair.BonusTower || a.lair.BonusLives > 0) {
+			a.lair.BonusGold, a.lair.BonusTower, a.lair.BonusLives = 0, false, 0
+			a.saveCampaign()
+		}
 	}
 	a.cleanWaves = 0
 	a.waveStartLives = a.g.Lives
@@ -266,6 +282,9 @@ func (a *App) loop() error {
 			return nil
 		}
 		now := time.Now()
+		if !a.saveRetryAt.IsZero() && !now.Before(a.saveRetryAt) {
+			a.retrySaves()
+		}
 		real := now.Sub(last).Seconds()
 		last = now
 		switch a.screen {
@@ -352,9 +371,14 @@ func (a *App) stepGame(real float64) {
 		}
 		best, isNew := 0, false
 		if a.trainingReplay == 0 {
-			best, isNew = hiscore.Update(a.level, a.g.Score)
+			if a.scores == nil {
+				a.scores = hiscore.Load()
+			}
+			best, isNew = hiscore.RecordScore(hiscore.Table(a.scores), a.level, a.g.Score)
+			if isNew {
+				a.saveScores()
+			}
 		}
-		a.scores = hiscore.Load()
 		a.ui.BestScore = best
 		a.ui.NewBest = isNew
 		if a.fromOW {
@@ -369,10 +393,10 @@ func (a *App) stepGame(real float64) {
 			a.lair.Record(floor, d, a.g.Wave, won)
 			if won {
 				a.journal.RecordVictory(floor, d)
-				hiscore.SaveJournal(a.journal)
+				a.saveJournal()
 			}
 			a.lair.Tokens += a.cleanWaves
-			hiscore.SaveLair(a.lair)
+			a.saveCampaign()
 			a.owUnsealCheck(d)
 			a.owSetBanner(won, best, isNew)
 			a.owHeartBlastCheck(d)
@@ -469,7 +493,7 @@ func (a *App) drawScreen() {
 	case ScreenResetProgress:
 		a.blit(render.RenderResetProgress(w, h, a.resetSel, a.resetDone, a.resetErr, a.pal))
 	case ScreenHelp:
-		a.blit(render.RenderHelp(w, h, a.pal))
+		a.blit(render.RenderHelpPage(w, h, a.help, a.pal))
 	case ScreenCredits:
 		a.blit(render.RenderCredits(w, h, a.pal))
 	case ScreenHiscores:
@@ -560,6 +584,15 @@ func (a *App) drainInput() {
 }
 
 func (a *App) handle(e Event) {
+	if a.hasSaveErrors() && e.Key == KeyCtrlL {
+		a.retrySaves()
+		a.prev = nil
+		return
+	}
+	if a.hasSaveErrors() && a.saveQuitArmed && (e.Key == KeyCtrlC || (!e.Mouse && (e.Rune == 'q' || e.Rune == 'Q'))) {
+		a.quit()
+		return
+	}
 	switch a.screen {
 	case ScreenCutscene:
 		a.handleCutscene(e)
@@ -571,8 +604,10 @@ func (a *App) handle(e Event) {
 		a.handleMenu(e)
 	case ScreenResetProgress:
 		a.handleResetProgress(e)
-	case ScreenHelp, ScreenCredits:
+	case ScreenHelp:
 		a.handleHelp(e)
+	case ScreenCredits:
+		a.handleDismiss(e)
 	case ScreenHiscores:
 		a.handleHiscores(e)
 	case ScreenLevelSelect:
@@ -655,7 +690,7 @@ func (a *App) handleMenuMouse(e Event) {
 }
 
 // Help and credits: any key (or click) goes back to the menu; q quits.
-func (a *App) handleHelp(e Event) {
+func (a *App) handleDismiss(e Event) {
 	if e.Key == KeyCtrlC || (!e.Mouse && (e.Rune == 'q' || e.Rune == 'Q')) {
 		a.quit()
 		return
@@ -812,7 +847,7 @@ func (a *App) activateMenu(i int) {
 	case render.MenuQuickPlay:
 		a.toScreen(ScreenLevelSelect)
 	case render.MenuHelp:
-		a.toScreen(ScreenHelp)
+		a.openHelp()
 	case render.MenuHighScores:
 		a.toScreen(ScreenHiscores)
 	case render.MenuJournal:
@@ -923,7 +958,9 @@ func (a *App) toScreen(s Screen) {
 	case ScreenTitle:
 		a.titleBootAt = a.frameNo // replay the boot cinematic
 	case ScreenHiscores:
-		a.scores = hiscore.Load()
+		if a.saveErrors[saveScores] == nil {
+			a.scores = hiscore.Load()
+		}
 		a.hsTop = 0
 	case ScreenLevelSelect:
 		a.ls.Err = ""
@@ -996,7 +1033,7 @@ func (a *App) handleGame(e Event) {
 	case 'f', 'F':
 		a.cycleSpeed(1)
 	case 'h', 'H':
-		a.ui.Help = !a.ui.Help
+		a.openHelp()
 	case 'n', 'N':
 		a.startWave()
 	case 'u', 'U':
@@ -1277,6 +1314,12 @@ func (a *App) startWave() {
 }
 
 func (a *App) quit() {
+	a.retrySaves()
+	if a.hasSaveErrors() && !a.saveQuitArmed {
+		a.saveQuitArmed = true
+		a.prev = nil
+		return
+	}
 	a.quitting = true
 	if a.term != nil { // nil only in tests
 		a.term.Mouse(false)
@@ -1303,7 +1346,7 @@ func (a *App) restart() {
 		Speed:     a.ui.Speed,
 		Help:      a.ui.Help,
 		Level:     a.level,
-		BestScore: hiscore.Load()[a.level],
+		BestScore: a.scores[a.level],
 		ToLair:    a.fromOW,
 	}
 	a.acc = 0
@@ -1345,6 +1388,9 @@ type pen struct {
 type blitWriter interface{ Write(p []byte) }
 
 func (a *App) blit(f *render.Frame) {
+	if a.hasSaveErrors() {
+		render.DrawSaveFailure(f, a.saveErrorText(), a.saveQuitArmed)
+	}
 	a.blitTo(f, a.term)
 }
 

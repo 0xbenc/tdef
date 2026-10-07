@@ -150,8 +150,8 @@ func TestRenderHelpFits(t *testing.T) {
 		f := RenderHelp(size[0], size[1], Palette())
 		text := f.Text()
 		for _, want := range []string{
-			"GRAK'S LEDGER", "Hold twenty waves. Hearts are Malgrath's health.",
-			"arrows/wasd; Tab defenders", "1-7 pick", "esc back",
+			"GRAK'S LEDGER", "Hold all twenty waves.",
+			"KEEP MALGRATH ALIVE", "1 START", "esc back",
 		} {
 			if !strings.Contains(text, want) {
 				t.Errorf("help missing %q:\n%s", want, text)

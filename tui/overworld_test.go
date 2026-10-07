@@ -536,3 +536,13 @@ func TestDepthsCampaignGateDoesNotRestrictQuickPlay(t *testing.T) {
 		t.Fatal("Quick Play must allow a procedural game without campaign progress")
 	}
 }
+
+func TestDuplicateRelicGunnerKeepsToken(t *testing.T) {
+	a := owTestApp(t)
+	a.ow.Tokens = 2
+	a.owSpendRelic(1)
+	a.owSpendRelic(1)
+	if a.ow.Tokens != 1 || !a.ow.BonusTower || a.lair.Tokens != 1 {
+		t.Fatal("duplicate gunner consumed a relic")
+	}
+}

@@ -67,7 +67,9 @@ Replay either guided defense without changing your saves:
 .\termtd.exe tutorial -stage 2
 ```
 
-Your campaign saves automatically. Bring a terminal with a little room to spare.
+Completed defenses, recruits, discoveries, and scores save automatically.
+An unfinished defense restarts when you return. Use a terminal of at least
+62 columns by 19 rows; more room gives the artwork and controls extra space.
 
 **Start** advances your campaign in the lair. **Quick Play** lets you choose any
 regular map or a procedural maze and records high scores, without changing
@@ -78,4 +80,4 @@ Open **Journal** from the main menu to browse discoveries earned in the campaign
 To start over, choose **Reset progress** in the main menu, then confirm
 **Reset all progress**. This clears your campaign, relics, journal, and high scores.
 
-[Story](LORE.md) · [Lore sources](LORE-SOURCES.md) · [Tactics](TACTICS.md) · [Release notes & setup](RELEASING.md) · [MIT license](LICENSE)
+[Story](LORE.md) · [Lore sources](https://github.com/0xbenc/termtd/blob/main/LORE-SOURCES.md) · [Field guide](PLAYING.md) · [Release setup](https://github.com/0xbenc/termtd/blob/main/RELEASING.md) · [MIT license](LICENSE)

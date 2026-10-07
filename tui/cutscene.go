@@ -2,7 +2,6 @@ package tui
 
 import (
 	"github.com/0xbenc/termtd/game"
-	"github.com/0xbenc/termtd/hiscore"
 	"github.com/0xbenc/termtd/render"
 )
 
@@ -33,7 +32,7 @@ func (a *App) startCutscene(film render.Film, destination Screen, remember bool)
 func (a *App) finishCutscene() {
 	if a.filmRemember {
 		a.lair.IntroSeen = true
-		hiscore.SaveLair(a.lair)
+		a.saveCampaign()
 	}
 	a.screen = a.filmReturn
 	a.prev = nil

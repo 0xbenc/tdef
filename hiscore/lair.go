@@ -20,11 +20,14 @@ type FloorRec struct {
 // file so the hiscore table stays a plain map[string]int (old builds keep
 // reading it).
 type Lair struct {
-	Training  *TrainingProgress   `json:"training,omitempty"`
-	IntroSeen bool                `json:"intro_seen,omitempty"`
-	Floors    map[string]FloorRec `json:"floors,omitempty"` // key "floor:diffIdx"
-	Boss      map[int]bool        `json:"boss,omitempty"`   // diffIdx -> the heart is held
-	Tokens    int                 `json:"tokens,omitempty"`
+	BonusGold  int                 `json:"bonus_gold,omitempty"`
+	BonusTower bool                `json:"bonus_tower,omitempty"`
+	BonusLives int                 `json:"bonus_lives,omitempty"`
+	Training   *TrainingProgress   `json:"training,omitempty"`
+	IntroSeen  bool                `json:"intro_seen,omitempty"`
+	Floors     map[string]FloorRec `json:"floors,omitempty"` // key "floor:diffIdx"
+	Boss       map[int]bool        `json:"boss,omitempty"`   // diffIdx -> the heart is held
+	Tokens     int                 `json:"tokens,omitempty"`
 }
 
 // LairFloors are the built-in floors, in the lair's depth order (mouth to
