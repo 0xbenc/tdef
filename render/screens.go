@@ -2517,45 +2517,16 @@ func menuLayout(h int) []int {
 
 // MenuRects returns the hit-test rectangle for each main-menu item.
 func MenuRects(w, h int) []Rect {
-	items := menuLayout(h)
-	maxW := 0
-	for _, it := range MenuItems {
-		if len([]rune(it)) > maxW {
-			maxW = len([]rune(it))
-		}
-	}
-	x := (w - (maxW + 3)) / 2
-	out := make([]Rect, len(items))
-	for i, y := range items {
-		out[i] = Rect{X: x, Y: y, W: maxW + 3, H: 1}
+	_, x, width := menuColumns(w)
+	out := make([]Rect, len(MenuItems))
+	for i, y := range menuLayout(h) {
+		out[i] = Rect{X: x, Y: y, W: width, H: 1}
 	}
 	return out
 }
 
 func RenderMenu(w, h, sel int, pal Colors) *Frame {
-	footerPal := pal
-	footerPal.Dim = titleTextFG
-	f := screenBox(w, h, copytext.Text("ui.render_menu.main_menu"), []fseg{
-		{key: "↑↓", text: copytext.Text("ui.render_menu.move")},
-		{key: "enter", text: copytext.Text("ui.render_menu.select")},
-		{key: "q", text: copytext.Text("ui.render_menu.quit")},
-	}, true, footerPal)
-	items := menuLayout(h)
-	for i, name := range MenuItems {
-		if i >= len(items) {
-			break
-		}
-		y := items[i]
-		if y <= 0 || y >= h-1 {
-			continue
-		}
-		if i == sel {
-			centerPut(f, y, " ▸ "+name, pal.Bright, true)
-		} else {
-			centerPut(f, y, "   "+name, pal.Dim, false)
-		}
-	}
-	return f
+	return RenderMenuAnimated(w, h, sel, 90, true, pal)
 }
 
 // ---------------------------------------------------------------- help

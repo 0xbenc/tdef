@@ -296,7 +296,7 @@ func (a *App) loop() error {
 		case ScreenOverworld:
 			a.frameNo++
 			a.owTick()
-		case ScreenTitle:
+		case ScreenTitle, ScreenMenu:
 			a.frameNo++
 		}
 		a.drawScreen()
@@ -361,6 +361,7 @@ func (a *App) stepGame(real float64) {
 	} else {
 		a.acc = 0
 	}
+	a.revealMenuAfterFirstWave()
 	a.recordEnemyDiscoveries()
 	if a.g.Status != game.StatusRunning && !a.scored {
 		a.scored = true
@@ -489,7 +490,7 @@ func (a *App) drawScreen() {
 	case ScreenTitle:
 		a.blit(render.RenderTitle(w, h, a.frameNo, a.frameNo-a.titleBootAt, a.scores, a.pal))
 	case ScreenMenu:
-		a.blit(render.RenderMenu(w, h, a.menuSel, a.pal))
+		a.blit(render.RenderMenuAnimated(w, h, a.menuSel, a.frameNo, a.lair.HasMenuReveal(), a.pal))
 	case ScreenResetProgress:
 		a.blit(render.RenderResetProgress(w, h, a.resetSel, a.resetDone, a.resetErr, a.pal))
 	case ScreenHelp:

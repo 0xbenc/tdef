@@ -76,7 +76,6 @@
     "malgrath_grak_the_guild_still_hunts": "Malgrath: Grak. Footsteps upstairs.",
     "the_heart_has_unsealed_the_final_expedition": "the Heart is open; the guild is coming for Malgrath",
     "relics_1_60g_2_free_gunner_3": "relics {tokens} (next defense): {gold_key}) +{gold}g · {tower_key}) free gunner · {lives_key}) +{lives}♥ · {escape} close",
-    "wasd_walk_the_lair_enter_descend_tab": "{walk} walk the lair · {enter} descend · {tab} renown",
     "malgrath_endures": "Malgrath endures."
   },
   "ow_node_line": {

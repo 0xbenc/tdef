@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/internal/buildinfo"
 	"github.com/0xbenc/termtd/render"
 	"github.com/0xbenc/termtd/tui"
 )
@@ -17,6 +18,7 @@ import (
 var version = "dev"
 
 func main() {
+	buildinfo.Version = version
 	if len(os.Args) < 2 {
 		play(nil)
 		return

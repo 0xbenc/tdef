@@ -380,7 +380,6 @@ type OWState struct {
 	Trail      []game.Vec     // walk trail, newest first (cap 3)
 	TrailAge   []int          // frames left on each trail cell
 	RelicMenu  bool           // the relic-spend line is active
-	FirstRun   bool           // show the one-time hint line
 
 	BonusGold  int // relic bonuses for the next defense
 	BonusTower bool
@@ -396,7 +395,6 @@ func NewOWState() OWState {
 		Records:   map[string]OWRec{},
 		Scores:    map[string]int{},
 		Diff:      1, // normal
-		FirstRun:  true,
 	}
 }
 
@@ -1403,15 +1401,9 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 		s = st.Msg
 		fg = st.MsgKind.color()
 	default:
-		if st.FirstRun {
-			// Shown even on a pad: a first-time Grak starts on the Rotunda, so
-			// the old "only when the line is empty" trigger never fired.
-			s, fg = copytext.Format("overworld.draw_owvoice.wasd_walk_the_lair_enter_descend_tab", "walk", "wasd", "enter", "enter", "tab", "tab"), 252
-		} else {
-			s, fg = owNodeLine(st, frame)
-			if s == "" && st.BossDone {
-				s, fg = copytext.Text("overworld.draw_owvoice.malgrath_endures"), 255
-			}
+		s, fg = owNodeLine(st, frame)
+		if s == "" && st.BossDone {
+			s, fg = copytext.Text("overworld.draw_owvoice.malgrath_endures"), 255
 		}
 	}
 	if s == "" {

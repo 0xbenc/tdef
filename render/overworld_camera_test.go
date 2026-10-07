@@ -50,7 +50,7 @@ func TestOWScrollPreservesChrome(t *testing.T) {
 	for _, size := range [][2]int{{62, 19}, {92, 32}, {182, 58}} {
 		w, h := size[0], size[1]
 		st := NewOWState()
-		st.FirstRun, st.RevealAll = false, true
+		st.RevealAll = true
 		left := RenderOverworld(w, h, st, 30, Palette())
 		st.Cursor = game.Vec{X: 65, Y: 9}
 		right := RenderOverworld(w, h, st, 30, Palette())

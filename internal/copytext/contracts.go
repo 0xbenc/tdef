@@ -426,7 +426,6 @@ var required = map[string][]string{
 	"overworld.draw_owvoice.the_heart_beats_light_runs_the_corridors":             {},
 	"overworld.draw_owvoice.the_heart_has_unsealed_the_final_expedition":          {},
 	"overworld.draw_owvoice.the_lair_stirs_in_the_dark":                           {},
-	"overworld.draw_owvoice.wasd_walk_the_lair_enter_descend_tab":                 {"enter", "tab", "walk"},
 	"overworld.handle_overworld.the_whole_lair_lit_every_floor_revealed":          {},
 	"overworld.malgrath.tier_0.line_1":                                            {},
 	"overworld.malgrath.tier_0.line_2":                                            {},

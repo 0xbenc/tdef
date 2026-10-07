@@ -290,7 +290,6 @@ func (a *App) owLaunch(id string) {
 	a.bonusTower = st.BonusTower
 	a.bonusLives = st.BonusLives
 	st.BonusGold, st.BonusTower, st.BonusLives = 0, false, 0
-	st.FirstRun = false
 	var (
 		m    *game.Map
 		name string
@@ -461,9 +460,6 @@ func (a *App) owRefresh() {
 	}
 	if a.lair.DepthsReady(d) {
 		st.Unlocked["depths"] = true
-	}
-	if !a.lair.AnyRecord() {
-		st.FirstRun = true
 	}
 	if fl, room := render.OWFloorAt(st.Cursor.X, st.Cursor.Y); room && !render.OWFloorOpen(fl.ID, *st) {
 		a.owVisitFloor(fl.ID)

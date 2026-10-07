@@ -14,6 +14,10 @@ func drawOWRotunda(f *Frame, l Layout, n *owNode, bg int, v owPadView, frame int
 // drawDragonTableau shares the pose between the room and its portrait. The
 // larger study uses filled horns, a resting foreleg and broad wing folds.
 func drawDragonTableau(f *Frame, x0, y0, w, h, scale, bg int, v owPadView, frame int, portrait bool) {
+	drawRotundaTableau(f, x0, y0, w, h, scale, bg, v, frame, portrait, true)
+}
+
+func drawRotundaTableau(f *Frame, x0, y0, w, h, scale, bg int, v owPadView, frame int, portrait, dragon bool) {
 	if w < 2 || h < 2 {
 		return
 	}
@@ -100,6 +104,9 @@ func drawDragonTableau(f *Frame, x0, y0, w, h, scale, bg int, v owPadView, frame
 				put(x, y, r, fg)
 			}
 		}
+	}
+	if !dragon {
+		return
 	}
 	// The body and projecting muzzle form one solid silhouette. The folded
 	// triangular wing, pale horns and closed eye identify it as a dragon.

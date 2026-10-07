@@ -114,7 +114,13 @@ func TestRenderMenuShowsAllItemsAndSelection(t *testing.T) {
 
 // MenuRects must land on the rendered item rows.
 func TestMenuRectsMatchRenderedRows(t *testing.T) {
-	w, h := 62, 19
+	for _, size := range [][2]int{{62, 19}, {80, 24}, {120, 40}, {182, 58}} {
+		checkMenuRects(t, size[0], size[1])
+	}
+}
+
+func checkMenuRects(t *testing.T, w, h int) {
+	t.Helper()
 	f := RenderMenu(w, h, 0, Palette())
 	rects := MenuRects(w, h)
 	if len(rects) != len(MenuItems) {
@@ -122,6 +128,9 @@ func TestMenuRectsMatchRenderedRows(t *testing.T) {
 	}
 	lines := strings.Split(f.Text(), "\n")
 	for i, r := range rects {
+		if r.X < 1 || r.X+r.W >= w || r.Y < 1 || r.Y >= h-1 {
+			t.Fatalf("%dx%d: item %d hit target outside frame: %+v", w, h, i, r)
+		}
 		row := strings.TrimRight(lines[r.Y], " ")
 		if !strings.Contains(row, MenuItems[i]) {
 			t.Errorf("item %d rect at row %d does not hit its text: %q", i, r.Y, row)

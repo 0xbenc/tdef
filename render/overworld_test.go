@@ -245,7 +245,6 @@ func owStateAllHeld() OWState {
 	st.Unlocked["depths"] = true
 	st.Hearts = 4
 	st.BossReady = true
-	st.FirstRun = false
 	return st
 }
 
@@ -380,14 +379,14 @@ func TestOWTrailFade(t *testing.T) {
 	}
 }
 
-// The first-run hint must actually show on first entry: Grak starts on the
-// Rift, so the old "only when the floor line is empty" trigger never fired.
-func TestOWFirstRunHint(t *testing.T) {
+func TestOWFirstEntryUsesVoiceInsteadOfDuplicateControls(t *testing.T) {
 	pal := Palette()
-	f := RenderOverworld(62, 19, NewOWState(), 0, pal)
+	st := NewOWState()
+	f := RenderOverworld(62, 19, st, 0, pal)
 	row := strings.Split(f.Text(), "\n")[1]
-	if !strings.Contains(row, "wasd walk the lair") {
-		t.Fatalf("first-run hint missing from the voice row: %q", row)
+	want, _ := owNodeLine(st, 0)
+	if !strings.Contains(row, fitMsg(want, 58)) || strings.Contains(row, "wasd") {
+		t.Fatalf("expected floor voice without duplicate controls: %q", row)
 	}
 }
 
