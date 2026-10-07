@@ -63,7 +63,7 @@ func TestJournalCollectionLocksHideNamesAndArt(t *testing.T) {
 	for _, size := range [][2]int{{32, 16}, {62, 19}, {80, 24}, {120, 40}} {
 		w, h := size[0], size[1]
 		f := RenderJournal(w, h, JournalState{})
-		if !strings.Contains(f.Text(), "Discover entries in the campaign") {
+		if !strings.Contains(f.Text(), "Fill these pages in the campaign") {
 			t.Fatal("journal collection must explain how to discover entries")
 		}
 		for _, e := range TowerJournalEntries {

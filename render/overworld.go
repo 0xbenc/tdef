@@ -1581,6 +1581,16 @@ func drawOWChromeRows(f *Frame, st OWState) {
 
 	// Row h-2: context — the Depths' seed, pending bonuses, the relic offer.
 	var ctx string
+	keyPositions := map[int]bool{}
+	appendHint := func(path, placeholder, key string) {
+		formatted := copytext.Format(path, placeholder, "\x00")
+		prefix, suffix, _ := strings.Cut(formatted, "\x00")
+		start := len([]rune(ctx + prefix))
+		for i := range []rune(key) {
+			keyPositions[start+i] = true
+		}
+		ctx += prefix + key + suffix
+	}
 	fl, onPad := OWFloorAt(st.Cursor.X, st.Cursor.Y)
 	switch {
 	case onPad && fl.ID == "depths":
@@ -1602,25 +1612,33 @@ func drawOWChromeRows(f *Frame, st OWState) {
 		}
 		ctx = copytext.Text("overworld.draw_owchrome_rows.next_defense") + strings.Join(b, " · ")
 	case onPad && fl.ID == "rotunda" && st.Tokens > 0 && !st.RelicMenu:
-		ctx = copytext.Format("overworld.draw_owchrome_rows.t_spend_a_relic", "target", "t")
+		appendHint("overworld.draw_owchrome_rows.t_spend_a_relic", "target", "t")
 	}
 	if onPad && fl.ID == "rotunda" && !st.RelicMenu {
 		if ctx != "" {
 			ctx += " · "
 		}
-		ctx += copytext.Format("overworld.draw_owchrome_rows.i_opening", "opening", "i")
+		appendHint("overworld.draw_owchrome_rows.i_opening", "opening", "i")
 		if st.BossDone && len([]rune(ctx))+len([]rune(copytext.Format("overworld.draw_owchrome_rows.e_ending", "ending", "e"))) <= f.W-4 {
-			ctx += copytext.Format("overworld.draw_owchrome_rows.e_ending", "ending", "e")
+			appendHint("overworld.draw_owchrome_rows.e_ending", "ending", "e")
 		}
 		if len([]rune(ctx))+len([]rune(copytext.Format("overworld.draw_owchrome_rows.v_malgrath", "portrait", "v"))) <= f.W-4 {
-			ctx += copytext.Format("overworld.draw_owchrome_rows.v_malgrath", "portrait", "v")
+			appendHint("overworld.draw_owchrome_rows.v_malgrath", "portrait", "v")
 		}
 		if len([]rune(ctx))+len([]rune(copytext.Format("overworld.draw_owchrome_rows.g_grak", "grak", "g"))) <= f.W-4 {
-			ctx += copytext.Format("overworld.draw_owchrome_rows.g_grak", "grak", "g")
+			appendHint("overworld.draw_owchrome_rows.g_grak", "grak", "g")
 		}
 	}
 	if ctx != "" {
-		putCenteredRuns(f, h-2, []owRun{{fitMsg(ctx, f.W-4), 252, false}})
+		runs := []owRun{}
+		for i, ch := range []rune(fitMsg(ctx, f.W-4)) {
+			fg, bold := 252, false
+			if keyPositions[i] && ch != '…' {
+				fg, bold = 167, true
+			}
+			runs = append(runs, owRun{string(ch), fg, bold})
+		}
+		putCenteredRuns(f, h-2, runs)
 	}
 }
 

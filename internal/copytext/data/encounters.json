@@ -31,7 +31,7 @@
       "theme": "assault"
     },
     "wave_11": {
-      "theme": "the coven"
+      "theme": "wizards"
     },
     "wave_12": {
       "theme": "the risen"
@@ -58,36 +58,36 @@
       "theme": "siege"
     },
     "wave_20": {
-      "theme": "the end"
+      "theme": "last expedition"
     }
   },
   "wave_telegraph": {
-    "the_guild_has_sent_rogues": "Rogues evade shots. Use frost or splash.",
-    "mercenaries_and_they_hit_harder": "Mercenaries — and they hit harder.",
-    "a_swift_raid_loose_arrows_fly_true": "Rogue raid. Frost exposes them; splash always hits.",
-    "wizards_fast_and_frail_but_deadly": "Wizards — fast and frail, but deadly.",
-    "a_necromancer_walks_among_them_they_rise": "A necromancer walks among them. They rise when he falls.",
-    "a_paladin_leads_the_vanguard": "Paladin plate: use Cannoniers or Trebuchets.",
-    "centurions_warded_they_shrug_off_your_blows": "Centurion wards resist magic. Use Rangers or siege.",
-    "the_player_has_set_out_if_they": "The Player has set out. If they reach the heart, it ends.",
-    "the_player_returns_stronger": "The Player returns, stronger.",
-    "the_final_expedition_two_players_hold_the": "The final expedition. Two Players. Hold the lair."
+    "the_guild_has_sent_rogues": "Rogues coming. Use frost, blasts or lightning.",
+    "mercenaries_and_they_hit_harder": "Mercenaries coming. They take more hits than Squires.",
+    "a_swift_raid_loose_arrows_fly_true": "More Rogues. Put frost where shooters can follow up.",
+    "wizards_fast_and_frail_but_deadly": "Wizards coming. Quick and frail; keep shooters ready.",
+    "a_necromancer_walks_among_them_they_rise": "Necromancers coming. Each leaves two Squires when killed.",
+    "a_paladin_leads_the_vanguard": "Paladin plate. Use Cannoniers, Trebuchets or magic.",
+    "centurions_warded_they_shrug_off_your_blows": "Centurion wards resist magic. Use Rangers or blasts.",
+    "the_player_has_set_out_if_they": "The Player is coming. A breach costs six lives.",
+    "the_player_returns_stronger": "Another champion. Keep damage on the final approach.",
+    "the_final_expedition_two_players_hold_the": "Last expedition. Two champions; finish both."
   },
   "tactical_brief": {
-    "inner_courts_can_cover_the_road_more": "Inner courts can cover the road more than once.",
-    "separate_banks_need_separate_defenses": "Separate banks need separate defenses.",
-    "long_bows_reach_across_the_returning_halls": "Long bows reach across the returning halls.",
-    "slow_the_front_ranks_catch_the_crowd": "Slow the front ranks; catch the crowd at the bends.",
-    "thin_the_outer_ranks_finish_the_survivors": "Thin the outer ranks. Finish the survivors near the heart."
+    "inner_courts_can_cover_the_road_more": "Build in the inner courts to cover several passes.",
+    "separate_banks_need_separate_defenses": "Cover both banks; check reach before spending the gold.",
+    "long_bows_reach_across_the_returning_halls": "Give Rangers a view of the returning road.",
+    "slow_the_front_ranks_catch_the_crowd": "Use frost and blasts where the road bends back.",
+    "thin_the_outer_ranks_finish_the_survivors": "Thin the outer ranks; keep firepower on the inner turns."
   },
   "wave_telegraph_for": {
-    "rogues_in_bursts_cover_the_crossings_and": "Rogue bursts. Frost or splash; cover both banks.",
-    "a_spaced_rogue_raid_long_bows_can": "Spaced Rogue raid. Pair Rangers with frost.",
-    "a_packed_rogue_raid_slow_the_front": "A packed Rogue raid. Use frost and splash.",
-    "a_rogue_rush_let_the_outer_defense": "Rogue rush. Use frost or splash in the outer defense.",
-    "raiding_parties_cross_in_bursts_hold_more": "Raiding parties cross in bursts. Hold more than one bank.",
-    "a_spaced_column_long_bows_can_cover": "A spaced column. Long bows can cover the returning lanes.",
-    "they_arrive_shoulder_to_shoulder_catch_them": "They arrive shoulder to shoulder. Catch them at the bends.",
-    "a_rushing_front_then_heavy_armor_keep": "A rushing front, then heavy armor. Keep a reserve near the heart."
+    "rogues_in_bursts_cover_the_crossings_and": "Rogues in bursts. Cover both banks with frost or blasts.",
+    "a_spaced_rogue_raid_long_bows_can": "Rogues spread out. Pair Rangers with frost.",
+    "a_packed_rogue_raid_slow_the_front": "A packed Rogue raid. Use frost and blasts.",
+    "a_rogue_rush_let_the_outer_defense": "Rogue rush. Put frost or blasts on the outer road.",
+    "raiding_parties_cross_in_bursts_hold_more": "They come in bursts. Keep both banks covered.",
+    "a_spaced_column_long_bows_can_cover": "A spread-out column. Rangers can cover more than one pass.",
+    "they_arrive_shoulder_to_shoulder_catch_them": "Close ranks. Put frost and blasts at the bends.",
+    "a_rushing_front_then_heavy_armor_keep": "Fast fighters, then armor. Keep guns near the heart."
   }
 }

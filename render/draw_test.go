@@ -94,8 +94,8 @@ func TestDrawGameOver(t *testing.T) {
 		status game.GameStatus
 		lore   string
 	}{
-		{"VICTORY", game.StatusVictory, "The lair is held. Malgrath endures."},
-		{"DEFEAT", game.StatusDefeat, "Malgrath has fallen. The lair is clean."},
+		{"VICTORY", game.StatusVictory, "Malgrath's alive. I'll get him some water."},
+		{"DEFEAT", game.StatusDefeat, "Malgrath is dead. I still have my hammer."},
 	}
 	for _, c := range cases {
 		l := GameLayout(45, 13, 62, 19)

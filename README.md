@@ -78,4 +78,4 @@ Open **Journal** from the main menu to browse discoveries earned in the campaign
 To start over, choose **Reset progress** in the main menu, then confirm
 **Reset all progress**. This clears your campaign, relics, journal, and high scores.
 
-[Story](LORE.md) · [Tactics](TACTICS.md) · [Release notes & setup](RELEASING.md) · [MIT license](LICENSE)
+[Story](LORE.md) · [Lore sources](LORE-SOURCES.md) · [Tactics](TACTICS.md) · [Release notes & setup](RELEASING.md) · [MIT license](LICENSE)

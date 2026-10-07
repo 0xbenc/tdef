@@ -20,7 +20,8 @@ func RenderDragonMockup(w, h int) *Frame {
 		drawDragonTableau(f, x, y, pw, ph, max(1, ph/7), 233,
 			owPadView{status: OWOpen}, 90, true)
 		putString(f, (w-8)/2, 1, copytext.Text("characters.dragon.malgrath"), 180, 233, true)
-		putString(f, (w-16)/2, 2, copytext.Text("characters.dragon.the_dying_dragon"), 252, 233, false)
+		caption := copytext.Text("characters.dragon.the_dying_dragon")
+		putString(f, (w-len([]rune(caption)))/2, 2, caption, 252, 233, false)
 	}
 	hint := copytext.Format("characters.dragon.esc_enter_return_q_quit", "enter", "enter", "escape", "esc", "quit", "q")
 	if w >= 42 {

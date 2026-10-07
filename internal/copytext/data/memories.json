@@ -1,86 +1,86 @@
 {
   "rotunda": {
     "easy": {
-      "title": "A Bowl by the Hoard",
-      "lore": "After the last footsteps faded, I carried water through the Rotunda. Malgrath drank without lifting his head. Nothing in the guild's songs mentions the bowl. I think it may be the most important thing in this room."
+      "title": "Water First",
+      "lore": "I had a list of things to do when the fighting stopped. Count the shot. Check the braces. Get the door back on its hinges. Instead I sat on the steps until someone put a bowl of water in my hands. I drank half before I remembered I'd meant to take it down to Malgrath. Filled it again. He needn't know."
     },
     "normal": {
-      "title": "The Place We Kept",
-      "lore": "The gunner picked spent cases out of the gold while I reset the door. Malgrath asked whether anyone had broken the little garden pot. I told him no. Only then did he close his eyes."
+      "title": "Spent Cases",
+      "lore": "The gunner was picking up his spent cases. I told him we could do that in the morning. He said they were good brass. We used to have this argument about bent nails outside his workshop. I got down and helped. Found a few that had rolled under the barricade, and one of his father's that he keeps separate from the rest. He put that one straight in his pocket."
     },
     "hard": {
-      "title": "Still Here",
-      "lore": "The twentieth banner fell where the first had stood. For a while none of us moved. Then Malgrath shifted one wing, and the whole room breathed again. We had held a place. We had kept a life inside it."
+      "title": "The Little Pot",
+      "lore": "While we were clearing the Rotunda, someone found a little pot tucked behind a pillar. Had a crack down one side, so I nearly put it with the rubble. The gunner took it off me. Said he could mend it. I asked what we'd put in it. He hadn't thought that far. It's on the ledge above where we eat now. Still empty. Nobody's moved it."
     }
   },
   "rift": {
     "easy": {
-      "title": "Across the Crack",
-      "lore": "I cut the guild banner free from the old bridge. It vanished into the glow before the cloth had finished turning. The stone stayed warm under my boots long after the fighting stopped."
+      "title": "Good Cloth",
+      "lore": "There was a guild banner caught on the broken bridge. I lay flat and reached it with a hooked pole while the others held my belt. Good thick cloth. We cut the badge out and used the rest to wrap the cannon before hauling it back. The small one wanted to keep the badge too. I let him. Said he was going to sew it on the underside of his trousers."
     },
     "normal": {
-      "title": "A Wing Remembered",
-      "lore": "The Rift lit the marks Malgrath's claws had left on the bank. They were higher than my head. I put my hand in one and tried to imagine the weight of him standing there, impatient to fly."
+      "title": "Claw Marks",
+      "lore": "I found claw marks cut deep into the bank. Malgrath's, judging by the size. When I asked, he said he'd slipped. I went back and looked again. There are two sets. Must have been quite a scramble getting out. I didn't mention the second set to him. I've driven stakes along that edge for us. We haven't got wings to make up for a bad foothold."
     },
     "hard": {
-      "title": "The Cooler Bank",
-      "lore": "We held the narrow ledge until the last armored fighter fell. Across the crack, the far road was empty. I sat where Malgrath used to land and let the heat dry the shaking out of my hands."
+      "title": "The Other Bank",
+      "lore": "After the last fighter fell, someone called my name from across the Rift. I couldn't make out who. Called back, but they couldn't hear me either. I took the long way round with my hammer and the bandages. They wanted help lifting a wheel out of a rut. I was angry enough to shout at them. Had to sit down first. I'd run most of the way."
     }
   },
   "halls": {
     "easy": {
-      "title": "The Last Echo",
-      "lore": "The halls repeated our victory long after we stopped calling to each other. Somewhere near the far door, an echo sounded like a laugh. I let it. It had been too long since the stone had heard one."
+      "title": "Checking the Rooms",
+      "lore": "We checked the side rooms in pairs. Open the door, hold the lamp up, look behind it. At the sixth room I found the slingers asleep against a sack of stones. One woke when the light hit him and said they were guarding it. The other never stirred. I shut the door quietly. Went back later with blankets. They'd been awake longer than I had."
     },
     "normal": {
-      "title": "Borrowed Helm",
-      "lore": "A squire had left a helm beside the lowest stair. I set it upright instead of kicking it away. It was much too large for whoever had worn it. There are things a guild should not ask a child to carry."
+      "title": "The Helmet Strap",
+      "lore": "There was a squire sitting by the stair with both hands over his ears. His sword was out of reach. I left it there and cut his helmet strap; it had pulled tight under his chin. He asked whether I was going to eat him. I gave him water and showed him the way out. Kept the sword. We need the iron, and he didn't want to pick it up."
     },
     "hard": {
-      "title": "No More Footsteps",
-      "lore": "We waited for another formation. The echoes gave us our own breathing, a settling beam, the scrape of a sling stone put back in a pocket. At last I turned toward the garden. No one followed us from the far end."
+      "title": "The Hammer Room",
+      "lore": "I went to fetch my hammer after we'd checked the last passage. Someone had put it back. Cleaned the handle too, and laid out the nails in little piles by size. I stood there for a while. At home my tools were always where I'd left them, because nobody else was allowed to touch them. I took what I needed and left the door open."
     }
   },
   "garden": {
     "easy": {
-      "title": "Pale Flowers",
-      "lore": "A flower opened beside a scorch mark while we were clearing the path. The frost mage stepped around it. I did too. We left the mark where it was and carried the broken stone elsewhere."
+      "title": "Leave That One",
+      "lore": "The frost mage stopped me pulling up a plant beside the basin. Said it was for fevers. I asked if she was sure. She broke a leaf, smelled it and said fairly sure. We've left that bed alone. I made a little sign so nobody tramples it, though I didn't know what to write. Drew a head with a hot cloth on it. The gnolls think it's a warning about ghosts."
     },
     "normal": {
-      "title": "The Wrong Sky",
-      "lore": "Malgrath had once told me the tree did not need our sky. After the defense, I found a new leaf folded beneath a root. There was no sun to thank. There was water, and room, and another night without the guild."
+      "title": "Supper",
+      "lore": "We ate beside the basin because nobody wanted to carry the pots upstairs. The Ranger picked something green from the wall and put it in hers. I waited until she'd had a few mouthfuls before asking for some. Tasted like the stuff that grew by our well. I went back for more after the others had finished. Took a root this time, with a good lump of soil round it."
     },
     "hard": {
-      "title": "Room to Grow",
-      "lore": "We held every entrance, and the garden kept its water. When the quiet came, the gunner sat under the pale branches. None of us spoke. The flowers opened around our boots as though we belonged there."
+      "title": "A Place to Sit",
+      "lore": "A bench had fallen over near the old temple steps. I set it upright and packed the short leg with a piece of slate. The gunner sat down before I'd finished testing it. Then the mage sat beside him. I told them I'd only just repaired it. They shifted up to make room for me. We stayed there until the water in the basin was too dark to see."
     }
   },
   "heart": {
     "easy": {
-      "title": "An Ember Kept",
-      "lore": "Malgrath's breathing was shallow when I reached him. I counted until it steadied, then forgot the count. Behind us, the last gate was still standing. For tonight, that was enough."
+      "title": "The Count",
+      "lore": "I went down to Malgrath and stood where I could see his ribs move. He asked what I was staring at. Told him I was counting. He said if it was the gold, he already knew how much was missing. I lost count arguing with him. By then he was breathing easily enough to complain about the draught, so I went to find something to block it."
     },
     "normal": {
-      "title": "His Name, Quietly",
-      "lore": "The guild champion had called him a beast. When the chamber was ours again, I said his name. Malgrath opened one eye. There are words that take something away, and words that give it back."
+      "title": "The Bill",
+      "lore": "Malgrath asked what the defense had cost. I gave him the list. He had me read it twice, then asked why there were blankets on it. I told him people needed to sleep. He looked past me at the stairs. Asked how many people. I told him that too. He pushed a few coins out with one claw. Said to get them off the cold floor before they started burning his furniture."
     },
     "hard": {
-      "title": "The Heart Held",
-      "lore": "The last blow struck the gate and did not open it. I stayed beside Malgrath until the heat returned to the stone. He asked whether it was morning. I said it could be, if he wanted. We had earned that much."
+      "title": "Sit Down",
+      "lore": "I was trying to tell Malgrath which braces needed replacing. Couldn't get the words in the right order. He kept asking about a gate I'd already described, and I thought he wasn't listening. Then he told me to sit down before I fell into something valuable. I sat against the steps. Next thing I knew, someone was taking my hammer out of my hand. I'd been asleep. He was still there."
     }
   },
   "depths": {
     "easy": {
-      "title": "A Map Left Open",
-      "lore": "I came back with a map that no longer agreed with the road. Malgrath studied it as if the mistake were interesting. Perhaps it was. We had found another way home."
+      "title": "The Wrong Turn",
+      "lore": "I'd marked a turning on the map, but when we reached it there were three ways through. I picked the one that sloped up. Took us back to a place we'd already fought. Nobody said anything while I crossed it out. On the next page I've started noting smells and sounds as well. Water running. Hot iron. The roads change, but it's something to try."
     },
     "normal": {
-      "title": "The Road That Moved",
-      "lore": "The path folded behind us, but every ally made it through the last bend. I marked the exit with a stone from the Rotunda. By morning it was still there. For once, the Depths had kept something I gave them."
+      "title": "The Delivery",
+      "lore": "We got the timber through. Lost the handcart when a passage narrowed behind us, so we carried the last stretch on our shoulders. At the Rotunda I started counting lengths before we'd even set them down. The Ranger told me to count people first. Everyone was there. I knew that. Counted them anyway, then went back to the timber. Enough for the first roof, if I cut it carefully."
     },
     "hard": {
-      "title": "Home by Another Way",
-      "lore": "No banner reached the far end of the shifting road. I brought the empty map back through every chamber we had held. Malgrath listened while I described them. The lair was larger than the siege now."
+      "title": "The Way Back",
+      "lore": "Someone asked whether we should turn round before the next passage changed. We still had everything we'd brought, and I couldn't blame them. I spread the map on the floor. Nobody could make much of it. Then the gunner pointed to a greasy thumbprint at the edge. We'd eaten there on the way in. We found the place by the smell of the cooking fire. I've marked it properly now. Left the thumbprint."
     }
   }
 }

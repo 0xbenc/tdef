@@ -13,19 +13,19 @@
     "v_view_ending": "{portrait} view ending",
     "best_2": "best {best_score}",
     "new_best": "★ NEW BEST {best_score} ★",
-    "the_lair_is_held_malgrath_endures": "The lair is held. Malgrath endures.",
-    "malgrath_has_fallen_the_lair_is_clean": "Malgrath has fallen. The lair is clean.",
+    "the_lair_is_held_malgrath_endures": "Malgrath's alive. I'll get him some water.",
+    "malgrath_has_fallen_the_lair_is_clean": "Malgrath is dead. I still have my hammer.",
     "restart": " restart | ",
     "lair": " lair | ",
     "quit": " quit"
   },
   "end_verdict": {
-    "a_flawless_hold_not_one_breach": "A flawless hold — not one breach.",
-    "a_steady_hold_the_lair_endures": "A steady hold. The lair endures.",
-    "a_hard_fought_hold_the_lair_feels": "A hard-fought hold. The lair feels it.",
-    "the_lair_fell_late_on_wave": "The lair fell late, on wave {wave}.",
-    "the_lair_held_to_wave_so_close": "The lair held to wave {wave}. So close.",
-    "the_lair_fell_early_on_wave": "The lair fell early, on wave {wave}."
+    "a_flawless_hold_not_one_breach": "Not one got through. Leave the braces up.",
+    "a_steady_hold_the_lair_endures": "A few got through. Fix those gaps first.",
+    "a_hard_fought_hold_the_lair_feels": "Too many got through. He needs rest.",
+    "the_lair_fell_late_on_wave": "Wave {wave}. We'd nearly finished the job.",
+    "the_lair_held_to_wave_so_close": "Wave {wave}. We needed more time.",
+    "the_lair_fell_early_on_wave": "Wave {wave}. I wasn't ready for them."
   },
   "draw_end_beat": {
     "the_lair_holds": "THE LAIR HOLDS",

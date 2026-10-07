@@ -20,9 +20,8 @@ Where to edit
   ui.json        Journal headings and requirements, menus, help, setup,
                  HUD labels, feedback, reset confirmation, and footers.
 
-COPY-REVIEW.md links each checklist section to its JSON sources and the Go
-code that selects, unlocks, or lays out that text. Extraction preserves the
-current writing; the existing lore still needs the planned copy reviews.
+LORE-SOURCES.md lists the JSON sources and the Go code that selects,
+unlocks, or lays out that text.
 
 Editing rules
   Edit string VALUES. Keep object keys, file names, and structure intact.

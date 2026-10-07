@@ -3,48 +3,48 @@
     "name": "Squire",
     "subtitle": "guild recruit",
     "lore": "One stopped on the stairs to tighten his helmet strap. The others kept going, and he had to run to catch them. Young lad. New boots, sword he could barely lift. I used to see them carrying the older fighters' bags through town. Now the guild sends them down first. We've started finding their bags outside the entrance.",
-    "note": "Fast feet, ordinary armor. Do not let sympathy open a hole in the line."
+    "note": "Quick on his feet, but easy to bring down. Give the gunner or slingers a clear stretch of road; don't let a crowd slip through while you're watching the heavier fighters."
   },
   "rogue": {
     "name": "Rogue",
     "subtitle": "evasive scout",
     "lore": "Found one measuring the garden passage with a length of string. She dropped it when she saw me and was round the corner before I got my hammer up. Hard to land a shot on them. Our frost mage caught the next one by the boots, and the gunner had no trouble after that. Check the walls for their chalk marks.",
-    "note": "While unfrosted, rogues take 50% less damage from guns, arrows and slings. Frost removes evasion for the slow duration. Splash and lightning bypass it."
+    "note": "Guns, arrows and slings deal half damage until frost slows the Rogue. Keep their firing ranges over the same stretch as the frost mage's. Blasts, lightning and the Runeforge beam deal full damage without frost."
   },
   "mercenary": {
     "name": "Mercenary",
     "subtitle": "hired muscle",
     "lore": "He'd patched his mail with wire and tied a cooking pot to his pack. Looked equipped for a long job. I called across the barricade and asked what they were paying. He told me, quite pleasantly, that I could save us both some trouble by moving. I stayed where I was. He put the pot down before coming at me.",
-    "note": "He takes more punishment than a recruit. Give him more than a passing shot."
+    "note": "He can take several hits, but has no plate or magic ward. Put him under fire on more than one pass. Don't spend everything on a single shot and leave the road beyond it bare."
   },
   "paladin": {
     "name": "Paladin",
     "subtitle": "heavy plate",
     "lore": "We heard the armor scraping the passage walls long before he reached us. Had to turn sideways at the narrow part. The gunner's shots barely troubled him. Then the cannon crew got a ball into his breastplate. I've widened their firing gap since. They'll need it for the next one.",
-    "note": "Plate cuts gun and sling damage by 75%, arrows by 40%. Cannon and trebuchet hits deal full damage; magic bypasses the plate too."
+    "note": "Plate cuts gun and sling damage by 75%, arrow damage by 40%. Use cannon, trebuchet, mines or magic for full damage. He's slow enough to give them time if you place them early along the road."
   },
   "necromancer": {
     "name": "Necromancer",
     "subtitle": "raising fallen squires",
     "lore": "There were two squires sewn into his robes. I thought he was carrying bodies home until we brought him down and they started trying to get out. Same guild badges as the living ones. I don't know whether they volunteered for that. We check the robes now, and nobody goes forward to search them until the slingers say it's clear.",
-    "note": "His death leaves two more fighters. Keep something ready to catch them."
+    "note": "When he falls, two Squires rise where he stood. Keep a blast or a fast defender covering that spot. Each has half the necromancer's health; they take more work than ordinary recruits."
   },
   "player": {
     "name": "The Player",
     "subtitle": "the guild's champion",
     "lore": "The others made room on the stairs. Even the paladins stepped back. Good armor, properly fitted, and a sword with no nicks in it. They stood at our barricade for a while, looking over every firing gap. Then they backed out. I spent that night moving the defenses. I'd rather repair the floor twice than let that one know where to step.",
-    "note": "Save strength for the champion. A breach costs six lives, not one."
+    "note": "A champion reaching Malgrath costs six lives. Put enough damage along the approach to finish the job, with frost to buy time. Strongest targeting helps the Hex Witch mark the champion instead of a passing recruit."
   },
   "wizard": {
     "name": "Wizard",
     "subtitle": "fast on his feet",
     "lore": "His sleeve caught a nail in the barricade and tore half off. Didn't slow him much. He kept running with his book under one arm, shouting words I couldn't make out. There's a scorch mark all along that wall now. Our mage wants to study it. I've asked him to wait until we aren't using the corridor.",
-    "note": "Frail, but quick. Catch him before he slips through an uncovered stretch."
+    "note": "He's frail and quick. Give the gunner or slingers time to fire; frost helps keep him in reach. Don't rely on one slow siege weapon to catch him between shots."
   },
   "centurion": {
     "name": "Centurion",
     "subtitle": "magic ward",
     "lore": "Our mage struck his shield and the lightning spread over it in a blue sheet. He kept coming. The Ranger put an arrow through his shoulder while he was still watching the mage. There's a ward worked into the bronze. It keeps spells off him well enough, but he still needs to watch the arrows.",
-    "note": "The ward cuts frost and lightning damage by 80%. Rangers deal full damage, as do guns, slings and siege weapons. Frost still slows him."
+    "note": "The ward cuts frost, lightning and Runeforge damage by 80%. Guns, arrows, slings and blasts deal full damage. Frost still slows him, so keep the mage where those defenders can use the extra time."
   }
 }

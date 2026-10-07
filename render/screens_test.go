@@ -150,7 +150,7 @@ func TestRenderHelpFits(t *testing.T) {
 		f := RenderHelp(size[0], size[1], Palette())
 		text := f.Text()
 		for _, want := range []string{
-			"GRAK'S LEDGER", "how to hold the lair against twenty expeditions",
+			"GRAK'S LEDGER", "Hold twenty waves. Hearts are Malgrath's health.",
 			"arrows/wasd; Tab defenders", "1-7 pick", "esc back",
 		} {
 			if !strings.Contains(text, want) {

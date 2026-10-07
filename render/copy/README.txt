@@ -1,7 +1,7 @@
 Cinematic copy
 
 The rest of the game's authored copy is editable in JSON under
-internal/copytext/data/. See internal/copytext/README.txt and COPY-REVIEW.md
+internal/copytext/data/. See internal/copytext/README.txt and LORE-SOURCES.md
 for the source map. The two cinematic files stay here.
 
 Edit opening.json or ending.json in VS Code. These are the actual copies used

@@ -2,53 +2,53 @@
   "rotunda": {
     "short_name": "Rotunda",
     "name": "The Rotunda",
-    "subtitle": "a roof around a promise",
-    "lore": "The builders meant this chamber for an audience. Malgrath made it a place to sleep. The gold is softer than the stone, he told me once, though I think he only liked the sound it made when he settled. I still sweep a path to the water.",
-    "note": "Inner courts cover several passes with one defense. Holding the Rotunda opens the way to the Rift.",
+    "subtitle": "the first barricades",
+    "lore": "I started here with the gold Malgrath let me take. There was enough timber in the damaged shops for barricades, once I'd pulled the nails and cut off the burnt ends. The hall has several ways in. I blocked what I could and left room for us to carry supplies through. Everyone uses that gap now. I'll need to close it when the guild comes.",
+    "note": "Build in the inner courts where a defender can reach more than one stretch of road. Check the whole route before spending the rest of the gold. Holding the Rotunda opens the Rift on this renown.",
     "map_name": "the Rotunda",
     "ledger_name": "rotunda"
   },
   "rift": {
     "short_name": "Rift",
     "name": "The Rift",
-    "subtitle": "a wound that learned to glow",
-    "lore": "There was a bridge here before either of us arrived. The stone remembers its ends; the middle remembers nothing. Heat comes through the crack at night. Malgrath used to warm his wings above it. Now I keep watch from the cooler bank.",
-    "note": "Separate banks need separate defenses. Holding the Rift opens the Long Halls.",
+    "subtitle": "the broken bridge",
+    "lore": "I went down to look at the bridge. Both ends are still there, but repairing the middle would take timber we need elsewhere. We carry everything round instead. It's a long walk with a sack of shot, and the heat makes it worse. I've asked the crews to check what they need before I set off. They usually remember something when I get back.",
+    "note": "Don't spend everything on one bank. Most defenders cannot cover both; check their reach before placing them. Frost gives the crews time to catch each burst of fighters. Holding the Rift opens the Long Halls on this renown.",
     "map_name": "the Rift",
     "ledger_name": "rift"
   },
   "halls": {
     "short_name": "Long Halls",
     "name": "The Long Halls",
-    "subtitle": "footsteps before faces",
-    "lore": "Every doorway is smaller than the one before it, until the far end seems built for someone else entirely. Malgrath disliked the echoes. I liked knowing who was coming. These days I can count a guild formation without seeing a single boot.",
-    "note": "The long road rewards reach and repeated coverage. Holding the Halls opens the Garden.",
+    "subtitle": "the old storerooms",
+    "lore": "Most of the rooms off these halls were empty when I checked them. A few had shelves worth taking down. I left those nearest the road intact for shot, spare strings and tools. Saves carrying everything from upstairs. The doors all look much the same, so I've marked them. If you borrow the hammer, put it back in the room with the hammer drawn on it.",
+    "note": "Give Rangers a view of the returning road so they can keep firing as fighters pass again. The guild leaves gaps between its ranks here; fast shots and long reach are useful. Holding the Halls opens the Garden on this renown.",
     "map_name": "the Long Halls",
     "ledger_name": "halls"
   },
   "garden": {
     "short_name": "Sunken Garden",
     "name": "The Sunken Garden",
-    "subtitle": "something growing in the dark",
-    "lore": "The roots found the water before we did. I thought the pale leaves meant the tree was dying. Malgrath said I was judging it by the wrong sky. There are flowers here that have never seen daylight. They open anyway.",
-    "note": "Slow the front ranks and catch the crowd at the bends. Holding every fixed floor unseals the Heart.",
+    "subtitle": "the overgrown temple",
+    "lore": "There was a temple here. I found steps under the roots and a stone basin with water still running into it. Whoever tended the garden is gone. Some of the beds have spread across the paths, and I've had to cut them back to get the equipment through. Kept the cuttings. If we find someone who knows what they are, I'd like to know which ones we can eat.",
+    "note": "The guild comes close together here. Put frost where it can hold the front ranks in a cannon or trebuchet's blast area. Watch the next bend for survivors. Holding all four fixed floors on this renown unseals the Heart.",
     "map_name": "the Sunken Garden",
     "ledger_name": "garden"
   },
   "heart": {
     "short_name": "Heart",
     "name": "The Heart",
-    "subtitle": "what the walls are for",
-    "lore": "There is no gold in the deepest chamber. Only warmth, and a hollow worn into the stone by a body that once filled the sky. I used to call every room in this place a defense. Here I remember what I am defending.",
-    "note": "Thin the outer ranks; finish survivors near the heart. Win all four fixed floors on this renown to enter. Holding the Heart opens the Depths.",
+    "subtitle": "Malgrath's chamber",
+    "lore": "Malgrath watches me whenever I come down here. If I'm carrying tools, he asks what I'm building. If I'm empty-handed, he asks what I want. I've cleared the loose stone from the approach and measured it for defenses. He wanted to know whether that meant more gold. I said yes. He shut his eyes, but he was still listening.",
+    "note": "Thin the crowd on the outer road and leave enough firepower for survivors on the inner turns. The champions come behind the faster fighters; keep something ready for them. Hold all four fixed floors on this renown to enter. Holding the Heart then opens the Depths.",
     "map_name": "the Heart"
   },
   "depths": {
     "short_name": "Unmapped Depths",
     "name": "The Unmapped Depths",
-    "subtitle": "the stone has another answer",
-    "lore": "My first map was wrong by morning. My second was wrong before I finished it. The lair continues beneath the places we know, folding its roads around something I have not found. I take a torch, and leave the old map where Malgrath can see it.",
-    "note": "Routes change with the seed. The Depths open after the four floors and Heart are held on this renown.",
+    "subtitle": "the passage to Earth",
+    "lore": "I followed the healer into these tunnels after the fighting. Lost sight of them almost at once. When I turned round, I couldn't find the passage I'd come through. Their tracks got me to the other side. Earth, they called it. I need to find a route we can bring supplies back along. Next time I'll take chalk and someone to help carry.",
+    "note": "Look over the route before placing anyone; a new seed means a new road. Find bends and nearby stretches a defender can cover together, then check the final approach for gaps. Entry requires victories on all four fixed floors and the Heart on this renown.",
     "map_name": "the Unmapped Depths"
   }
 }
