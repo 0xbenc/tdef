@@ -20,13 +20,13 @@ func RenderCannonierMockup(w, h int) *Frame {
 		pw := ph * 3
 		drawCannonierPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
 		putString(f, (w-9)/2, 1, copytext.Text("characters.cannonier.cannonier"), 180, 233, true)
-		putString(f, (w-22)/2, 2, copytext.Text("characters.cannonier.one_more_for_the_guild"), 240, 233, false)
+		putString(f, (w-22)/2, 2, copytext.Text("characters.cannonier.one_more_for_the_guild"), 252, 233, false)
 	}
 	hint := copytext.Format("characters.cannonier.tab_ranger_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
 		hint = copytext.Format("characters.cannonier.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
-	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
+	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 252, 233, false)
 	return f
 }
 

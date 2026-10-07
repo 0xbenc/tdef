@@ -50,7 +50,7 @@ func TestCutsceneRevealSettlesAndResizeNotice(t *testing.T) {
 	if CutsceneVisible(st) != 0 {
 		t.Fatal("caption appeared before the opening hold")
 	}
-	st.Frame = 80
+	st.Frame = 40
 	n := CutsceneVisible(st)
 	if n <= 0 || n >= len([]rune(FilmShots(st.Film)[st.Shot].Dialogue)) {
 		t.Fatal("typewriter did not reveal gradually")

@@ -18,13 +18,13 @@ func RenderPaladinMockup(w, h int) *Frame {
 		drawPaladinPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
 		title, subtitle := copytext.Text("characters.paladin.paladin"), copytext.Text("characters.paladin.the_line_does_not_yield")
 		putString(f, (w-len(title))/2, 1, title, 230, 233, true)
-		putString(f, (w-len(subtitle))/2, 2, subtitle, 240, 233, false)
+		putString(f, (w-len(subtitle))/2, 2, subtitle, 252, 233, false)
 	}
 	hint := copytext.Format("characters.paladin.tab_rogue_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
 		hint = copytext.Format("characters.paladin.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
-	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
+	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 252, 233, false)
 	return f
 }
 

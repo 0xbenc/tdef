@@ -17,13 +17,13 @@ func RenderTrebuchetMockup(w, h int) *Frame {
 		pw := ph * 5 / 2
 		drawTrebuchetPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
 		putString(f, (w-9)/2, 1, copytext.Text("characters.trebuchet.trebuchet"), 180, 233, true)
-		putString(f, (w-25)/2, 2, copytext.Text("characters.trebuchet.a_little_help_with_gravity"), 240, 233, false)
+		putString(f, (w-25)/2, 2, copytext.Text("characters.trebuchet.a_little_help_with_gravity"), 252, 233, false)
 	}
 	hint := copytext.Format("characters.trebuchet.tab_necromancer_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
 		hint = copytext.Format("characters.trebuchet.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
-	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
+	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 252, 233, false)
 	return f
 }
 

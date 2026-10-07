@@ -17,13 +17,13 @@ func RenderGrakMockup(w, h int) *Frame {
 		pw := ph * 2
 		drawGrakPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
 		putString(f, (w-4)/2, 1, copytext.Text("characters.grak.grak"), 150, 233, true)
-		putString(f, (w-16)/2, 2, copytext.Text("characters.grak.the_last_monster"), 240, 233, false)
+		putString(f, (w-16)/2, 2, copytext.Text("characters.grak.the_last_monster"), 252, 233, false)
 	}
 	hint := copytext.Format("characters.grak.tab_gnolls_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
 		hint = copytext.Format("characters.grak.esc_return_tab_gnolls", "tab", "tab", "escape", "esc")
 	}
-	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
+	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 252, 233, false)
 	return f
 }
 

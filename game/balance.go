@@ -24,6 +24,10 @@ type TowerSpec struct {
 	SlowPct float64
 	SlowDur float64
 	Chain   [3]int
+	Pull    [3]float64
+	Mark    [3]float64
+	MarkDur [3]float64
+	MineCap [3]int
 }
 
 var TowerSpecs = [TowerCount]TowerSpec{
@@ -66,32 +70,58 @@ var TowerSpecs = [TowerCount]TowerSpec{
 		Cost: [3]int{80, 70, 110}, Dmg: [3]float64{6, 9, 14},
 		Range: [3]float64{2.2, 2.5, 2.8}, RoT: [3]float64{3.0, 3.5, 4.0},
 	},
+	{
+		Name: copytext.Text("defenders.runeforge.name"), Short: 'R',
+		Cost: [3]int{180, 140, 220}, Dmg: [3]float64{22, 34, 50},
+		Range: [3]float64{7, 8, 9}, RoT: [3]float64{1, 1, 1},
+	},
+	{
+		Name: copytext.Text("defenders.hookmaster.name"), Short: 'H',
+		Cost: [3]int{140, 100, 160}, Dmg: [3]float64{8, 12, 18},
+		Range: [3]float64{3.0, 3.4, 3.8}, RoT: [3]float64{.2, .23, .26},
+		Pull: [3]float64{2, 2.6, 3.2},
+	},
+	{
+		Name: copytext.Text("defenders.sappers.name"), Short: 'P',
+		Cost: [3]int{125, 100, 160}, Dmg: [3]float64{90, 145, 220},
+		Range: [3]float64{2.8, 3.2, 3.6}, RoT: [3]float64{.4, .45, .5},
+		Splash: 1.1, MineCap: [3]int{3, 4, 5},
+	},
+	{
+		Name: copytext.Text("defenders.witch.name"), Short: 'W',
+		Cost: [3]int{160, 120, 180}, Dmg: [3]float64{0, 0, 0},
+		Range: [3]float64{3.5, 3.9, 4.3}, RoT: [3]float64{.5, .5, .5},
+		Mark: [3]float64{.25, .35, .45}, MarkDur: [3]float64{3, 3.5, 4},
+	},
 }
 
 const ChainRange = 2.6
 const ChainFalloff = 0.6
 
 type EnemySpec struct {
-	Name    string
-	Short   rune
-	HP      float64
-	Speed   float64
-	Bounty  int
-	Lives   int
-	SplitN  int
-	SplitHP float64
-	Armor   float64 // damage reduction (0-1) applied to every hit
+	Name       string
+	Short      rune
+	HP         float64
+	Speed      float64
+	Bounty     int
+	Lives      int
+	SplitN     int
+	SplitHP    float64
+	Plate      float64 // reduction against small shot
+	ArrowPlate float64 // reduction against Ranger arrows
+	Ward       float64 // reduction against frost and lightning
+	Evasion    float64 // reduction against ordinary shots while not slowed
 }
 
 var EnemySpecs = [EnemyCount]EnemySpec{
 	{Name: copytext.Text("enemies.squire.name"), Short: 'o', HP: 16, Speed: 3.2, Bounty: 2},
-	{Name: copytext.Text("enemies.rogue.name"), Short: 'r', HP: 34, Speed: 2.6, Bounty: 5},
+	{Name: copytext.Text("enemies.rogue.name"), Short: 'r', HP: 24, Speed: 2.6, Bounty: 5, Evasion: 0.5},
 	{Name: copytext.Text("enemies.mercenary.name"), Short: 'g', HP: 65, Speed: 1.6, Bounty: 8},
-	{Name: copytext.Text("enemies.paladin.name"), Short: 't', HP: 240, Speed: 1.05, Bounty: 20},
+	{Name: copytext.Text("enemies.paladin.name"), Short: 't', HP: 240, Speed: 1.05, Bounty: 20, Plate: 0.75, ArrowPlate: 0.4},
 	{Name: copytext.Text("enemies.necromancer.name"), Short: 's', HP: 110, Speed: 1.4, Bounty: 12, SplitN: 2, SplitHP: 0.5},
 	{Name: copytext.Text("enemies.player.name"), Short: 'B', HP: 1600, Speed: 0.8, Bounty: 140, Lives: 6},
 	{Name: copytext.Text("enemies.wizard.name"), Short: 'w', HP: 9, Speed: 2.3, Bounty: 3},
-	{Name: copytext.Text("enemies.centurion.name"), Short: 'D', HP: 180, Speed: 1.15, Bounty: 24, Armor: 0.4},
+	{Name: copytext.Text("enemies.centurion.name"), Short: 'D', HP: 180, Speed: 1.15, Bounty: 24, Ward: 0.8},
 }
 
 const (

@@ -368,7 +368,7 @@ func TestTowerSlotDistribution(t *testing.T) {
 		t.Fatalf("slots = %d, want 7", len(slots))
 	}
 	wantRow0 := []int{1, 16, 31, 46}
-	wantRow1 := []int{1, 21, 41}
+	wantRow1 := []int{1, 16, 31}
 	for i, x := range wantRow0 {
 		if slots[i].Y != 15 || slots[i].X != x {
 			t.Errorf("slot %d = (%d,%d), want (%d,15)", i, slots[i].X, slots[i].Y, x)
@@ -388,7 +388,7 @@ func TestTowerSlotDistribution(t *testing.T) {
 			rows[sl.Y] = append(rows[sl.Y], sl)
 		}
 		for _, row := range rows {
-			cell := (tw - 2) / len(row)
+			cell := (tw - 2) / 4
 			for i, sl := range row {
 				if want := 1 + i*cell; sl.X != want {
 					t.Errorf("tw=%d slot %d X=%d, want %d", tw, i, sl.X, want)
@@ -487,7 +487,7 @@ func TestRenderSmoke(t *testing.T) {
 		t.Fatalf("frame = %dx%d, want 80x24", f.W, f.H)
 	}
 	text := f.Text()
-	for _, want := range []string{"termtd", "1 Orc Gunner 50", "⏎|place", "the Rift", "normal"} {
+	for _, want := range []string{"termtd", "1 Orc Gunner 50", "⏎ select", "the Rift", "normal"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("frame missing %q", want)
 		}

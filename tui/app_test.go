@@ -202,8 +202,8 @@ func TestFooterHelpMode(t *testing.T) {
 	}
 	f := render.Render(g, &render.UI{Placing: game.TowerGunner, Selected: tw.ID, Help: true, Level: "winding"}, render.Palette(), 62, 19, 0)
 	lines := strings.Split(f.Text(), "\n")
-	if !strings.Contains(lines[17], "↑↓/wasd") {
-		t.Errorf("help hint row missing: %q", lines[17])
+	if !strings.Contains(lines[18], "↑↓/wasd") {
+		t.Errorf("help hint row missing: %q", lines[18])
 	}
 	if strings.Contains(lines[18], "▸") {
 		t.Errorf("bottom border must stay plain in help mode: %q", lines[18])

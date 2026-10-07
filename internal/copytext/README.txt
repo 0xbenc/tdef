@@ -6,7 +6,7 @@ import cycle. Cinematic scene copy stays in render/copy/opening.json and
 render/copy/ending.json, beside its existing editing instructions.
 
 Where to edit
-  defenders.json  Seven allies: names, subtitles, lore, tactical notes.
+  defenders.json  Eleven allies: names, subtitles, lore, tactical notes.
   enemies.json    Eight guild fighters: names, subtitles, lore, notes.
   places.json     Six places: names, lore, notes, and map/ledger labels.
   memories.json   Main story memories, grouped by floor and difficulty.

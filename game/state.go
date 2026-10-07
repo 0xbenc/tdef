@@ -1,9 +1,13 @@
 package game
 
 type State struct {
-	Map  *Map
-	Time float64
-	Diff Difficulty
+	TrainingStage  int
+	UnlockedTowers uint32
+	Lesson         TowerKind
+	LessonPending  bool
+	Map            *Map
+	Time           float64
+	Diff           Difficulty
 
 	Gold   int
 	Lives  int
@@ -16,6 +20,7 @@ type State struct {
 	Towers      []*Tower
 	Projectiles []*Projectile
 	Beams       []*Beam
+	Mines       []*Mine
 	Fx          []*Fx
 	LeakFlash   float64
 
@@ -88,8 +93,30 @@ func (s *State) TowerAt(v Vec) *Tower {
 	return nil
 }
 
+// TargetFor exposes the same priority used for a defender's next shot.
+func (s *State) TargetFor(t *Tower) *Enemy {
+	if t == nil || t.Kind == TowerRuneforge || t.Kind == TowerSappers {
+		return nil
+	}
+	return s.acquireTarget(t)
+}
+
+// SpecialistPlaced reports the one-per-kind limit for the current level.
+// Selling a specialist makes its slot available again.
+func (s *State) SpecialistPlaced(k TowerKind) bool {
+	if k < TowerRuneforge || !k.Valid() {
+		return false
+	}
+	for _, t := range s.Towers {
+		if t.Kind == k {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *State) CanBuild(v Vec, k TowerKind) bool {
-	return s.Map.InBounds(v) && s.Map.At(v) == CellGrass && s.TowerAt(v) == nil && s.Gold >= TowerSpecs[k].Cost[0]
+	return s.TowerAvailable(k) && !s.SpecialistPlaced(k) && s.Map.InBounds(v) && s.Map.At(v) == CellGrass && s.TowerAt(v) == nil && s.Gold >= TowerSpecs[k].Cost[0]
 }
 
 func (s *State) Build(v Vec, k TowerKind) *Tower {
@@ -105,6 +132,10 @@ func (s *State) Build(v Vec, k TowerKind) *Tower {
 		Invested: TowerSpecs[k].Cost[0],
 	}
 	s.NextID++
+	if k == TowerWitch {
+		t.TargetMode = TargetStrongest
+	}
+	s.Aim(t, FacingEast)
 	s.Towers = append(s.Towers, t)
 	return t
 }
@@ -124,12 +155,21 @@ func (s *State) Upgrade(t *Tower) bool {
 	s.Gold -= c
 	t.Invested += c
 	t.Level++
+	s.Aim(t, t.Facing)
 	return true
 }
 
 func (s *State) Sell(t *Tower) int {
 	refund := int(float64(t.Invested) * SellRefund)
 	s.Gold += refund
+	n := 0
+	for _, mine := range s.Mines {
+		if mine.Owner != t.ID {
+			s.Mines[n] = mine
+			n++
+		}
+	}
+	s.Mines = s.Mines[:n]
 	for i, x := range s.Towers {
 		if x.ID == t.ID {
 			s.Towers = append(s.Towers[:i], s.Towers[i+1:]...)
@@ -157,6 +197,9 @@ func (s *State) CycleTarget(v Vec) (*Tower, TargetMode) {
 // committed to the defense: at least one tower must be placed before it may
 // start, whether by the auto timer or the early-start key.
 func (s *State) StartWave() int {
+	if s.LessonPending {
+		return 0
+	}
 	if s.WaveActive || s.Status != StatusRunning {
 		return 0
 	}
@@ -243,6 +286,17 @@ func (s *State) leakEnemy(e *Enemy) {
 }
 
 func (s *State) applyDamage(e *Enemy, d float64, k TowerKind) {
+	s.damageEnemy(e, d, k, false)
+}
+
+func (s *State) applySplashDamage(e *Enemy, d float64, k TowerKind) {
+	s.damageEnemy(e, d, k, true)
+}
+
+func (s *State) damageEnemy(e *Enemy, d float64, k TowerKind, splash bool) {
+	if e.Dead || e.Leaked {
+		return
+	}
 	if k == TowerFrost {
 		sp := TowerSpecs[TowerFrost]
 		e.SlowUntil = s.Time + sp.SlowDur
@@ -250,12 +304,34 @@ func (s *State) applyDamage(e *Enemy, d float64, k TowerKind) {
 			e.SlowFactor = sp.SlowPct
 		}
 	}
-	if e.Armor > 0 {
-		d *= 1 - e.Armor
+	d *= e.DamageMultiplier(k, s.Time, splash)
+	if e.HexUntil > s.Time {
+		d *= 1 + e.HexBonus
 	}
 	if e.Damage(d) {
 		s.killEnemy(e)
 		return
 	}
 	e.HitTTL = s.Time + 0.09
+}
+
+// DamageMultiplier keeps counters deterministic. Evasion represents glancing
+// shots, not random misses; frost disables it only for the active slow window.
+// Splash is a property of the actual impact, not merely the tower's name.
+func (e *Enemy) DamageMultiplier(k TowerKind, time float64, splash bool) float64 {
+	sp := EnemySpecs[e.Kind]
+	mul := 1.0
+	switch k {
+	case TowerGunner, TowerFlak:
+		mul *= 1 - sp.Plate
+	case TowerSniper:
+		mul *= 1 - sp.ArrowPlate
+	case TowerFrost, TowerTesla, TowerRuneforge:
+		mul *= 1 - sp.Ward
+	}
+	ordinaryShot := k == TowerGunner || k == TowerSniper || k == TowerFlak
+	if ordinaryShot && !splash && !e.Slowed(time) {
+		mul *= 1 - sp.Evasion
+	}
+	return mul
 }

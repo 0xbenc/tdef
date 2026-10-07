@@ -37,11 +37,24 @@ var plans = []plan{
 	{"frost-siege", []game.TowerKind{game.TowerGunner, game.TowerMortar, game.TowerFrost, game.TowerMortar}, false},
 	{"slingers", []game.TowerKind{game.TowerGunner, game.TowerFlak, game.TowerFlak}, false},
 	{"ranged-siege", []game.TowerKind{game.TowerGunner, game.TowerSniper, game.TowerMortar}, false},
+	{"mixed-counters", []game.TowerKind{game.TowerFrost, game.TowerCannon, game.TowerSniper, game.TowerMortar}, false},
+	{"frost-forge", []game.TowerKind{game.TowerFrost, game.TowerRuneforge, game.TowerSniper}, false},
+	{"hook-siege", []game.TowerKind{game.TowerCannon, game.TowerHookmaster, game.TowerSniper}, false},
+	{"minefield", []game.TowerKind{game.TowerSappers, game.TowerSniper, game.TowerFrost}, false},
+	{"hex-siege", []game.TowerKind{game.TowerCannon, game.TowerWitch, game.TowerSniper}, false},
+	{"specialists", []game.TowerKind{game.TowerFrost, game.TowerRuneforge, game.TowerHookmaster, game.TowerSappers, game.TowerWitch, game.TowerSniper}, false},
 	{"one-camp", []game.TowerKind{game.TowerGunner, game.TowerCannon, game.TowerFrost, game.TowerSniper, game.TowerTesla}, true},
 }
 
 func run(m *game.Map, name string, p plan, diff game.Difficulty, hearts int) result {
+	return runTraining(m, name, p, diff, hearts, 0)
+}
+
+func runTraining(m *game.Map, name string, p plan, diff game.Difficulty, hearts, training int) result {
 	s := game.NewStateDiff(m, diff)
+	if training != 0 {
+		s.ConfigureTraining(training, 1<<game.TowerGunner)
+	}
 	s.Lives += hearts
 	firstAttack := 0.0
 	var ai *game.Autoplay
@@ -52,12 +65,29 @@ func run(m *game.Map, name string, p plan, diff game.Difficulty, hearts int) res
 	// fixed small camp is the same builder with a spatial constraint.
 	samples := m.Samples
 	cover := make([][][]int, game.TowerCount)
+	facings := make([]game.Facing, m.W*m.H)
 	for k := game.TowerKind(0); k < game.TowerCount; k++ {
 		cover[k] = make([][]int, m.W*m.H)
 		for y := 1; y < m.H-1; y++ {
 			for x := 1; x < m.W-1; x++ {
 				v := game.Vec{X: x, Y: y}
 				if m.At(v) != game.CellGrass {
+					continue
+				}
+				if k == game.TowerRuneforge {
+					for facing := game.FacingEast; facing <= game.FacingNorth; facing++ {
+						end := game.ForgeEnd(m, v, facing, game.TowerSpecs[k].Range[0])
+						var ray []int
+						for i, sp := range samples {
+							if game.ForgeContains(v.Center(), end, sp) {
+								ray = append(ray, i)
+							}
+						}
+						if len(ray) > len(cover[k][y*m.W+x]) {
+							cover[k][y*m.W+x] = ray
+							facings[y*m.W+x] = facing
+						}
+					}
 					continue
 				}
 				for i, sp := range samples {
@@ -81,6 +111,10 @@ func run(m *game.Map, name string, p plan, diff game.Difficulty, hearts int) res
 	}
 	next, seq := 0., 0
 	for s.Status == game.StatusRunning && s.Time < 4000 {
+		if s.LessonPending {
+			s.LessonPending = false
+			next = s.Time
+		}
 		if ai != nil {
 			ai.Tick()
 		} else if s.Time >= next {
@@ -89,6 +123,66 @@ func run(m *game.Map, name string, p plan, diff game.Difficulty, hearts int) res
 			k := game.TowerGunner
 			if seq >= 2 {
 				k = p.kinds[(seq-2)%len(p.kinds)]
+			}
+			// Respond to the first Rogue warning before spending all income on
+			// gun upgrades. Frost plans open with frost; physical splash plans
+			// use an affordable cannon before saving for trebuchets. Pure gun
+			// and Ranger plans deliberately retain their counter weakness.
+			needCounter := false
+			if seq >= 2 {
+				counter := game.TowerCount
+				for _, kind := range p.kinds {
+					if kind == game.TowerFrost {
+						counter = kind
+						break
+					}
+					if kind == game.TowerCannon || kind == game.TowerMortar {
+						counter = game.TowerCannon
+					}
+				}
+				if counter != game.TowerCount {
+					needCounter = true
+					for _, tw := range s.Towers {
+						if tw.Kind == counter {
+							needCounter = false
+							break
+						}
+					}
+					if needCounter {
+						k = counter
+					}
+				}
+			}
+			// Support belongs beside damage, rather than occupying a third
+			// of every mature defense. Keep the same gold and tower limits.
+			if k == game.TowerHookmaster || k == game.TowerWitch {
+				count := 0
+				for _, tower := range s.Towers {
+					if tower.Kind == k {
+						count++
+					}
+				}
+				if count >= 2 || len(s.Towers) < 4 {
+					k = game.TowerCannon
+					if count >= 2 {
+						k = game.TowerSniper
+					}
+				}
+			}
+			if s.SpecialistPlaced(k) {
+				if k == game.TowerRuneforge || k == game.TowerSappers {
+					k = game.TowerMortar
+				} else {
+					k = game.TowerSniper
+				}
+			}
+			if !s.TowerAvailable(k) {
+				k = game.TowerGunner
+				if s.TowerAvailable(game.TowerCannon) {
+					k = game.TowerCannon
+				} else if s.TowerAvailable(game.TowerFrost) {
+					k = game.TowerFrost
+				}
 			}
 			cost := game.TowerSpecs[k].Cost[0]
 			weights := make([]float64, len(samples))
@@ -122,7 +216,7 @@ func run(m *game.Map, name string, p plan, diff game.Difficulty, hearts int) res
 							continue
 						}
 						weight := weights[i]
-						if k == game.TowerFrost {
+						if k == game.TowerFrost || k == game.TowerWitch || k == game.TowerHookmaster {
 							weight = 1
 							for _, tw := range s.Towers {
 								if tw.Kind != game.TowerFrost && tw.Cell.Center().Dist(samples[i]) <= tw.Range() {
@@ -147,7 +241,7 @@ func run(m *game.Map, name string, p plan, diff game.Difficulty, hearts int) res
 			// Mature a four-tower foundation before continually buying new towers.
 			var upgrade *game.Tower
 			upScore := 0.
-			if seq >= 2 && s.Wave >= 1 {
+			if seq >= 2 && s.Wave >= 1 && !needCounter {
 				for _, tw := range s.Towers {
 					if tw.Level >= 3 || (s.Wave < 3 && tw.Level >= 2) {
 						continue
@@ -162,11 +256,15 @@ func run(m *game.Map, name string, p plan, diff game.Difficulty, hearts int) res
 			if upgrade != nil && s.Gold >= s.UpgradeCost(upgrade)+12 {
 				s.Upgrade(upgrade)
 			} else if (upgrade == nil || s.Wave < 3) && len(s.Towers) < 24 && best.X >= 0 && s.Gold >= cost+12 {
-				if s.Build(best, k) != nil {
+				if tower := s.Build(best, k); tower != nil {
+					s.Aim(tower, facings[best.Y*m.W+best.X])
 					seq++
 				}
 			}
 
+		}
+		if training != 0 && !s.WaveActive {
+			s.StartWave()
 		}
 		s.Step(.05)
 		if firstAttack == 0 && (len(s.Projectiles) > 0 || len(s.Beams) > 0 || s.TotalKills > 0) {
@@ -187,6 +285,7 @@ func run(m *game.Map, name string, p plan, diff game.Difficulty, hearts int) res
 // This is a deterministic balance probe, not a claim about human win rates.
 // Focused plans share foundations, upgrade rules, a 24-tower cap and reserve.
 func main() {
+	training := flag.Int("training", 0, "recruitment stage: 0 unrestricted, 1 first Rotunda, 2 second defense")
 	diffFlag := flag.String("diff", "normal", "easy | normal | hard")
 	neutral := flag.Bool("neutral", false, "compare shapes with identical waves, health and economy")
 	campaign := flag.Bool("campaign", false, "include the hearts earned before each floor")
@@ -194,6 +293,10 @@ func main() {
 	only := flag.String("plan", "all", "one strategy name, or all")
 	out := flag.String("out", "", "optional JSON report")
 	flag.Parse()
+	if *training < 0 || *training > 2 {
+		fmt.Fprintln(os.Stderr, "invalid training stage")
+		os.Exit(2)
+	}
 	diff := game.Normal
 	switch strings.ToLower(*diffFlag) {
 	case "easy":
@@ -206,6 +309,9 @@ func main() {
 		os.Exit(2)
 	}
 	names := []string{"hub", "canyon", "winding", "garden", "heart"}
+	if *training == 1 {
+		names = []string{"hub"}
+	}
 	if *floor != "all" {
 		names = []string{*floor}
 	}
@@ -235,7 +341,7 @@ func main() {
 			if *only != "all" && *only != p.name {
 				continue
 			}
-			r := run(m, name, p, diff, hearts)
+			r := runTraining(m, name, p, diff, hearts, *training)
 			results = append(results, r)
 			fmt.Printf("%-8s %-14s win=%-5v wave=%2d lives=%2d leaks=%2d towers=%2d spent=%5d time=%4.0f\n", name, p.name, r.Won, r.Wave, r.Lives, r.Leaks, r.Towers, r.Spent, r.Time)
 		}

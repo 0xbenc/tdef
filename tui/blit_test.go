@@ -19,10 +19,11 @@ func (c *capWriter) Write(p []byte) { c.data = append(c.data, p...) }
 // vt is a minimal virtual terminal: it replays the blit's ANSI (cursor moves,
 // clear, SGR) onto a grid of runes, so a test can read back the pixels.
 type vt struct {
-	w, h int
-	r    []rune // w*h
-	row  int    // 1-based, as in the escape sequences
-	col  int    // 1-based
+	wideSymbols bool
+	w, h        int
+	r           []rune // w*h
+	row         int    // 1-based, as in the escape sequences
+	col         int    // 1-based
 }
 
 func newVT(w, h int) *vt {
@@ -42,6 +43,9 @@ func (t *vt) set(r rune) {
 	}
 	t.r[(t.row-1)*t.w+(t.col-1)] = r
 	t.col++
+	if t.wideSymbols && (r == '\u23f8' || r == '\u26a1' || r == '\u26c1') {
+		t.col++
+	}
 }
 
 // replay feeds a captured blit chunk to the virtual terminal.
@@ -159,6 +163,28 @@ func TestBlitHeaderGoldTracksState(t *testing.T) {
 	check(4, 1000000) // grow to seven digits, then shrink again
 	g.Gold = 1
 	check(5, 1)
+}
+
+func TestHeaderGoldWithWideTerminalSymbols(t *testing.T) {
+	m, _ := game.LoadLevel("hub")
+	const W, H = 120, 40
+	g := game.NewState(m)
+	g.Wave = 5
+	g.WaveActive = true
+	g.Combo = 7
+	ui := render.UI{Selected: -1, Level: "hub", Paused: true, Speed: 1}
+	a := &App{term: &Terminal{size: [2]int{W, H}}, pal: render.Palette()}
+	screen := newVT(W, H)
+	screen.wideSymbols = true
+	for frame, gold := range []int{1500, 950, 1000, 150, 100, 50, 0, 125} {
+		g.Gold = gold
+		var out capWriter
+		a.blitTo(render.Render(g, &ui, a.pal, W, H, frame), &out)
+		screen.replay(out.data)
+		if got, ok := screen.headerGold(); !ok || got != gold {
+			t.Fatalf("displayed gold %d, actual %d: %q", got, gold, screen.row0())
+		}
+	}
 }
 
 func (t *vt) row0() string {

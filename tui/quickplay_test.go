@@ -155,6 +155,8 @@ func TestQuickPlayDoesNotCreateCampaignSaves(t *testing.T) {
 
 func TestCampaignStillRecordsProgressAndScores(t *testing.T) {
 	a := owTestApp(t)
+	a.lair.Training = &hiscore.TrainingProgress{Stage: 3, Unlocked: game.AllTowersMask}
+	hiscore.SaveLair(a.lair)
 	a.owRefresh()
 	a.owLaunch("rotunda")
 	if !a.fromOW {

@@ -3,7 +3,7 @@ package game
 import "math"
 
 func (s *State) Step(dt float64) {
-	if s.Status != StatusRunning {
+	if s.Status != StatusRunning || s.LessonPending {
 		return
 	}
 	s.Time += dt
@@ -14,11 +14,14 @@ func (s *State) Step(dt float64) {
 
 	s.spawnDue()
 	s.moveEnemies(dt)
+	s.triggerMines()
+	s.finishLeaks()
 	s.fireTowers(dt)
 	s.moveProjectiles(dt)
 	s.decayBeams(dt)
 	s.decayFx(dt)
 	s.cleanup()
+	s.recruitDue()
 }
 
 func (s *State) decayFx(dt float64) {
@@ -62,7 +65,6 @@ func (s *State) spawnDue() {
 			SlowFactor: 1.0,
 			Bounty:     s.Map.ScaleGold(spec.Bounty),
 			Lives:      1,
-			Armor:      spec.Armor,
 		}
 		if spec.Lives > 0 {
 			enemy.Lives = spec.Lives
@@ -82,23 +84,31 @@ func (s *State) moveEnemies(dt float64) {
 			continue
 		}
 		speed := e.Speed
+		e.PrevProg = e.Prog
 		if e.Slowed(s.Time) {
 			speed *= e.SlowFactor
 		} else if e.SlowUntil <= s.Time {
 			e.SlowFactor = 1.0
 		}
 		e.Prog += speed * dt
-		if e.Prog >= s.Map.TotalLen {
+		e.Pos = s.Map.PointAt(e.Prog)
+	}
+}
+
+func (s *State) finishLeaks() {
+	for _, e := range s.Enemies {
+		if !e.Dead && !e.Leaked && e.Prog >= s.Map.TotalLen {
 			e.Leaked = true
 			s.leakEnemy(e)
-			continue
 		}
-		e.Pos = s.Map.PointAt(e.Prog)
 	}
 }
 
 func (s *State) fireTowers(dt float64) {
 	for _, t := range s.Towers {
+		if s.fireSpecialist(t, dt) {
+			continue
+		}
 		t.CD -= dt
 		if t.Flash > 0 {
 			t.Flash -= dt
@@ -138,6 +148,9 @@ func (s *State) acquireTarget(t *Tower) *Enemy {
 	te := t.Pos()
 	for _, e := range s.Enemies {
 		if e.Dead || e.Leaked {
+			continue
+		}
+		if t.Kind == TowerHookmaster && (e.HookUntil > s.Time || e.PulledDistance >= HookBudget(e.Kind) || e.Prog <= 0) {
 			continue
 		}
 		if e.Pos.Dist(te) > t.Range() {
@@ -225,7 +238,7 @@ func (s *State) moveProjectiles(dt float64) {
 						continue
 					}
 					if e.Pos.Dist(p.LastPos) <= p.Splash {
-						s.applyDamage(e, p.Dmg, p.Kind)
+						s.applySplashDamage(e, p.Dmg, p.Kind)
 					}
 				}
 				s.Fx = append(s.Fx, &Fx{

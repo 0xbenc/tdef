@@ -9,6 +9,20 @@ import (
 	"github.com/0xbenc/termtd/render"
 )
 
+func TestCutsceneClockCatchesUpAfterSlowRendering(t *testing.T) {
+	a := owTestApp(t)
+	a.startCutscene(render.FilmOpening, ScreenOverworld, false)
+	for i := 0; i < 4; i++ {
+		a.tickCutsceneElapsed(0.25)
+	}
+	if a.film.Frame != 30 {
+		t.Fatalf("one elapsed second advanced %d frames, want 30", a.film.Frame)
+	}
+	if got := render.CutsceneVisible(a.film); got != 12 {
+		t.Fatalf("caption revealed %d characters, want 12 after opening hold", got)
+	}
+}
+
 func TestOpeningOnceAndLegacyCampaignContinues(t *testing.T) {
 	a := owTestApp(t)
 	a.toScreen(ScreenOverworld)

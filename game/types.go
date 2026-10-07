@@ -45,8 +45,25 @@ const (
 	TowerTesla
 	TowerMortar
 	TowerFlak
+	TowerRuneforge
+	TowerHookmaster
+	TowerSappers
+	TowerWitch
 	TowerCount
 )
+
+type Facing int
+
+const (
+	FacingEast Facing = iota
+	FacingSouth
+	FacingWest
+	FacingNorth
+)
+
+func (d Facing) Next() Facing { return (d + 1) % 4 }
+func (d Facing) Vector() Vec  { return [4]Vec{{1, 0}, {0, 1}, {-1, 0}, {0, -1}}[int(d)%4] }
+func (d Facing) Arrow() rune  { return [4]rune{'→', '↓', '←', '↑'}[int(d)%4] }
 
 func (k TowerKind) Valid() bool { return k >= 0 && k < TowerCount }
 

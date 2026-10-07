@@ -17,13 +17,13 @@ func RenderCenturionMockup(w, h int) *Frame {
 		drawCenturionPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
 		putString(f, (w-9)/2, 1, copytext.Text("characters.centurion.centurion"), 180, 233, true)
 		subtitle := copytext.Text("characters.centurion.hold_the_line")
-		putString(f, (w-len(subtitle))/2, 2, subtitle, 240, 233, false)
+		putString(f, (w-len(subtitle))/2, 2, subtitle, 252, 233, false)
 	}
 	hint := copytext.Format("characters.centurion.tab_squire_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
 		hint = copytext.Format("characters.centurion.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
-	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
+	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 252, 233, false)
 	return f
 }
 

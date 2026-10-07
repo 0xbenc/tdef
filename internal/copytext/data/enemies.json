@@ -1,50 +1,50 @@
 {
   "squire": {
     "name": "Squire",
-    "subtitle": "the first expedition",
-    "lore": "The helm slips when he runs. He lifts it with one hand and remembers too late that the sword needs both. Someone taught him that dragons hoard gold. No one told him what else might be living beside it.",
+    "subtitle": "guild recruit",
+    "lore": "One stopped on the stairs to tighten his helmet strap. The others kept going, and he had to run to catch them. Young lad. New boots, sword he could barely lift. I used to see them carrying the older fighters' bags through town. Now the guild sends them down first. We've started finding their bags outside the entrance.",
     "note": "Fast feet, ordinary armor. Do not let sympathy open a hole in the line."
   },
   "rogue": {
     "name": "Rogue",
-    "subtitle": "a blade ahead of its shadow",
-    "lore": "I found the scarf caught on a thorn before I heard the footsteps. They send the quick ones where they think we are looking elsewhere. The rogue never looks toward the dragon. Only toward the next place to hide.",
-    "note": "Cover the turns. Speed is dangerous where your towers cannot keep sight."
+    "subtitle": "evasive scout",
+    "lore": "Found one measuring the garden passage with a length of string. She dropped it when she saw me and was round the corner before I got my hammer up. Hard to land a shot on them. Our frost mage caught the next one by the boots, and the gunner had no trouble after that. Check the walls for their chalk marks.",
+    "note": "While unfrosted, rogues take 50% less damage from guns, arrows and slings. Frost removes evasion for the slow duration. Splash and lightning bypass it."
   },
   "mercenary": {
     "name": "Mercenary",
-    "subtitle": "paid to be here",
-    "lore": "He rests his hands on the cleaver like a man waiting for a cart. His armor has belonged to several people, and none of them had an easy life. I wonder what the guild promised him. I wonder whether they intend to pay.",
+    "subtitle": "hired muscle",
+    "lore": "He'd patched his mail with wire and tied a cooking pot to his pack. Looked equipped for a long job. I called across the barricade and asked what they were paying. He told me, quite pleasantly, that I could save us both some trouble by moving. I stayed where I was. He put the pot down before coming at me.",
     "note": "He takes more punishment than a recruit. Give him more than a passing shot."
   },
   "paladin": {
     "name": "Paladin",
-    "subtitle": "certain of the wrong thing",
-    "lore": "The shield shines even underground. He has polished the guild mark until he can see himself in it. When he calls us monsters, he sounds relieved. It must be easier to raise a mace when the answer has already been given to you.",
-    "note": "A great deal of steel to break. Concentrate your strongest blows before he reaches the heart."
+    "subtitle": "heavy plate",
+    "lore": "We heard the armor scraping the passage walls long before he reached us. Had to turn sideways at the narrow part. The gunner's shots barely troubled him. Then the cannon crew got a ball into his breastplate. I've widened their firing gap since. They'll need it for the next one.",
+    "note": "Plate cuts gun and sling damage by 75%, arrows by 40%. Cannon and trebuchet hits deal full damage; magic bypasses the plate too."
   },
   "necromancer": {
     "name": "Necromancer",
-    "subtitle": "the guild spends its dead twice",
-    "lore": "We buried the first two squires outside the garden. The next evening they came back wearing the same mud. The necromancer walked behind them, counting. I thought the guild had run out of mercy. It turns out they have found a use for that too.",
+    "subtitle": "raising fallen squires",
+    "lore": "There were two squires sewn into his robes. I thought he was carrying bodies home until we brought him down and they started trying to get out. Same guild badges as the living ones. I don't know whether they volunteered for that. We check the robes now, and nobody goes forward to search them until the slingers say it's clear.",
     "note": "His death leaves two more fighters. Keep something ready to catch them."
   },
   "player": {
     "name": "The Player",
-    "subtitle": "the story they came to finish",
-    "lore": "Every banner turns toward this one. Every frightened recruit stands a little straighter. I know that kind of certainty: the belief that the world has arranged itself around your arrival. I hope, when the gate stays shut, they learn that someone was already here.",
+    "subtitle": "the guild's champion",
+    "lore": "The others made room on the stairs. Even the paladins stepped back. Good armor, properly fitted, and a sword with no nicks in it. They stood at our barricade for a while, looking over every firing gap. Then they backed out. I spent that night moving the defenses. I'd rather repair the floor twice than let that one know where to step.",
     "note": "Save strength for the champion. A breach costs six lives, not one."
   },
   "wizard": {
     "name": "Wizard",
-    "subtitle": "the shape of a spell",
-    "lore": "His book has more bookmarks than pages. He mutters as though the stone is an inattentive pupil, then bends the air into a shape it was never meant to hold. Even the other guild fighters give him room. I do the same, for different reasons.",
+    "subtitle": "fast on his feet",
+    "lore": "His sleeve caught a nail in the barricade and tore half off. Didn't slow him much. He kept running with his book under one arm, shouting words I couldn't make out. There's a scorch mark all along that wall now. Our mage wants to study it. I've asked him to wait until we aren't using the corridor.",
     "note": "Frail, but quick. Catch him before he slips through an uncovered stretch."
   },
   "centurion": {
     "name": "Centurion",
-    "subtitle": "hold the line",
-    "lore": "The crest shows above the others like a strip of sunset. He does not hurry. His shield arrives with a blue light that turns aside blows, and the recruits gather behind it. The guild calls this protection. They have brought it here to take ours away.",
-    "note": "His ward shrugs off part of every hit. Sustained, concentrated fire wears him down."
+    "subtitle": "magic ward",
+    "lore": "Our mage struck his shield and the lightning spread over it in a blue sheet. He kept coming. The Ranger put an arrow through his shoulder while he was still watching the mage. There's a ward worked into the bronze. It keeps spells off him well enough, but he still needs to watch the arrows.",
+    "note": "The ward cuts frost and lightning damage by 80%. Rangers deal full damage, as do guns, slings and siege weapons. Frost still slows him."
   }
 }

@@ -233,15 +233,14 @@ func TestTeslaChainFiresWhenTargetDies(t *testing.T) {
 	}
 }
 
-func TestArmorReducesDamage(t *testing.T) {
+func TestWardReducesMagicDamage(t *testing.T) {
 	m := loadTestMap(t)
 	s := NewState(m)
-	e := &Enemy{ID: 1, Kind: EnemyShield, HP: 100, MaxHP: 100, Speed: 1, SlowFactor: 1, Lives: 1, Armor: 0.4}
+	e := &Enemy{ID: 1, Kind: EnemyShield, HP: 100, MaxHP: 100, Speed: 1, SlowFactor: 1, Lives: 1}
 	s.Enemies = append(s.Enemies, e)
-	s.applyDamage(e, 50, TowerGunner)
-	// 50 damage * (1-0.4) = 30
-	if e.HP != 70 {
-		t.Errorf("HP after armored hit = %v, want 70", e.HP)
+	s.applyDamage(e, 50, TowerTesla)
+	if e.HP != 90 {
+		t.Errorf("HP after warded magic hit = %v, want 90", e.HP)
 	}
 }
 

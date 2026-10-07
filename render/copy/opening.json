@@ -1,23 +1,23 @@
 [
   {
-    "title": "An Orc village",
+    "title": "Grak's Village",
     "speaker": "",
-    "text": "Grak wakes in his village. Roofs have fallen in, and smoke is still rising from the houses."
+    "text": "Grak awakes, and he sees the destruction. Roofs have caved in, and smoke rises all around."
   },
   {
-    "title": "Looking for survivors",
+    "title": "Searching for survivors",
     "speaker": "",
-    "text": "Grak calls for the others and searches the wreckage. He finds bodies, but no one answers."
+    "text": "Grak calls for his kin. He finds bodies, but no one answers."
   },
   {
-    "title": "The road",
+    "title": "Across the river",
     "speaker": "",
-    "text": "The next village is the same. Grak keeps walking toward the capital, looking for someone alive."
+    "text": "The next village is the same. Hoping to find something besides destruction, Grak heads toward the capital."
   },
   {
     "title": "The Rotunda",
     "speaker": "",
-    "text": "In the capital, he goes down to the treasure vault beneath the Rotunda. Malgrath is lying on his gold."
+    "text": "The capital is mostly undamaged, but no one is to be found. Finally, Grak finds someone in the Rotunda."
   },
   {
     "title": "Malgrath",
@@ -25,22 +25,22 @@
     "text": "Keep your hands where I can see them, orc."
   },
   {
-    "title": "The missing",
+    "title": "The emptiness above",
     "speaker": "GRAK",
     "text": "Where is everyone?"
   },
   {
     "title": "The invasion",
     "speaker": "MALGRATH",
-    "text": "Dead, most of them. The guild came through the villages, then the city. They came down here for me."
+    "text": "Dead, or fled, it's all the same. The guild torched the villages, then tried to capture the city."
   },
   {
-    "title": "The dragon",
+    "title": "The stoic dragon",
     "speaker": "GRAK",
-    "text": "You killed them?"
+    "text": "So you killed them? I thought you just cared about gold."
   },
   {
-    "title": "The first attack",
+    "title": "The first wave",
     "speaker": "MALGRATH",
     "text": "Enough to make the rest retreat. I could barely get back down the stairs."
   },
@@ -52,22 +52,22 @@
   {
     "title": "The entrance",
     "speaker": "GRAK",
-    "text": "Then we block the ways in. Give me gold. I can build defenses."
+    "text": "Then we block the ways in. My people were skilled nomads and craftsmen. I can build defenses. I just need gold."
   },
   {
-    "title": "The hoard",
+    "title": "A hoard of generations",
     "speaker": "MALGRATH",
     "text": "You have a hammer. Use that."
   },
   {
-    "title": "The cost",
+    "title": "The real cost",
     "speaker": "GRAK",
-    "text": "Need timber. Iron. Weapons. Hammer won't buy them."
+    "text": "Need timber. Iron. Weapons. Hammer won't buy those, greedy dragon."
   },
   {
     "title": "An offer",
     "speaker": "MALGRATH",
-    "text": "Take what is beside the steps. Leave the rest."
+    "text": "Take what is beside the steps. Leave the rest or I'll torch you."
   },
   {
     "title": "The first defense",

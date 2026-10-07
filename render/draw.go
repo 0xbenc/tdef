@@ -15,14 +15,16 @@ import (
 const NoSelection = -1
 
 type UI struct {
-	Cursor    game.Vec
-	Placing   game.TowerKind
-	PlacingOn bool
-	Selected  int
-	Speed     int
-	Paused    bool
-	Help      bool
-	Message   string
+	Cursor     game.Vec
+	Placing    game.TowerKind
+	PlacingOn  bool
+	RosterPage int
+	Facing     game.Facing
+	Selected   int
+	Speed      int
+	Paused     bool
+	Help       bool
+	Message    string
 
 	Level string // level id for the header, e.g. "winding" or "maze1234"
 
@@ -69,10 +71,10 @@ func Palette() Colors {
 		Path: 240, RoadBG: 238, RoadLine: 246,
 		Grass: 23, GrassTuft: 34,
 		Spawn: 201, Exit: 196, Frost: 51,
-		Gold: 220, Dim: 245, Bright: 255,
-		Tower: [game.TowerCount]int{46, 203, 51, 171, 220, 130, 226},
+		Gold: 220, Dim: 252, Bright: 255,
+		Tower: [game.TowerCount]int{46, 203, 51, 171, 220, 130, 226, 81, 180, 214, 177},
 		Enemy: [game.EnemyCount]int{213, 214, 180, 204, 171, 199, 147, 75},
-		Beam:  [game.TowerCount]int{255, 203, 51, 171, 226, 130, 226},
+		Beam:  [game.TowerCount]int{255, 203, 51, 171, 226, 130, 226, 117, 180, 214, 213},
 	}
 }
 
@@ -148,8 +150,8 @@ func RenderTooSmall(tw, th, needW, needH int) *Frame {
 		f.C[i] = Cell{R: ' '}
 	}
 	putString(f, (tw-len(m1))/2, th/2-1, m1, 220, 0, true)
-	putString(f, (tw-len(m2))/2, th/2+1, m2, 245, 0, false)
-	putString(f, (tw-len(m3))/2, th/2+3, m3, 240, 0, false)
+	putString(f, (tw-len(m2))/2, th/2+1, m2, 252, 0, false)
+	putString(f, (tw-len(m3))/2, th/2+3, m3, 252, 0, false)
 	return f
 }
 
@@ -185,18 +187,19 @@ func drawRange(f *Frame, g *game.State, ui *UI, pal Colors, l Layout) {
 		rng = game.TowerSpecs[ui.Placing].Range[0]
 		center = &c
 		kind, haveKind = ui.Placing, true
-	} else if ui.Selected >= 0 {
-		if t := g.Tower(ui.Selected); t != nil {
-			c := t.Pos()
-			rng = t.Range()
-			center = &c
-			kind, haveKind = t.Kind, true
-		}
+	} else if t := focusedDefender(g, ui); t != nil {
+		c := t.Pos()
+		rng = t.Range()
+		center = &c
+		kind, haveKind = t.Kind, true
+	}
+	if haveKind && kind == game.TowerRuneforge {
+		return
 	}
 	if center == nil {
 		return
 	}
-	ringCol := pal.Dim
+	ringCol := 245
 	if haveKind {
 		ringCol = pal.Beam[kind]
 	}
@@ -360,6 +363,9 @@ func drawRing(f *Frame, l Layout, fx *game.Fx) {
 func drawTower(f *Frame, g *game.State, ui *UI, pal Colors, l Layout, t *game.Tower) {
 	sel := ui.Selected == t.ID
 	glyph := t.Spec().Short
+	if t.Kind == game.TowerRuneforge {
+		glyph = t.Facing.Arrow()
+	}
 	color := pal.Tower[t.Kind]
 	// A tower is a dark tile, not a solid bright block. A neutral dark body
 	// keeps the glyph readable at every scale; a frame in the tower's colour
@@ -387,6 +393,9 @@ func drawTower(f *Frame, g *game.State, ui *UI, pal Colors, l Layout, t *game.To
 	}
 	cx, cy := l.center(t.Cell.X, t.Cell.Y)
 	f.Set(cx, cy, Cell{R: glyph, FG: glyphCol, BG: body, Bold: true})
+	if l.Scale >= 2 {
+		f.Set(l.X(t.Cell.X)+l.Scale-1, l.Y(t.Cell.Y), Cell{R: rune('0' + t.Level), FG: 252, BG: body, Bold: true})
+	}
 	if sel {
 		drawSelectionBracket(f, l, t.Cell)
 	}
@@ -474,8 +483,24 @@ func drawEnemy(f *Frame, g *game.State, pal Colors, l Layout, e *game.Enemy) {
 		fg, bold = pal.Frost, true // frost slowed: cyan
 	}
 	bg := 0
-	if kind == game.EnemyBoss {
+	switch kind {
+	case game.EnemyTank:
+		bg = 58 // brass plate
+	case game.EnemyShield:
+		bg = 24 // blue magic ward
+	case game.EnemyRunner:
+		if !e.Slowed(g.Time) {
+			bg = 53 // evasive; frost removes this pad as well as evasion
+		}
+	case game.EnemyBoss:
 		bg = 53 // the boss sits on a dark pad for presence
+	}
+	if e.HexUntil > g.Time {
+		bg = 53
+		bold = true
+		if e.HitTTL <= g.Time && !e.Slowed(g.Time) {
+			fg = 213
+		}
 	}
 	f.Set(x, y, Cell{R: game.EnemySpecs[kind].Short, FG: fg, BG: bg, Bold: bold})
 	if kind == game.EnemyBoss {
@@ -493,16 +518,17 @@ type MenuSlot struct {
 	Kind game.TowerKind
 	X    int
 	Y    int
+	Key  int
 	W    int // rendered label width ("k Name cost")
 }
 
 // towerInfo is the menu line for the selected tower. drawMenu elides it
 // with fitMsg when it outgrows the bottom border (TestTowerInfoFitsFrame).
 func towerInfo(t *game.Tower, upCost, refund int) string {
-	if t.Level >= 3 {
-		return copytext.Format("ui.tower_info.lv_max_t_sell", "target_key", "t", "tower", t.Spec().Name, "level", fmt.Sprintf("%d", t.Level), "target", t.TargetMode.Name(), "refund", fmt.Sprintf("%d", refund))
+	if t.Kind >= game.TowerRuneforge {
+		return specialistInfo(t, upCost, refund)
 	}
-	return copytext.Format("ui.tower_info.lv_d_r_t_up_sell", "target_key", "t", "tower", t.Spec().Name, "level", fmt.Sprintf("%d", t.Level), "damage", fmt.Sprintf("%.0f", t.Dmg()), "range", fmt.Sprintf("%.1f", t.Range()), "target", t.TargetMode.Name(), "up_cost", fmt.Sprintf("%d", upCost), "refund", fmt.Sprintf("%d", refund))
+	return copytext.Format("ui.tower_info.stats", "tower", t.Spec().Name, "level", fmt.Sprint(t.Level), "damage", fmt.Sprintf("%.0f", t.Dmg()), "range", fmt.Sprintf("%.1f", t.Range()))
 }
 
 func diffName(d game.Difficulty) string {
@@ -577,9 +603,9 @@ func drawGameOver(f *Frame, g *game.State, ui *UI, pal Colors) {
 	if g.Status != game.StatusVictory {
 		lore = copytext.Text("outcomes.draw_game_over.malgrath_has_fallen_the_lair_is_clean")
 	}
-	putString(f, bx+(bw-len([]rune(lore)))/2, by+8, lore, 244, bg, false)
+	putString(f, bx+(bw-len([]rune(lore)))/2, by+8, lore, 252, bg, false)
 	verdict := endVerdict(g)
-	putString(f, bx+(bw-len([]rune(verdict)))/2, by+9, verdict, 245, bg, false)
+	putString(f, bx+(bw-len([]rune(verdict)))/2, by+9, verdict, 252, bg, false)
 	parts := []struct {
 		s  string
 		fg int
@@ -659,7 +685,8 @@ func putString(f *Frame, x, y int, s string, fg, bg int, bold bool) {
 
 // ---------------------------------------------------------------------------
 // Terminal-sized in-game frame (btop-style chrome).
-//
+// ---------------------------------------------------------------------------
+
 // Render draws a frame that is exactly tw×th — the full terminal —
 // wrapped in one rounded box: a header of segments embedded in the top
 // border (row 0), a message/telegraph row (row 1), the map centered in the
@@ -667,28 +694,33 @@ func putString(f *Frame, x, y int, s string, fg, bg int, bold bool) {
 // the selected-tower info embedded in the bottom border). GameLayout is the
 // single source of truth for map placement, shared with the mouse mapping.
 
-// TowerSlots distributes the seven tower menu slots across a tw×th frame:
-// four on row th-4, three on row th-3. cell = (tw-2)/n and X = 1+i·cell, so
-// the slots span the interior; the longest label ("5 Lightning Mage 200",
-// 18 cols) fits every cell at the minimum width 62. The renderer and the
-// click handler share this function.
-func TowerSlots(tw, th int) []MenuSlot {
-	kinds := []game.TowerKind{
-		game.TowerGunner, game.TowerCannon, game.TowerFrost, game.TowerSniper,
-		game.TowerTesla, game.TowerMortar, game.TowerFlak,
+// TowerSlots is shared by rendering and mouse hit testing. Page zero keeps
+// the seven familiar defenders; page one gives each specialist a wider slot.
+func TowerSlots(tw, th int, pages ...int) []MenuSlot {
+	page := 0
+	if len(pages) > 0 {
+		page = pages[0] % 2
+	}
+	kinds := []game.TowerKind{game.TowerGunner, game.TowerCannon, game.TowerFrost, game.TowerSniper, game.TowerTesla, game.TowerMortar, game.TowerFlak}
+	split := 4
+	if page == 1 {
+		kinds = []game.TowerKind{game.TowerRuneforge, game.TowerHookmaster, game.TowerSappers, game.TowerWitch}
+		split = 2
 	}
 	var out []MenuSlot
-	for r, row := range [][]game.TowerKind{kinds[:4], kinds[4:]} {
-		y := th - ChromeBot + r
-		cell := (tw - 2) / len(row)
+	for r, row := range [][]game.TowerKind{kinds[:split], kinds[split:]} {
+		cell := (tw - 2) / split
 		for i, k := range row {
+			key := r*split + i + 1
 			spec := game.TowerSpecs[k]
-			w := len(fmt.Sprintf("%d %s %d", k+1, spec.Name, spec.Cost[0]))
-			out = append(out, MenuSlot{Kind: k, X: 1 + i*cell, Y: y, W: w})
+			width := len(fmt.Sprintf("%d %s %d", key, spec.Name, spec.Cost[0]))
+			out = append(out, MenuSlot{Kind: k, Key: key, X: 1 + i*cell, Y: th - ChromeBot + r, W: min(width, cell-1)})
 		}
 	}
 	return out
 }
+
+func RosterPager(w, h int) Rect { return Rect{w - 12, h - 1, 10, 1} }
 
 // fitMsg truncates s to at most max runes, preferring a word boundary: the
 // longest prefix ending in a space that fits max-1, plus an ellipsis. A
@@ -847,6 +879,9 @@ func drawHeader(f *Frame, g *game.State, ui *UI, pal Colors) {
 	running := g.Status == game.StatusRunning
 	active := running && g.WaveActive
 	inBreak := running && !g.WaveActive && g.Wave < game.MaxWaves
+	if inBreak && msg == "" && g.TrainingStage != 0 {
+		msg = game.WaveTelegraphFor(g.Map, g.Wave+1)
+	}
 	switch {
 	case inBreak && msg != "":
 		// A message held over the break (the wave telegraph, or any
@@ -881,42 +916,80 @@ func drawHeader(f *Frame, g *game.State, ui *UI, pal Colors) {
 // the hint line (row th-2) and the bottom border (row th-1), which carries
 // the selected-tower info embedded btop-style (╰──┘info└──╯).
 func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
-	const border = 240
-	for _, slot := range TowerSlots(f.W, f.H) {
+	for _, slot := range TowerSlots(f.W, f.H, ui.RosterPage) {
 		k := slot.Kind
-		spec := game.TowerSpecs[k]
-		cost := fmt.Sprintf("%d", spec.Cost[0])
-		// Label is "k Name cost": digit, space, name, space, cost.
-		if ui.PlacingOn && ui.Placing == k {
-			f.Set(slot.X, slot.Y, Cell{R: rune('0' + k + 1), FG: pal.Bright, BG: 95, Bold: true})
-			f.Set(slot.X+1, slot.Y, Cell{R: ' ', BG: 95})
-			putString(f, slot.X+2, slot.Y, spec.Name, pal.Bright, 95, true)
-			f.Set(slot.X+2+len(spec.Name), slot.Y, Cell{R: ' ', BG: 95})
-			putString(f, slot.X+2+len(spec.Name)+1, slot.Y, cost, pal.Gold, 95, true)
+		if !g.TowerAvailable(k) {
 			continue
 		}
-		afford := g.Gold >= spec.Cost[0]
+		spec := game.TowerSpecs[k]
+		cost := fmt.Sprintf("%d", spec.Cost[0])
+		occupied := g.SpecialistPlaced(k)
+		if occupied {
+			cost = copytext.Text("ui.specialists.placed")
+		}
+		name := fitMsg(spec.Name, slot.W-3-len(cost))
+		// Label is "k Name cost": digit, space, name, space, cost.
+		if ui.PlacingOn && ui.Placing == k && !occupied {
+			f.Set(slot.X, slot.Y, Cell{R: rune('0' + slot.Key), FG: pal.Bright, BG: 95, Bold: true})
+			f.Set(slot.X+1, slot.Y, Cell{R: ' ', BG: 95})
+			putString(f, slot.X+2, slot.Y, name, pal.Bright, 95, true)
+			f.Set(slot.X+2+len([]rune(name)), slot.Y, Cell{R: ' ', BG: 95})
+			putString(f, slot.X+2+len([]rune(name))+1, slot.Y, cost, pal.Gold, 95, true)
+			continue
+		}
+		afford := g.Gold >= spec.Cost[0] && !occupied
 		nameFG, costFG, kFG, kBold := pal.Tower[k], pal.Gold, 167, true
 		if !afford {
-			nameFG, costFG, kFG, kBold = pal.Dim, pal.Dim, pal.Dim, false
+			nameFG, costFG, kFG, kBold = 252, 174, 174, true
+			// Use the existing spacer for a blocked marker without widening the slot.
+			f.Set(slot.X+1, slot.Y, Cell{R: '×', FG: 174, Bold: true})
 		}
-		f.Set(slot.X, slot.Y, Cell{R: rune('0' + k + 1), FG: kFG, Bold: kBold})
-		putString(f, slot.X+2, slot.Y, spec.Name, nameFG, 0, false)
-		putString(f, slot.X+2+len(spec.Name)+1, slot.Y, cost, costFG, 0, false)
+		f.Set(slot.X, slot.Y, Cell{R: rune('0' + slot.Key), FG: kFG, Bold: kBold})
+		putString(f, slot.X+2, slot.Y, name, nameFG, 0, false)
+		putString(f, slot.X+2+len([]rune(name))+1, slot.Y, cost, costFG, 0, false)
 	}
 
 	hint := func(y int, pairs [][2]string) {
+		if !ui.Help && (ui.PlacingOn || focusedDefender(g, ui) != nil) {
+			return
+		}
+		end := RosterPager(f.W, f.H).X - 2
 		x := 2
 		for _, p := range pairs {
+			if x+len([]rune(p[0]))+len([]rune(p[1])) > end {
+				break
+			}
 			putString(f, x, y, p[0], 167, 0, true) // the slot-key red
 			x += len([]rune(p[0]))
 			putString(f, x, y, p[1], pal.Bright, 0, false)
 			x += len([]rune(p[1]))
 		}
+		// Center the controls as one framed strip, preserving key colors.
+		width := x - 2
+		cells := append([]Cell(nil), f.C[y*f.W+2:y*f.W+x]...)
+		for col := 1; col < f.W-1; col++ {
+			f.Set(col, y, Cell{R: '─', FG: 240})
+		}
+		start := min((f.W-width)/2, end-width)
+		for i, c := range cells {
+			f.Set(start+i, y, c)
+		}
+		if start > 1 {
+			f.Set(start-1, y, Cell{R: '┘', FG: 240})
+		}
+		if start+width < f.W-1 {
+			f.Set(start+width, y, Cell{R: '└', FG: 240})
+		}
 	}
-	y := f.H - 2
-	if ui.Paused && !ui.Help {
-		hint(y, [][2]string{{"p", copytext.Text("ui.draw_menu.resume")}, {"j", copytext.Text("ui.draw_menu.journal")}, {"↑↓", copytext.Text("ui.draw_menu.move")}, {"⏎", copytext.Text("ui.draw_menu.place")}, {"q", copytext.Text("ui.draw_menu.quit")}})
+	y := f.H - 1
+	if ui.Paused && !ui.Help && ui.RosterPage == 0 {
+		hint(y, [][2]string{{"p", copytext.Text("ui.draw_menu.resume")}, {"j", copytext.Text("ui.draw_menu.journal")}, {"Tab", copytext.Text("ui.keyboard.tab")}, {"↑↓", copytext.Text("ui.draw_menu.move")}, {"⏎", copytext.Text("ui.draw_menu.place")}, {"q", copytext.Text("ui.draw_menu.quit")}})
+	} else if ui.RosterPage == 1 {
+		hint(y, [][2]string{
+			{"[]", copytext.Text("ui.specialists.roster_hint")}, {"r", copytext.Text("ui.specialists.rotate_hint")},
+			{"u", copytext.Text("ui.draw_menu.up_2")}, {"x", copytext.Text("ui.draw_menu.sell_2")},
+			{"t", copytext.Text("ui.draw_menu.target_2")}, {"n", copytext.Text("ui.draw_menu.wave_2")}, {"p", copytext.Text("ui.draw_menu.pause_2")},
+		})
 	} else if ui.Help {
 		hint(y, [][2]string{
 			{"↑↓/wasd", " "}, {"⏎/1-7", " "}, {"u", copytext.Text("ui.draw_menu.up")}, {"x", copytext.Text("ui.draw_menu.sell")},
@@ -924,44 +997,29 @@ func drawMenu(f *Frame, g *game.State, ui *UI, pal Colors) {
 		})
 	} else {
 		hint(y, [][2]string{
-			{"↑↓", copytext.Text("ui.draw_menu.move_2")}, {"⏎", copytext.Text("ui.draw_menu.place_2")}, {"u", copytext.Text("ui.draw_menu.up_2")}, {"x", copytext.Text("ui.draw_menu.sell_2")},
-			{"t", copytext.Text("ui.draw_menu.target_2")}, {"n", copytext.Text("ui.draw_menu.wave_2")}, {"p", copytext.Text("ui.draw_menu.pause_2")}, {"q", copytext.Text("ui.draw_menu.quit_2")},
+			{"Tab", copytext.Text("ui.keyboard.tab")}, {"[]", copytext.Text("ui.specialists.roster_hint")},
+			{"↑↓", copytext.Text("ui.draw_menu.move_2")}, {"⏎", copytext.Text("ui.draw_menu.place_2")}, {"x", copytext.Text("ui.draw_menu.sell_2")},
+			{"n", copytext.Text("ui.draw_menu.wave_2")}, {"p", copytext.Text("ui.draw_menu.pause_2")}, {"q", copytext.Text("ui.draw_menu.quit_2")},
 		})
 	}
 
-	if !ui.Help && ui.Selected >= 0 && g.Status == game.StatusRunning {
-		if t := g.Tower(ui.Selected); t != nil {
+	if !ui.Help && focusedDefender(g, ui) != nil && g.Status == game.StatusRunning {
+		infoW := f.W - 12
+		if t := focusedDefender(g, ui); t != nil {
 			info := strings.TrimPrefix(towerInfo(t, g.UpgradeCost(t), int(float64(t.Invested)*game.SellRefund)), " ")
-			if n := len([]rune(info)); n > f.W-6 {
-				info = fitMsg(info, f.W-8)
+			if n := len([]rune(info)); n > infoW-6 {
+				info = fitMsg(info, infoW-8)
 			}
-			r := []rune(info)
-			extra := (f.W - 2) - len(r) - 2
-			x := 1
-			for i := 0; i < extra/2; i++ {
-				f.Set(x, f.H-1, Cell{R: '─', FG: border})
-				x++
-			}
-			f.Set(x, f.H-1, Cell{R: '┘', FG: border})
-			x++
-			for i, ch := range r {
-				fg, bold := 251, false
-				if i == 0 && ch == '▸' {
-					fg, bold = 254, true
-				}
-				if i+3 <= len(r) && string(r[i:i+3]) == "[t]" {
-					fg, bold = 167, true
-				}
-				f.Set(x, f.H-1, Cell{R: ch, FG: fg, Bold: bold})
-				x++
-			}
-			f.Set(x, f.H-1, Cell{R: '└', FG: border})
-			x++
-			for i := 0; i < extra-extra/2; i++ {
-				f.Set(x, f.H-1, Cell{R: '─', FG: border})
-				x++
-			}
+			n := len([]rune(info))
+			x := min((f.W-n)/2, RosterPager(f.W, f.H).X-n-3)
+			f.Set(x-1, f.H-1, Cell{R: '┘', FG: 240})
+			putString(f, x, f.H-1, info, 252, 0, false)
+			f.Set(x+n, f.H-1, Cell{R: '└', FG: 240})
 		}
+	}
+	pager := RosterPager(f.W, f.H)
+	if !ui.PlacingOn {
+		putString(f, pager.X, pager.Y, copytext.Format("ui.specialists.roster_page", "page", fmt.Sprint(ui.RosterPage+1)), 252, 233, false)
 	}
 }
 
@@ -976,6 +1034,9 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 	drawHeader(f, g, ui, pal)
 	drawMapPreview(f, g.Map, pal, themeForLevel(ui.Level), l, frame)
 	drawRange(f, g, ui, pal, l)
+	drawPlacementSites(f, g, ui, l)
+	drawSpecialistField(f, g, ui, pal, l, frame)
+	drawTargetGuide(f, g, ui, l)
 	// Towers: a colored glyph on a dark pad (a small pedestal at 2x+); an
 	// upgraded tower's pedestal charges in its colour and the glyph goes white,
 	// corner brackets on the selected one, and a muzzle flash while it fires.
@@ -986,9 +1047,7 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 		drawProjectile(f, l, pal, p)
 	}
 	for _, bm := range g.Beams {
-		for i := 1; i < len(bm.From); i++ {
-			drawBeamSeg(f, l, bm.From[i-1], bm.From[i], pal.Beam[bm.Kind])
-		}
+		drawSpecialistBeam(f, l, bm, pal)
 	}
 	for _, e := range g.Enemies {
 		drawEnemy(f, g, pal, l, e)
@@ -1007,31 +1066,12 @@ func Render(g *game.State, ui *UI, pal Colors, tw, th, frame int) *Frame {
 		ex, ey := l.center(g.Map.Exit.X, g.Map.Exit.Y)
 		f.Set(ex, ey, Cell{R: '♥', FG: 231, BG: 196, Bold: true})
 	}
-	if ui.PlacingOn {
-		c := 196
-		if g.CanBuild(ui.Cursor, ui.Placing) {
-			c = 46
-		}
-		cx, cy := l.center(ui.Cursor.X, ui.Cursor.Y)
-		f.Set(cx, cy, Cell{R: game.TowerSpecs[ui.Placing].Short, FG: c, Bold: true})
-	} else if ui.Selected < 0 {
-		x, y := l.X(ui.Cursor.X), l.Y(ui.Cursor.Y)
-		if x >= 0 && y >= 0 && x < f.W && y < f.H {
-			cc := f.C[y*f.W+x]
-			// Terrain (wall/grass/road) gets the cursor marker; entity glyphs
-			// (towers, enemies, the spawn rift, the lair heart) just bold.
-			if g.Map.At(ui.Cursor) == game.CellWall || isGroundRune(cc.R) {
-				cc.R = '◻'
-				cc.FG = pal.Dim
-			} else {
-				cc.Bold = true
-			}
-			f.Set(x, y, cc)
-		}
-	}
 	drawBeats(f, g, pal, l, frame)
+	drawKeyboardCursor(f, g, ui, l, frame)
 	drawMenu(f, g, ui, pal)
+	drawDefenderActions(f, g, ui)
 	drawEndSequence(f, g, ui, pal, l, frame)
+	drawRecruitment(f, g, pal)
 	return f
 }
 
@@ -1058,7 +1098,7 @@ func drawBeats(f *Frame, g *game.State, pal Colors, l Layout, frame int) {
 		}
 		fg := pal.Bright
 		if g.Time-g.WaveStart > 1.1 {
-			fg = pal.Dim // the banner fades as the wave gets under way
+			fg = 245 // the banner fades as the wave gets under way
 		}
 		drawCenterBanner(f, midY, text, fg)
 	}

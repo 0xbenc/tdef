@@ -73,6 +73,7 @@ func TestMainMenuJournalReturnsWithoutChangingProgress(t *testing.T) {
 func journalGameApp(t *testing.T) *App {
 	a := owTestApp(t)
 	a.fromOW = true
+	a.lair.Training = &hiscore.TrainingProgress{Stage: 3, Unlocked: game.AllTowersMask}
 	a.owBossSeen = map[int]bool{}
 	m, err := game.LoadLevel("hub")
 	if err != nil {
@@ -243,7 +244,11 @@ func TestJournalCollectionUsesGridRows(t *testing.T) {
 		t.Fatal("grid navigation lost its column")
 	}
 	a.handle(Event{Key: KeyDown})
-	if a.journalUI.Cursor != 5 {
+	if a.journalUI.Cursor != 9 {
+		t.Fatal("down did not reach the specialists row")
+	}
+	a.handle(Event{Key: KeyDown})
+	if a.journalUI.Cursor != 9 {
 		t.Fatal("down escaped the last row")
 	}
 }

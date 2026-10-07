@@ -2667,7 +2667,7 @@ func RenderHighScores(w, h, top int, scores map[string]int, pal Colors) *Frame {
 	}
 	if len(entries) == 0 {
 		if bodyTop > 0 && bodyTop < h-1 {
-			centerPut(f, bodyTop, copytext.Text("ui.render_high_scores.no_scores_yet"), 238, false)
+			centerPut(f, bodyTop, copytext.Text("ui.render_high_scores.no_scores_yet"), 252, false)
 		}
 		return f
 	}
@@ -2880,7 +2880,7 @@ func RenderLevelSelect(v LSState, w, h int, pal Colors) *Frame {
 			}
 			drawMapPreview(f, v.Preview, pal, themeForLevel(lvlID), l, 0)
 		} else if guard(p) {
-			centerPut(f, p, copytext.Text("ui.render_level_select.preview_needs_more_room"), 238, false)
+			centerPut(f, p, copytext.Text("ui.render_level_select.preview_needs_more_room"), 252, false)
 		}
 	}
 	return f

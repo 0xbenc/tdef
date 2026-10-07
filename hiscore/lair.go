@@ -20,6 +20,7 @@ type FloorRec struct {
 // file so the hiscore table stays a plain map[string]int (old builds keep
 // reading it).
 type Lair struct {
+	Training  *TrainingProgress   `json:"training,omitempty"`
 	IntroSeen bool                `json:"intro_seen,omitempty"`
 	Floors    map[string]FloorRec `json:"floors,omitempty"` // key "floor:diffIdx"
 	Boss      map[int]bool        `json:"boss,omitempty"`   // diffIdx -> the heart is held

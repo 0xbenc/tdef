@@ -17,13 +17,13 @@ func RenderRangerMockup(w, h int) *Frame {
 		pw := ph * 5 / 2
 		drawRangerPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
 		putString(f, (w-6)/2, 1, copytext.Text("characters.ranger.ranger"), 151, 233, true)
-		putString(f, (w-20)/2, 2, copytext.Text("characters.ranger.one_breath_one_shot"), 240, 233, false)
+		putString(f, (w-20)/2, 2, copytext.Text("characters.ranger.one_breath_one_shot"), 252, 233, false)
 	}
 	hint := copytext.Format("characters.ranger.tab_lightning_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
 		hint = copytext.Format("characters.ranger.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
-	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
+	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 252, 233, false)
 	return f
 }
 

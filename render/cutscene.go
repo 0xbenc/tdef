@@ -89,7 +89,7 @@ func CutsceneVisible(st CutsceneState) int {
 	if st.Revealed {
 		return n
 	}
-	return min(n, max(0, (st.Frame-18)/2))
+	return min(n, max(0, st.Frame-18))
 }
 
 // The same wrap is used before and after reveal: lines never jump as words
@@ -118,7 +118,7 @@ func RenderCutscene(w, h int, st CutsceneState) *Frame {
 	f := filmFrame(w, h)
 	if w < 62 || h < 19 {
 		journalCenter(f, h/2, copytext.Text("ui.render_cutscene.enlarge_to_62_19_to_view"), 180, true)
-		journalCenter(f, h-2, copytext.Format("ui.render_cutscene.esc_skip_q_quit", "escape", "esc", "quit", "q"), 240, false)
+		journalCenter(f, h-2, copytext.Format("ui.render_cutscene.esc_skip_q_quit", "escape", "esc", "quit", "q"), titleTextFG, false)
 		return f
 	}
 	shots := FilmShots(st.Film)
@@ -134,11 +134,18 @@ func RenderCutscene(w, h int, st CutsceneState) *Frame {
 	if filmIsPanorama(shot.art) {
 		paintFilmPanorama(f, stage, shot.art, st.Frame)
 	} else {
-		master := filmFrame(240, 80)
 		// Gestures finish once, leaving a stable composition for reading.
 		pose := st
 		pose.Frame = min(120, max(0, st.Frame))
-		paintFilmShot(master, pose, shot.art)
+		var master *Frame
+		if shot.art == "ending-supplies" || shot.art == "ending-return" {
+			master = filmCachedArtwork(shot.art, 240, 80, false, func(f *Frame) {
+				paintFilmShot(f, pose, shot.art)
+			})
+		} else {
+			master = filmFrame(240, 80)
+			paintFilmShot(master, pose, shot.art)
+		}
 		cinemaProject(f, master, stage, shot.view)
 	}
 	// A brief fade-in on each cut; no flickering or flashing transitions.
@@ -159,9 +166,9 @@ func RenderCutscene(w, h int, st CutsceneState) *Frame {
 		}
 	}
 	journalCenter(f, 1, FilmTitle(st.Film), 180, true)
-	// The storyboard title is subtle; it lends each cut an authored beat.
+	// Match storyboard labels and prompts to the other screens' soft white.
 	meta := fmt.Sprintf("%02d / %02d  ·  %s", st.Shot+1, len(shots), shot.Name)
-	journalCenter(f, 2, fitMsg(meta, w-6), 240, false)
+	journalCenter(f, 2, fitMsg(meta, w-6), titleTextFG, false)
 	col := 252
 	if shot.Speaker == "GRAK" {
 		col = 150
@@ -191,7 +198,7 @@ func RenderCutscene(w, h int, st CutsceneState) *Frame {
 	if st.Shot == len(shots)-1 && CutsceneVisible(st) >= len([]rune(shot.Dialogue)) {
 		hint = copytext.Format("ui.render_cutscene.enter_space_return_previous_esc_skip_q", "advance", "enter / space", "escape", "esc", "quit", "q")
 	}
-	journalCenter(f, h-2, hint, 240, false)
+	journalCenter(f, h-2, hint, titleTextFG, false)
 	return f
 }
 

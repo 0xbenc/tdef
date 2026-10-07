@@ -49,15 +49,18 @@ const (
 )
 
 type App struct {
-	term     *Terminal
-	g        *game.State
-	ui       render.UI
-	pal      render.Colors
-	layout   render.Layout
-	diff     game.Difficulty
-	level    string
-	scored   bool
-	quitting bool
+	trainingReplay     int
+	trainingReplayMask uint32
+	recruitPlanning    bool
+	term               *Terminal
+	g                  *game.State
+	ui                 render.UI
+	pal                render.Colors
+	layout             render.Layout
+	diff               game.Difficulty
+	level              string
+	scored             bool
+	quitting           bool
 
 	// Pre-game screen state.
 	screen       Screen
@@ -200,6 +203,7 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 	if a.fromOW {
 		a.discoverPlace(floorForLevel(name))
 	}
+	a.configureTraining()
 }
 
 // firstGrass is the first grass cell in reading order: where a relic's free
@@ -267,7 +271,7 @@ func (a *App) loop() error {
 		switch a.screen {
 		case ScreenCutscene:
 			a.frameNo++
-			a.tickCutscene()
+			a.tickCutsceneElapsed(real)
 		case ScreenGame:
 			a.stepGame(real)
 		case ScreenOverworld:
@@ -302,6 +306,10 @@ func (a *App) stepGame(real float64) {
 			a.g.Step(dt)
 			a.acc -= dt
 			steps++
+			if a.g.LessonPending {
+				a.syncTraining()
+				break
+			}
 		}
 		if steps == 10 {
 			a.acc = 0
@@ -342,7 +350,10 @@ func (a *App) stepGame(real float64) {
 		if won && a.g.Lives == a.waveStartLives {
 			a.cleanWaves++ // the final expedition held clean
 		}
-		best, isNew := hiscore.Update(a.level, a.g.Score)
+		best, isNew := 0, false
+		if a.trainingReplay == 0 {
+			best, isNew = hiscore.Update(a.level, a.g.Score)
+		}
 		a.scores = hiscore.Load()
 		a.ui.BestScore = best
 		a.ui.NewBest = isNew
@@ -354,6 +365,7 @@ func (a *App) stepGame(real float64) {
 				floor = floorForLevel(a.level)
 			}
 			a.heartEndingPending = won && floor == hiscore.HeartFloor && !a.lair.BossHeld(d)
+			a.completeTrainingDefense()
 			a.lair.Record(floor, d, a.g.Wave, won)
 			if won {
 				a.journal.RecordVictory(floor, d)
@@ -929,6 +941,17 @@ func (a *App) toScreen(s Screen) {
 }
 
 func (a *App) handleGame(e Event) {
+	if a.g.LessonPending {
+		if e.Key == KeyCtrlC || e.Rune == 'q' || e.Rune == 'Q' {
+			a.quit()
+			return
+		}
+		if e.Key == KeyEnter || e.Rune == ' ' || (e.Mouse && e.Press && e.Btn == 0) {
+			a.acknowledgeRecruit()
+		}
+		return
+	}
+
 	if e.Mouse {
 		// Ignore all mouse input once the game is over: a click on the
 		// grass behind the DEFEAT/VICTORY overlay would otherwise build a
@@ -982,9 +1005,26 @@ func (a *App) handleGame(e Event) {
 		a.sellSelected()
 	case 't', 'T':
 		a.cycleTarget()
+	case '[', ']':
+		delta := 1
+		if e.Rune == '[' {
+			delta = -1
+		}
+		a.changeRoster(delta)
+	case 'r', 'R':
+		a.rotateForge()
 	case '1', '2', '3', '4', '5', '6', '7':
-		k := game.TowerKind(e.Rune - '1')
+		k := game.TowerCount
+		for _, slot := range render.TowerSlots(a.layout.W, a.layout.H, a.ui.RosterPage) {
+			if slot.Key == int(e.Rune-'0') {
+				k = slot.Kind
+			}
+		}
 		if k < game.TowerCount {
+			if !a.g.TowerAvailable(k) {
+				a.lockedRecruit(k)
+				return
+			}
 			if a.ui.PlacingOn && a.ui.Placing == k {
 				a.ui.PlacingOn = false
 			} else {
@@ -1002,30 +1042,16 @@ func (a *App) handleGame(e Event) {
 		a.ui.Selected = -1
 	case KeyBackspace:
 		a.ui.PlacingOn = false
-	case KeyUp, KeyDown, KeyLeft, KeyRight:
-		m := a.g.Map
-		switch e.Key {
-		case KeyUp:
-			a.ui.Cursor.Y--
-		case KeyDown:
-			a.ui.Cursor.Y++
-		case KeyLeft:
-			a.ui.Cursor.X--
-		case KeyRight:
-			a.ui.Cursor.X++
-		}
-		if a.ui.Cursor.X < 0 {
-			a.ui.Cursor.X = 0
-		}
-		if a.ui.Cursor.Y < 0 {
-			a.ui.Cursor.Y = 0
-		}
-		if a.ui.Cursor.X >= m.W {
-			a.ui.Cursor.X = m.W - 1
-		}
-		if a.ui.Cursor.Y >= m.H {
-			a.ui.Cursor.Y = m.H - 1
-		}
+	case KeyTab:
+		a.nextDefender()
+	case KeyUp:
+		a.moveCursor(0, -1)
+	case KeyDown:
+		a.moveCursor(0, 1)
+	case KeyLeft:
+		a.moveCursor(-1, 0)
+	case KeyRight:
+		a.moveCursor(1, 0)
 	case KeyCtrlL:
 		a.prev = nil
 	}
@@ -1044,6 +1070,7 @@ func (a *App) handleGame(e Event) {
 }
 
 func (a *App) moveCursor(dx, dy int) {
+	a.ui.Selected = -1
 	a.ui.Cursor.X += dx
 	a.ui.Cursor.Y += dy
 	m := a.g.Map
@@ -1100,8 +1127,21 @@ func (a *App) handleMouse(e Event) {
 func (a *App) handleMenuClick(e Event) {
 	// Same slot geometry the renderer draws (TowerSlots), so clicks can
 	// never drift from the labels across a resize.
-	for _, slot := range render.TowerSlots(a.layout.W, a.layout.H) {
+	pager := render.RosterPager(a.layout.W, a.layout.H)
+	if e.Y == pager.Y && e.X >= pager.X && e.X < pager.X+pager.W {
+		delta := 1
+		if e.X < pager.X+pager.W/2 {
+			delta = -1
+		}
+		a.changeRoster(delta)
+		return
+	}
+	for _, slot := range render.TowerSlots(a.layout.W, a.layout.H, a.ui.RosterPage) {
 		if e.Y == slot.Y && e.X >= slot.X && e.X < slot.X+slot.W {
+			if !a.g.TowerAvailable(slot.Kind) {
+				a.lockedRecruit(slot.Kind)
+				return
+			}
 			if a.ui.PlacingOn && a.ui.Placing == slot.Kind {
 				a.ui.PlacingOn = false
 			} else {
@@ -1140,26 +1180,39 @@ func (a *App) activate() {
 }
 
 func (a *App) place() {
-	if a.g.CanBuild(a.ui.Cursor, a.ui.Placing) {
-		if a.g.Build(a.ui.Cursor, a.ui.Placing) != nil {
-			a.discoverTower(a.ui.Placing)
-		}
-		if a.g.Gold < game.TowerSpecs[a.ui.Placing].Cost[0] {
-			a.ui.PlacingOn = false
+	if !a.g.TowerAvailable(a.ui.Placing) {
+		a.lockedRecruit(a.ui.Placing)
+		return
+	}
+	if a.g.SpecialistPlaced(a.ui.Placing) {
+		a.msg(copytext.Text("ui.specialists.one_per_level"))
+		a.ui.PlacingOn = false
+		return
+	}
+
+	if tower := a.g.Build(a.ui.Cursor, a.ui.Placing); tower != nil {
+		a.g.Aim(tower, a.ui.Facing)
+		a.discoverTower(a.ui.Placing)
+		a.ui.PlacingOn = false
+		a.ui.Selected = -1
+		if a.recruitPlanning {
+			a.recruitPlanning = false
+			a.ui.Paused = false
+			a.acc = 0
 		}
 	} else {
 		a.msg(copytext.Text("ui.place.can_t_build_there"))
 	}
+
 }
 
 func (a *App) upgradeSelected() {
-	if a.ui.Selected < 0 {
-		return
-	}
-	t := a.g.Tower(a.ui.Selected)
+	t := a.focusedTower()
 	if t == nil {
+		a.msg(copytext.Text("ui.keyboard.select_defender"))
 		return
 	}
+	a.ui.Selected = t.ID
 	if t.Level >= 3 {
 		a.msg(copytext.Text("ui.upgrade_selected.max_level"))
 		return
@@ -1172,10 +1225,7 @@ func (a *App) upgradeSelected() {
 }
 
 func (a *App) sellSelected() {
-	if a.ui.Selected < 0 {
-		return
-	}
-	t := a.g.Tower(a.ui.Selected)
+	t := a.focusedTower()
 	if t == nil {
 		return
 	}
@@ -1185,13 +1235,22 @@ func (a *App) sellSelected() {
 }
 
 func (a *App) cycleTarget() {
-	t, mode := a.g.CycleTarget(a.ui.Cursor)
+	t := a.focusedTower()
 	if t == nil {
 		a.msg(copytext.Text("ui.cycle_target.no_tower_here"))
 		return
 	}
+	if t.Kind == game.TowerRuneforge {
+		a.msg(copytext.Text("ui.specialists.aim_prompt"))
+		return
+	}
+	if t.Kind == game.TowerSappers {
+		a.msg(copytext.Text("ui.keyboard.automatic_mines"))
+		return
+	}
+	t.TargetMode = t.TargetMode.Next()
 	a.ui.Selected = t.ID
-	a.msg(copytext.Format("ui.status.target_changed", "tower", t.Spec().Name, "target", mode.Name()))
+	a.msg(copytext.Format("ui.status.target_changed", "tower", t.Spec().Name, "target", render.TargetExplanation(t.TargetMode)))
 }
 
 func (a *App) startWave() {
@@ -1208,6 +1267,12 @@ func (a *App) startWave() {
 		return
 	}
 	a.g.StartWave()
+	if a.g.WaveActive {
+		a.waveStartLives = a.g.Lives
+	}
+	if a.g.TrainingStage != 0 && a.g.WaveActive {
+		a.ui.Paused = false
+	}
 	a.msg(copytext.Format("ui.status.wave_incoming", "wave", strconv.Itoa(a.g.Wave)))
 }
 
@@ -1243,12 +1308,18 @@ func (a *App) restart() {
 	}
 	a.acc = 0
 	a.prev = nil
+	a.configureTraining()
 }
 
 // leaveGame ends the run from the game-over box: back to the lair map (with
 // the result banner) when the run started from the overworld, otherwise back
 // to the level select (or the title, when there is no menu state).
 func (a *App) leaveGame() {
+	if a.trainingReplay != 0 {
+		a.journal = hiscore.LoadJournal()
+		a.journalMigrated = false
+	}
+	a.trainingReplay, a.trainingReplayMask = 0, 0
 	if a.fromOW {
 		a.toScreen(ScreenOverworld)
 		return
@@ -1342,6 +1413,12 @@ func (a *App) blitTo(f *render.Frame, w blitWriter) {
 				buf = append(buf, []byte(string(c.R))...)
 			}
 			p.x, p.y = x+1, y
+			// Symbols can occupy one or two columns depending on the terminal.
+			// Anchor the next cell instead of letting a wide glyph shift HUD digits.
+			if c.R > 127 && !(c.R >= 0x2500 && c.R <= 0x259f) && !(c.R >= 0x2800 && c.R <= 0x28ff) {
+				p.x = -1
+			}
+
 			if len(buf) > chunk {
 				flush()
 			}

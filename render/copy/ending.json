@@ -1,18 +1,18 @@
 [
   {
-    "title": "The Heart held",
+    "title": "The Heart endures",
     "speaker": "",
-    "text": "The last champions fall. Nothing else comes through the gate."
+    "text": "The last champions fall. No one else comes through the gate."
   },
   {
-    "title": "Still alive",
+    "title": "A new threat emerges",
     "speaker": "",
-    "text": "A healer crawls out from behind the fallen shields and reaches one of them."
+    "text": "A healer crawls out from behind the fallen shields and reaches one of the fallen."
   },
   {
     "title": "The healer",
     "speaker": "HEALER",
-    "text": "He's breathing. Get him up."
+    "text": "He's still breathing. Get him on the stretcher."
   },
   {
     "title": "Evacuation",
@@ -22,22 +22,22 @@
   {
     "title": "The pursuit",
     "speaker": "",
-    "text": "Grak follows them out of the Heart and west through the city, to a passage beyond the Rotunda."
+    "text": "Grak follows them out of the Rotunda and west through the city, to a passage beyond the outskirts."
   },
   {
     "title": "The Unmapped Depths",
     "speaker": "",
-    "text": "Inside, he loses sight of them. The passage branches. When he looks back, the way he came has changed."
+    "text": "Inside, he loses sight of them. The passage branches. When he looks back, the way he came appears entirely different."
   },
   {
     "title": "Another way through",
     "speaker": "",
-    "text": "He follows the scrape of their litter. Beyond the next turn, he can hear traffic."
+    "text": "Grak notices footprints, and a lingering scent. Beyond the next turn, he can hear traffic."
   },
   {
     "title": "Earth",
     "speaker": "",
-    "text": "Through the opening, Grak sees lit streets, houses and people. The healer leads the wounded champion into the street."
+    "text": "Through the opening, Grak sees lit streets, houses and people. The healer leads the wounded champion into an ambulance."
   },
   {
     "title": "Supplies",

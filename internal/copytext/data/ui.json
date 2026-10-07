@@ -60,11 +60,11 @@
     "back": " back",
     "move": "move",
     "place": "place",
-    "1_7_pick_enter_or_click": "{towers} pick · {enter} or click",
+    "1_7_pick_enter_or_click": "{towers} pick, {enter}/click; [ ] roster",
     "upgrade": "upgrade",
     "sell": "sell",
     "target": "target",
-    "t_game_t_relics_lair": "{target} (game) · {target} relics (lair)",
+    "t_game_t_relics_lair": "{target} priority; r aim; {target} relics (lair)",
     "wave": "wave",
     "n_early_bonus_gold": "{wave} (early = bonus gold)",
     "pause": "pause",
@@ -104,8 +104,7 @@
     "paused_resize_to_resume": "(paused — resize to resume)"
   },
   "tower_info": {
-    "lv_max_t_sell": " ▸ {tower} Lv{level} (max)  {target} [{target_key}]  sell +{refund}",
-    "lv_d_r_t_up_sell": " ▸ {tower} Lv{level}  {damage}d {range}r  {target} [{target_key}]  up {up_cost}  sell +{refund}"
+    "stats": " ▸ {tower} Lv{level}  {damage}d {range}r"
   },
   "header_segments": {
     "termtd": "termtd",
@@ -117,7 +116,7 @@
     "resume": " resume ",
     "journal": " journal ",
     "move": " move ",
-    "place": " place ",
+    "place": " select ",
     "quit": " quit",
     "up": " up ",
     "sell": " sell ",
@@ -125,8 +124,8 @@
     "wave": " wave ",
     "pause": " pause ",
     "speed": " speed",
-    "move_2": "|move ",
-    "place_2": "|place ",
+    "move_2": " move ",
+    "place_2": " select ",
     "up_2": "|up ",
     "sell_2": "|sell ",
     "target_2": "|target ",
@@ -212,12 +211,65 @@
     "hard": "hard"
   },
   "help": {
-    "move_controls": "{arrows} / {walk}",
+    "move_controls": "{arrows}/{walk}; Tab defenders",
     "speed_controls": "{speed} or wheel"
   },
   "setup": {
     "difficulty_label": " difficulty:",
     "seed_label": " seed: ",
     "random_seed": "(empty = random)"
+  },
+  "specialists": {
+    "roster_hint": " roster ",
+    "rotate_hint": " aim ",
+    "roster_page": "[ {page}/2 ]",
+    "aim_changed": "Runeforge aimed {direction}.",
+    "aim_prompt": "Select or place a Runeforge to rotate it.",
+    "forge_info": " {tower} L{level} {damage}/s {range}r",
+    "hook_info": " {tower} L{level} pull {pull}",
+    "sapper_info": " {tower} L{level} {damage}d cap {cap}",
+    "witch_info": " {tower} L{level} +{bonus}% damage taken",
+    "placed": "1/1",
+    "one_per_level": "One of each specialist per level. Sell yours to place it elsewhere."
+  },
+  "training": {
+    "title": "GRAK'S RECRUITS",
+    "continue": "Enter or click to plan",
+    "safe": "The road is quiet. Take your time placing the recruit; waves resume after you build.",
+    "starting_gold": "Your starting gold is ready. Gunners cost 50 each.",
+    "funding": "+{gold} gold: enough for this recruit.",
+    "plan": "Place a defender to resume. Waves advance automatically; p pauses, n sends one early.",
+    "locked": "This defender joins later. Your available recruits can handle the next wave.",
+    "gunner": "Start with Gunners near the entrance. They shoot one fighter at a time. Two covering the same stretch make a dependable opening. Use arrows or WASD to move, 1 to choose, and Enter or click to place.",
+    "frost": "Put a Frost Mage beside your Gunners. Slowing a fighter gives every nearby defender more time to shoot. Frost also stops Rogues evading their bullets. You will have frost before the first Rogues arrive.",
+    "cannon": "The Cannonier catches several fighters in one explosion. Cover a stretch where frost bunches them together. Explosions ignore Rogue evasion and punch through Paladin plate.",
+    "ranger": "Rangers cover a much longer stretch of road. Select one and press t to choose its targets; strongest helps against tough fighters. Arrows are especially useful against Centurion magic wards.",
+    "slingers": "Gnoll Slingers are cheap, quick shooters with short reach. Put them close to the road to cover a gap. Frost helps their stones hit Rogues; use cannons against heavy plate.",
+    "lightning": "Lightning Mages hit a fighter and jump to others nearby. Dense groups give the spell more targets. Keep physical damage nearby: Centurion wards resist lightning.",
+    "trebuchet": "Trebuchets throw slowly, but their wide explosions reach far across the chamber. Aim their coverage at returning lanes and crowded bends. Frost helps keep a crowd inside the blast.",
+    "runeforge": "Keep a normal opening defense; all seven main defenders are available. The Runeforge adds a beam that burns every fighter in a straight line. Use [ ] for specialists, 1 to choose it, and r to turn the preview. Aim down a road; frost keeps fighters in the heat. One per level.",
+    "hookmaster": "The Ogre drags fighters backward along the road. Put him beside a strong defense so they have to cross it again. Heavy fighters move less, and every fighter eventually resists further pulls. One per level.",
+    "sappers": "Sappers plant mines on nearby road tiles. They prepare stock between waves; p pauses the action if you need more planning time. Explosions ignore plate and evasion. Recruits can waste the stock; selling the crew removes its mines. One per level.",
+    "witch": "The Witch marks a fighter to take more damage from your other defenders. She starts on strongest targeting. Put her beside damage dealers: she does not attack on her own, and marks do not stack. One per level. Waves advance automatically; p pauses them.",
+    "next_defense": "Specialists join during your second defense, after holding the Rotunda.",
+    "after_wave": "This recruit joins after wave {wave}. Earned recruits stay available on retries."
+  },
+  "keyboard": {
+    "place": "Enter place | Esc cancel | green dots = build spots",
+    "rotate": " | r aim",
+    "upgrade": " upgrade {gold}g | ",
+    "need": " need {gold}g | ",
+    "max": " MAX | ",
+    "target": " {mode} | ",
+    "aim": " aim {direction} | ",
+    "stock": "mines {count} | ",
+    "sell": " sell +{gold}g ",
+    "next": " next",
+    "first": "first: furthest along the road",
+    "strongest": "strongest: highest health",
+    "closest": "closest: nearest to this defender",
+    "select_defender": "Move onto a defender or use Tab, then u upgrades it.",
+    "automatic_mines": "Sappers plant mines automatically; there is no target to choose.",
+    "tab": " units "
   }
 }

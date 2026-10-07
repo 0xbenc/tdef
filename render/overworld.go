@@ -345,7 +345,7 @@ func (kind OWMessageKind) color() int {
 	case OWMessageLocked:
 		return 174
 	default:
-		return 244
+		return 252
 	}
 }
 
@@ -1082,7 +1082,7 @@ func drawOWLabel(f *Frame, l Layout, n *owNode, v owPadView) {
 	case OWCurrent:
 		mark = '▶'
 	case OWSealed:
-		fg = 240
+		fg = 252
 		mark = '✕'
 	case OWOpen:
 		if v.unseal > 0 {
@@ -1123,10 +1123,13 @@ func drawOWLabel(f *Frame, l Layout, n *owNode, v owPadView) {
 		}
 	}
 	markFG := fg
+	if v.status == OWSealed {
+		markFG = 174
+	}
 	if v.status == OWCurrent {
 		markFG = pal_Bright()
 	}
-	f.Set(x, y, Cell{R: mark, FG: markFG, BG: 233, Bold: v.status != OWSealed})
+	f.Set(x, y, Cell{R: mark, FG: markFG, BG: 233, Bold: true})
 	putString(f, x+2, y, label, fg, 233, v.status == OWCurrent)
 	putString(f, x+2+len(label), y, badge, badgeFG, 233, true)
 }
@@ -1379,9 +1382,9 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 		b := OWBootFrames - st.BootTTL
 		switch {
 		case b < 25:
-			s, fg = copytext.Text("overworld.draw_owvoice.the_lair_stirs_in_the_dark"), 244
+			s, fg = copytext.Text("overworld.draw_owvoice.the_lair_stirs_in_the_dark"), 252
 		case b < 50:
-			s, fg = copytext.Text("overworld.draw_owvoice.the_heart_beats_light_runs_the_corridors"), 244
+			s, fg = copytext.Text("overworld.draw_owvoice.the_heart_beats_light_runs_the_corridors"), 252
 		default:
 			s, fg = copytext.Text("overworld.draw_owvoice.malgrath_grak_the_guild_still_hunts"), 214
 		}
@@ -1392,7 +1395,7 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 		fg = st.ReturnKind.color()
 	case st.Descending != "":
 		s = copytext.Format("overworld.progress.descending", "floor", OWFloorName(st.Descending))
-		fg = 244
+		fg = 252
 	case st.RelicMenu:
 		s = copytext.Format("overworld.draw_owvoice.relics_1_60g_2_free_gunner_3", "tokens", strconv.Itoa(st.Tokens), "gold_key", "1", "tower_key", "2", "lives_key", "3", "escape", "esc", "gold", strconv.Itoa(game.RelicGoldBonus), "lives", strconv.Itoa(game.RelicLivesBonus))
 		fg = 220
@@ -1403,7 +1406,7 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 		if st.FirstRun {
 			// Shown even on a pad: a first-time Grak starts on the Rotunda, so
 			// the old "only when the line is empty" trigger never fired.
-			s, fg = copytext.Format("overworld.draw_owvoice.wasd_walk_the_lair_enter_descend_tab", "walk", "wasd", "enter", "enter", "tab", "tab"), 240
+			s, fg = copytext.Format("overworld.draw_owvoice.wasd_walk_the_lair_enter_descend_tab", "walk", "wasd", "enter", "enter", "tab", "tab"), 252
 		} else {
 			s, fg = owNodeLine(st, frame)
 			if s == "" && st.BossDone {
@@ -1449,7 +1452,7 @@ func owNodeLine(st OWState, frame int) (string, int) {
 		best = strconv.Itoa(s)
 	}
 	var result string
-	rfg := 240
+	rfg := 252
 	switch {
 	case rec.Cleared:
 		result = owInfoLine(fl.Name, best, copytext.Text("overworld.ow_node_line.held_20_20"))
@@ -1469,7 +1472,7 @@ func owNodeLine(st OWState, frame int) (string, int) {
 	if result != "" && (frame/150)%2 == 0 {
 		return result, rfg
 	}
-	return flavor, 244
+	return flavor, 252
 }
 
 func owInfoLine(name, best, result string) string {
@@ -1565,7 +1568,7 @@ func drawOWChromeRows(f *Frame, st OWState) {
 		if i == st.Diff {
 			rs = append(rs, owRun{"▸" + name + " ", 255, true})
 		} else {
-			rs = append(rs, owRun{" " + name + " ", 240, false})
+			rs = append(rs, owRun{" " + name + " ", 252, false})
 		}
 	}
 	if st.Hearts > 0 {
@@ -1617,7 +1620,7 @@ func drawOWChromeRows(f *Frame, st OWState) {
 		}
 	}
 	if ctx != "" {
-		putCenteredRuns(f, h-2, []owRun{{fitMsg(ctx, f.W-4), 240, false}})
+		putCenteredRuns(f, h-2, []owRun{{fitMsg(ctx, f.W-4), 252, false}})
 	}
 }
 

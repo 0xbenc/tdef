@@ -46,11 +46,21 @@ func (a *App) finishCutscene() {
 	}
 }
 
-func (a *App) tickCutscene() {
+// Keep the film clock at 30 frames per second even when artwork takes longer
+// to render. Caption speed must not depend on the shot's rendering cost.
+func (a *App) tickCutsceneElapsed(seconds float64) {
 	w, h := a.termSize()
-	if w >= 62 && h >= 19 {
-		a.film.Frame++
+	if w < 62 || h < 19 {
+		return
 	}
+	a.acc += seconds * 30
+	frames := int(a.acc)
+	a.acc -= float64(frames)
+	a.film.Frame += frames
+}
+
+func (a *App) tickCutscene() {
+	a.tickCutsceneElapsed(1.0 / 30)
 }
 
 func (a *App) handleCutscene(e Event) {

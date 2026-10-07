@@ -17,13 +17,13 @@ func RenderPlayerMockup(w, h int) *Frame {
 		pw := ph * 5 / 2
 		drawPlayerPortrait(f, (w-pw)/2, 4+(h-7-ph)/2, pw, ph)
 		putString(f, (w-10)/2, 1, copytext.Text("characters.player.the_player"), 180, 233, true)
-		putString(f, (w-20)/2, 2, copytext.Text("characters.player.the_guild_s_champion"), 240, 233, false)
+		putString(f, (w-20)/2, 2, copytext.Text("characters.player.the_guild_s_champion"), 252, 233, false)
 	}
 	hint := copytext.Format("characters.player.tab_cannonier_esc_return_q_quit", "tab", "tab", "escape", "esc", "quit", "q")
 	if w < 36 {
 		hint = copytext.Format("characters.player.esc_return_tab_portraits", "tab", "tab", "escape", "esc")
 	}
-	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 240, 233, false)
+	putString(f, max(0, (w-len([]rune(hint)))/2), h-2, hint, 252, 233, false)
 	return f
 }
 

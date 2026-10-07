@@ -42,6 +42,13 @@ func main() {
 		if err := tui.RunCutscene(film); err != nil {
 			die("%v", err)
 		}
+	case "tutorial":
+		flags := flag.NewFlagSet("tutorial", flag.ExitOnError)
+		stage := flags.Int("stage", 1, "guided defense: 1 Rotunda, 2 specialists in the Rift")
+		flags.Parse(os.Args[2:])
+		if err := tui.RunTutorial(*stage); err != nil {
+			die("%v", err)
+		}
 	case "journal":
 		if err := tui.RunJournal(); err != nil {
 			die("%v", err)
@@ -136,6 +143,7 @@ usage:
   termtd intro               replay the opening film
   termtd ending              replay the Heart ending film
   termtd journal             browse Grak's lore journal
+  termtd tutorial [-stage 2]  replay a guided defense without changing saves
   termtd dragon              view Malgrath's static portrait mockup
   termtd grak                view Grak's static portrait mockup
   termtd gnolls              view the Gnoll Slingers lore portrait

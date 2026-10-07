@@ -1,44 +1,68 @@
 {
   "gunner": {
     "name": "Orc Gunner",
-    "subtitle": "the patient thunder",
-    "lore": "He learned patience before he learned the gun. While the guild argues over who will strike first, he settles his elbows, lets the smoke clear, and chooses the next fool. I have never heard him boast. I have heard him reload.",
-    "note": "Give him a bend in the road. He will make good use of every second they spend there."
+    "subtitle": "the village pot-mender",
+    "lore": "He used to mend pots in the village. Still carries the little brass hammer, though there's no one bringing him pots now. The gun belonged to his father. He keeps it wrapped against the damp and counts his shot every morning. I put him near the entrance. He's someone I want to see when I come back.",
+    "note": "Give him a bend in the road. Frosted Rogues are easy targets; Paladin plate stops most of his shot."
   },
   "cannonier": {
     "name": "Cannonier",
-    "subtitle": "two hands, one argument",
-    "lore": "One measures the powder. The other insists that more would be better. They have carried that argument through every chamber of the lair, along with a cannon neither could move alone. When the guild arrives shoulder to shoulder, they briefly agree.",
-    "note": "Let them bunch together. A cannonball has little respect for a formation."
+    "subtitle": "a stolen guild cannon",
+    "lore": "They took the cannon off a guild wagon. Getting it down the Rotunda stairs cost us a door, three steps and most of an afternoon. The small one loads; the big one aims. Both claim to be in charge. I've given up settling it. I do wish they'd warn me before they fire indoors.",
+    "note": "Break Paladin plate and catch packed ranks in the blast. Splash also catches evasive Rogues."
   },
   "frost": {
     "name": "Frost Mage",
-    "subtitle": "the winter we invited in",
-    "lore": "The garden froze the night she arrived. By morning there was a narrow path through the ice, exactly wide enough for Malgrath's drinking bowl. She says she does not care for dragons. I leave the bowl where she can find it.",
-    "note": "Her cold buys time. Put someone beside her who knows how to spend it."
+    "subtitle": "from the northern passes",
+    "lore": "She came down from the northern passes with a split boot and frost in her hair. Asked for somewhere dry to sleep. I gave her the old gardener's room, and she spent the next day clearing rubble with us. Her hands leave white marks on the shovel. We've wrapped the handle twice. She hasn't complained about the room.",
+    "note": "Frost removes Rogue evasion while the slow lasts. Place a gunner, Ranger or slingers where they can follow up."
   },
   "ranger": {
     "name": "Ranger",
-    "subtitle": "a promise at a distance",
-    "lore": "She can tell which guild banner is coming before I can see the boots beneath it. We used to argue about how far away a danger had to be before it became our business. Now she draws the bow, and I trust the answer.",
-    "note": "Leave her a long view. Every arrow should reach someone worth the wait."
+    "subtitle": "watching the caravan road",
+    "lore": "I knew her by her arrows before I knew her face. Green thread below the fletching, heads hammered from scrap iron. We'd find them in wolves along the caravan road. She came looking for the families who travelled it. I had no good news for her. She stayed to help me watch the road anyway.",
+    "note": "A Centurion's magic ward will not stop her arrows. Against Paladins, mix her arrows with siege fire."
   },
   "lightning": {
     "name": "Lightning Mage",
-    "subtitle": "the restless sky",
-    "lore": "He claims the storm was following him long before he came underground. I believe him. Even the iron door rings hum when he passes. Malgrath sleeps through thunder now; it is the silence afterward that makes me look up.",
-    "note": "Lightning follows close company. Make the guild regret marching together."
+    "subtitle": "a weather-worker's apprentice",
+    "lore": "He was apprenticed to a weather-worker before the guild burned their tower. Most of his books went with it. He's been writing what he remembers on the backs of our supply lists, with corrections squeezed into the margins. I keep finding them under things. Don't throw them out. He needs the paper, and I need the lists.",
+    "note": "Lightning bypasses Paladin plate and Rogue evasion, but Centurion wards cut its damage by 80%."
   },
   "trebuchet": {
     "name": "Trebuchet",
-    "subtitle": "the mountain learns to throw",
-    "lore": "We built it from bridge timbers the guild thought we would need to escape. One of the crew winds while the other watches the far road. There is no hurry in either of them. The stone will arrive, and everyone beneath it will notice.",
-    "note": "Give the crew room to see a crowd. Their answer is slow, and very large."
+    "subtitle": "built from bridge oak",
+    "lore": "I helped build this one. Good bridge oak, iron straps from the city gates, a sling we had to sew again after the first throw. Finding stones is half the work. The crew won't take anything without a decent weight to it, so I spend my evenings hauling rocks for them to argue over. My back misses carpentry.",
+    "note": "Full damage through Paladin plate, with a wide blast that catches evasive Rogues. Give the crew a long view."
   },
   "gnolls": {
     "name": "Gnoll Slingers",
-    "subtitle": "a handful of trouble",
-    "lore": "They brought no banner, only pockets full of stones and an argument about whose throw was better. I offered them a place by the road. They offered to make it unpleasant. For once, a bargain meant exactly what it sounded like.",
-    "note": "Keep them close to the path. A little stone, thrown often, is still a problem."
+    "subtitle": "rat-catchers and chicken thieves",
+    "lore": "They arrived with stolen chickens and wanted to know who owned the tunnels. Malgrath said he did. They asked whether that included the rats. Took a while to explain what we actually needed. Now one picks stones while the other practises, and they swap whenever they start fighting. They've asked me to keep count of the helmets they dent.",
+    "note": "Keep them close to the path. Frost helps them hit Rogues; their stones do little against Paladin plate."
+  },
+  "runeforge": {
+    "name": "Runeforge",
+    "subtitle": "aim it down the road",
+    "lore": "The focusing stone came out of Malgrath's old furnace. He charged us for it. We built the casing from scrap brass, and I worked the bellows while the mages argued about the runes. Burned a hole through three practice shields. It needs a straight shot, though. Someone has to stop it pointing at the pantry.",
+    "note": "Aim down a lane; r rotates. The beam damages every fighter along it. Frost holds them in the heat. Magic bypasses plate, but Centurion wards resist it. One per level; selling frees the slot."
+  },
+  "hookmaster": {
+    "name": "Ogre Hookmaster",
+    "subtitle": "hauling them back",
+    "lore": "He used to haul barges through the shallows. Brought his own chain, which was fortunate because ours snapped on the first pull. I asked him to keep fighters away from the inner gate. He asked where I wanted them put. We've marked the road with chalk. He's very particular about getting them back to the mark.",
+    "note": "Pulls fighters backward along the road. Plate and wards make heavy fighters harder to move; champions barely budge. Fighters recover between pulls, even against several Ogres. Each fighter can only be dragged so far before it resists further pulls. One per level; selling frees the slot."
+  },
+  "sappers": {
+    "name": "Goblin Sappers",
+    "subtitle": "mind where you step",
+    "lore": "They wanted a dry cupboard for the powder and a separate one for lunch. I was pleased about that until I found out they meant my cupboard. Their mines are made from old kettles. Each has a little brass catch the crew checks before leaving it on the road. They made me practise lifting an unarmed one first.",
+    "note": "The crew plants a limited stock of mines on nearby road tiles, even between waves. Explosions bypass plate and evasion. Recruits can waste the charges. Selling the crew removes its mines. One per level; selling frees the slot."
+  },
+  "witch": {
+    "name": "Hex Witch",
+    "subtitle": "choosing who falls first",
+    "lore": "She asked for a lock of the champion's hair. I explained that getting close enough was the difficulty. A name would do, she said. We tried the names the guild shouted up the stairs until one worked. Now she keeps a little notebook beside her chair. I've asked her to leave our names out of it.",
+    "note": "Marks a fighter to take more damage from every defender. Marks do not stack or remove plate and wards. Strongest targeting helps focus the curse on champions. One per level; selling frees the slot."
   }
 }

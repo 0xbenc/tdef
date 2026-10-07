@@ -45,6 +45,7 @@ type Autoplay struct {
 	s       *State
 	cover   [TowerCount][][]int
 	nextDec float64
+	facings [][]Facing
 }
 
 func NewAutoplay(s *State) *Autoplay {
@@ -58,6 +59,10 @@ func (a *Autoplay) Tick() { a.tick() }
 func (a *Autoplay) coverage() {
 	s := a.s
 	a.cover = [TowerCount][][]int{}
+	a.facings = make([][]Facing, s.Map.H)
+	for y := range a.facings {
+		a.facings[y] = make([]Facing, s.Map.W)
+	}
 	for k := TowerKind(0); k < TowerCount; k++ {
 		r := TowerSpecs[k].Range[0]
 		r2 := r * r
@@ -76,6 +81,22 @@ func (a *Autoplay) coverage() {
 					dx, dy := p.X-sp.X, p.Y-sp.Y
 					if dx*dx+dy*dy <= r2 {
 						c++
+					}
+				}
+				if k == TowerRuneforge {
+					c = 0
+					for facing := FacingEast; facing <= FacingNorth; facing++ {
+						end := ForgeEnd(s.Map, v, facing, r)
+						hits := 0
+						for _, sp := range s.Map.Samples {
+							if ForgeContains(p, end, sp) {
+								hits++
+							}
+						}
+						if hits > c {
+							c = hits
+							a.facings[y][x] = facing
+						}
 					}
 				}
 				line = append(line, c)
@@ -102,6 +123,9 @@ func (a *Autoplay) build() {
 		bestK, bestX, bestY := TowerGunner, -1, -1
 		bestV := 0.0
 		for k := TowerKind(0); k < TowerCount; k++ {
+			if !s.TowerAvailable(k) || s.SpecialistPlaced(k) {
+				continue
+			}
 			cost := TowerSpecs[k].Cost[0]
 			if s.Gold < cost+40 {
 				continue
@@ -145,8 +169,12 @@ func (a *Autoplay) build() {
 		if bestX < 0 {
 			return
 		}
-		if s.Build(Vec{bestX, bestY}, bestK) == nil {
+		tower := s.Build(Vec{bestX, bestY}, bestK)
+		if tower == nil {
 			return
+		}
+		if bestK == TowerRuneforge {
+			s.Aim(tower, a.facings[bestY][bestX])
 		}
 	}
 }

@@ -151,7 +151,7 @@ func TestRenderHelpFits(t *testing.T) {
 		text := f.Text()
 		for _, want := range []string{
 			"GRAK'S LEDGER", "how to hold the lair against twenty expeditions",
-			"arrows / wasd", "1-7 pick", "esc back",
+			"arrows/wasd; Tab defenders", "1-7 pick", "esc back",
 		} {
 			if !strings.Contains(text, want) {
 				t.Errorf("help missing %q:\n%s", want, text)

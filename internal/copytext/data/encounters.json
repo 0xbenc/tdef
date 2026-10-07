@@ -62,13 +62,13 @@
     }
   },
   "wave_telegraph": {
-    "the_guild_has_sent_rogues": "The guild has sent rogues.",
+    "the_guild_has_sent_rogues": "Rogues evade shots. Use frost or splash.",
     "mercenaries_and_they_hit_harder": "Mercenaries — and they hit harder.",
-    "a_swift_raid_loose_arrows_fly_true": "A swift raid. Loose arrows fly true.",
+    "a_swift_raid_loose_arrows_fly_true": "Rogue raid. Frost exposes them; splash always hits.",
     "wizards_fast_and_frail_but_deadly": "Wizards — fast and frail, but deadly.",
     "a_necromancer_walks_among_them_they_rise": "A necromancer walks among them. They rise when he falls.",
-    "a_paladin_leads_the_vanguard": "A paladin leads the vanguard.",
-    "centurions_warded_they_shrug_off_your_blows": "Centurions — warded, they shrug off your blows.",
+    "a_paladin_leads_the_vanguard": "Paladin plate: use Cannoniers or Trebuchets.",
+    "centurions_warded_they_shrug_off_your_blows": "Centurion wards resist magic. Use Rangers or siege.",
     "the_player_has_set_out_if_they": "The Player has set out. If they reach the heart, it ends.",
     "the_player_returns_stronger": "The Player returns, stronger.",
     "the_final_expedition_two_players_hold_the": "The final expedition. Two Players. Hold the lair."
@@ -81,10 +81,10 @@
     "thin_the_outer_ranks_finish_the_survivors": "Thin the outer ranks. Finish the survivors near the heart."
   },
   "wave_telegraph_for": {
-    "rogues_in_bursts_cover_the_crossings_and": "Rogues in bursts. Cover the crossings and the far bank.",
-    "a_spaced_rogue_raid_long_bows_can": "A spaced rogue raid. Long bows can follow them down the hall.",
-    "a_packed_rogue_raid_slow_the_front": "A packed rogue raid. Slow the front; fire into the crowd.",
-    "a_rogue_rush_let_the_outer_defense": "A rogue rush. Let the outer defense thin it.",
+    "rogues_in_bursts_cover_the_crossings_and": "Rogue bursts. Frost or splash; cover both banks.",
+    "a_spaced_rogue_raid_long_bows_can": "Spaced Rogue raid. Pair Rangers with frost.",
+    "a_packed_rogue_raid_slow_the_front": "A packed Rogue raid. Use frost and splash.",
+    "a_rogue_rush_let_the_outer_defense": "Rogue rush. Use frost or splash in the outer defense.",
     "raiding_parties_cross_in_bursts_hold_more": "Raiding parties cross in bursts. Hold more than one bank.",
     "a_spaced_column_long_bows_can_cover": "A spaced column. Long bows can cover the returning lanes.",
     "they_arrive_shoulder_to_shoulder_catch_them": "They arrive shoulder to shoulder. Catch them at the bends.",

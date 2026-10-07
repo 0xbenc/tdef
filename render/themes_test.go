@@ -90,7 +90,7 @@ func TestLevelThemesAreDistinct(t *testing.T) {
 		th := themeForLevel(level)
 		g := game.NewState(m)
 		l := GameLayout(m.W, m.H, 62, 19)
-		f := Render(g, &UI{Level: level}, pal, 62, 19, 0)
+		f := Render(g, &UI{Level: level, Selected: NoSelection, Cursor: game.Vec{X: -1, Y: -1}}, pal, 62, 19, 0)
 		w := firstWall(m)
 		x, y := l.X(w.X), l.Y(w.Y)
 		bg := f.C[y*f.W+x].BG

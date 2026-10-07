@@ -124,7 +124,8 @@ func TestCursorVisibleOnDecoratedWall(t *testing.T) {
 		l := GameLayout(m.W, m.H, w, h)
 		ui := &UI{Level: "hub", Selected: NoSelection, Cursor: game.Vec{X: 3, Y: 0}, Speed: 1}
 		f := Render(g, ui, Palette(), w, h, 37)
-		if got := f.C[l.Y(0)*w+l.X(3)].R; got != '◻' {
+		cx, cy := l.center(3, 0)
+		if got := f.C[cy*w+cx].R; got != '◻' {
 			t.Errorf("scale %d: wall cursor = %q", scale, got)
 		}
 	}

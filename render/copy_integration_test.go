@@ -35,7 +35,7 @@ func TestOverworldMessageColorsIgnoreWording(t *testing.T) {
 		kind OWMessageKind
 		want int
 	}{
-		{OWMessageNeutral, 244},
+		{OWMessageNeutral, 252},
 		{OWMessageSuccess, 114},
 		{OWMessageDefeat, 167},
 		{OWMessageLocked, 174},

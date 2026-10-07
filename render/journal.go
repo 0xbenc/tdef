@@ -39,6 +39,10 @@ var TowerJournalEntries = []TowerJournalEntry{
 	{"gnolls", game.TowerFlak, copytext.Text("defenders.gnolls.name"), copytext.Text("defenders.gnolls.subtitle"),
 		copytext.Text("defenders.gnolls.lore"),
 		copytext.Text("defenders.gnolls.note"), 180, drawGnollPortrait},
+	{"runeforge", game.TowerRuneforge, copytext.Text("defenders.runeforge.name"), copytext.Text("defenders.runeforge.subtitle"), copytext.Text("defenders.runeforge.lore"), copytext.Text("defenders.runeforge.note"), 81, drawRuneforgePortrait},
+	{"hookmaster", game.TowerHookmaster, copytext.Text("defenders.hookmaster.name"), copytext.Text("defenders.hookmaster.subtitle"), copytext.Text("defenders.hookmaster.lore"), copytext.Text("defenders.hookmaster.note"), 180, drawHookmasterPortrait},
+	{"sappers", game.TowerSappers, copytext.Text("defenders.sappers.name"), copytext.Text("defenders.sappers.subtitle"), copytext.Text("defenders.sappers.lore"), copytext.Text("defenders.sappers.note"), 214, drawSappersPortrait},
+	{"witch", game.TowerWitch, copytext.Text("defenders.witch.name"), copytext.Text("defenders.witch.subtitle"), copytext.Text("defenders.witch.lore"), copytext.Text("defenders.witch.note"), 177, drawWitchPortrait},
 }
 
 func TowerJournalID(kind game.TowerKind) string {
@@ -135,10 +139,10 @@ func RenderJournal(w, h int, st JournalState) *Frame {
 	if st.Section == JournalStories && st.Reading && strings.HasPrefix(entries[st.Cursor].ID, "afterward:") {
 		chapter = copytext.Text("ui.render_journal.iv_afterward")
 	}
-	journalCenter(f, 2, chapter, 240, false)
+	journalCenter(f, 2, chapter, 252, false)
 	if !st.Reading || !st.Unlocked[entries[st.Cursor].ID] {
 		drawJournalCollection(f, st)
-		journalCenter(f, 4, copytext.Text("ui.render_journal.discover_entries_in_the_campaign"), 240, false)
+		journalCenter(f, 4, copytext.Text("ui.render_journal.discover_entries_in_the_campaign"), 252, false)
 	} else {
 		drawJournalPage(f, st)
 	}
@@ -178,7 +182,7 @@ func drawJournalCollection(f *Frame, st JournalState) {
 		}
 		e := entries[i]
 		active := i == st.Cursor
-		fg := 240
+		fg := 252
 		if active {
 			fg = 180
 		}
@@ -220,19 +224,19 @@ func drawJournalCollection(f *Frame, st JournalState) {
 		journalArt(f, e, Rect{33, 5, f.W - 36, f.H - 9})
 	}
 	if len(entries) > len(cards) {
-		journalCenter(f, 3, fmt.Sprintf("%d–%d / %d", base+1, min(base+len(cards), len(entries)), len(entries)), 240, false)
+		journalCenter(f, 3, fmt.Sprintf("%d–%d / %d", base+1, min(base+len(cards), len(entries)), len(entries)), 252, false)
 	}
 	hint := copytext.Format("ui.draw_journal_collection.chapters_arrows_browse_enter_read_esc_return", "chapters", "[ ]", "enter", "enter", "arrows", "arrows", "escape", "esc")
 	if f.W < 76 {
 		hint = copytext.Format("ui.draw_journal_collection.chapter_arrows_browse_enter_read_esc", "chapters", "[ ]", "enter", "enter", "arrows", "arrows", "escape", "esc")
 	}
 	if !st.Unlocked[e.ID] {
-		journalCenter(f, f.H-3, fitMsg(JournalRequirement(st.Section, st.Cursor), f.W-4), 240, false)
+		journalCenter(f, f.H-3, fitMsg(JournalRequirement(st.Section, st.Cursor), f.W-4), 252, false)
 	}
 	if f.W < 52 {
 		hint = copytext.Format("ui.draw_journal_collection.chapter_enter_read_esc", "chapters", "[ ]", "enter", "enter", "escape", "esc")
 	}
-	journalCenter(f, f.H-2, hint, 240, false)
+	journalCenter(f, f.H-2, hint, 252, false)
 }
 
 // journalPageLayout leaves enough room to read prose at narrow widths. The
@@ -303,7 +307,7 @@ func drawJournalPage(f *Frame, st JournalState) {
 	x := max(0, (f.W-len([]rune(heading)))/2)
 	putString(f, x, text.Y-1, e.Name, e.Accent, 233, true)
 	if f.W >= 76 {
-		putString(f, x+len([]rune(e.Name)), text.Y-1, " · "+e.Subtitle, 240, 233, false)
+		putString(f, x+len([]rune(e.Name)), text.Y-1, " · "+e.Subtitle, 252, 233, false)
 	}
 	if text.H > 0 && text.W > 0 {
 		lines := journalLines(e, text.W, st.Section)
@@ -326,5 +330,5 @@ func drawJournalPage(f *Frame, st JournalState) {
 	if f.W < 76 {
 		hint = copytext.Format("ui.draw_journal_page.chapter_text_esc", "chapters", "[ ]", "scroll", "↑↓", "escape", "esc")
 	}
-	journalCenter(f, f.H-2, hint, 240, false)
+	journalCenter(f, f.H-2, hint, 252, false)
 }
