@@ -102,6 +102,17 @@ See [Butler authentication](https://itch.io/docs/butler/login.html) for the
 credential location on other OSes. Both publisher credentials and `ITCH_TARGET`
 are checked before a stable GitHub release is published.
 
+## 1.2.0: Specialists and guided recruitment
+
+This release renames the game to termtd and adds four specialist defenders,
+guided recruitment across the first two campaign defenses, and improved keyboard
+placement and targeting controls. Story cinematics now include a coordinated
+siege finale and studio credits, with game copy extracted into editable JSON.
+
+Quick Play keeps campaign progress separate. Existing TDEF saves are read when
+the new termtd save files are absent; subsequent saves use the new names.
+The main menu also includes a confirmed reset for all player progress.
+
 ## 1.1.0: Windows support
 
 This release adds Windows 10/11 downloads for Intel/AMD and ARM, native console
