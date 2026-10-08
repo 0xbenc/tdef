@@ -16,33 +16,18 @@ func TestLairLoadMissingYieldsEmpty(t *testing.T) {
 	}
 }
 
-func TestLairLoadCorruptSelfHeals(t *testing.T) {
-	home := isolateHome(t)
-	p, err := LairPath()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(p, []byte("{not json"), 0o644); err != nil {
+func TestLairRecordCannotOverwriteCorruptProgress(t *testing.T) {
+	isolateHome(t)
+	p, _ := LairPath()
+	original := "{not json"
+	if err := os.WriteFile(p, []byte(original), 0644); err != nil {
 		t.Fatal(err)
 	}
 	l := LoadLair()
-	if l.AnyRecord() {
-		t.Fatalf("LoadLair on corrupt file = %+v, want empty", l)
-	}
 	l.Record("rift", 1, 20, true)
-	// the next load must see the repaired, persisted record
-	if again := LoadLair(); !again.Floor("rift", 1).Cleared {
-		t.Fatal("record lost after self-heal")
-	}
-	// no temp files left behind
-	entries, err := os.ReadDir(home)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		if e.Name() != ".termtd-lair.json" {
-			t.Fatalf("unexpected file %q in %s", e.Name(), home)
-		}
+	data, err := os.ReadFile(p)
+	if err != nil || string(data) != original {
+		t.Fatalf("original changed: %q, %v", data, err)
 	}
 }
 

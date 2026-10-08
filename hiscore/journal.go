@@ -25,23 +25,27 @@ func JournalPath() (string, error) {
 	return filepath.Join(home, ".termtd-journal.json"), nil
 }
 
+// LoadJournal is the compatibility API. Interactive callers use LoadJournalWithError.
 func LoadJournal() *Journal {
-	j := &Journal{Towers: map[string]bool{}}
-	p, err := JournalPath()
+	value, _ := LoadJournalWithError()
+	return value
+}
+
+// LoadJournalWithError returns initialized empty progress and an error when an
+// existing save cannot be loaded. Such progress must not be saved over it.
+func LoadJournalWithError() (*Journal, error) {
+	value := &Journal{Towers: map[string]bool{}}
+	path, err := JournalPath()
 	if err != nil {
-		return j
+		return &Journal{Towers: map[string]bool{}}, err
 	}
-	data, err := readSave(p)
-	if err != nil {
-		return j
+	if err := loadSave(path, &value); err != nil {
+		return &Journal{Towers: map[string]bool{}}, err
 	}
-	if json.Unmarshal(data, j) != nil {
-		return &Journal{Towers: map[string]bool{}}
+	if value.Towers == nil {
+		value.Towers = map[string]bool{}
 	}
-	if j.Towers == nil {
-		j.Towers = map[string]bool{}
-	}
-	return j
+	return value, nil
 }
 
 // DiscoverTower reports only the first discovery. Callers persist that change
@@ -100,6 +104,9 @@ func (j *Journal) UnlockAfterward() bool {
 func SaveJournal(j *Journal) error {
 	p, err := JournalPath()
 	if err != nil {
+		return err
+	}
+	if err := checkSave(p, &Journal{}); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(j, "", "  ")

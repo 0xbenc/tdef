@@ -77,5 +77,23 @@ defense again. If a save fails, keep the game open and fix the reported problem.
 It retries automatically; Ctrl+L retries immediately. Quitting with unsaved
 changes requires a second quit.
 
+If existing progress cannot be loaded, a persistent warning names the affected
+saves. Their saving stays blocked for that session; other saves still work.
+Press Ctrl+L to inspect the file paths and error, and use Up/Down to scroll.
+Opening these details during a defense pauses it.
+
+Malformed saves get an exact recovery copy beside the original, named
+`<save filename>.corrupt-<unique suffix>`. The original stays untouched even if
+making the copy fails. Unreadable files also stay untouched. Files live in your
+home folder as `.termtd-lair.json`, `.termtd-journal.json`, and
+`.termtd-hiscores.json`; older `.tdef-` files are read only when the corresponding
+current file is absent.
+
+To recover, quit, keep copies of your files, repair the reported JSON file or
+restore a known-good copy at that path, then restart the game. Temporary progress
+played with saving blocked does not merge into restored progress. To deliberately
+start over instead, use the confirmed Reset progress action. Recovery copies are
+kept through reset and are never loaded automatically.
+
 Reset progress in the main menu clears campaign progress, relics, the journal,
 and high scores after confirmation.

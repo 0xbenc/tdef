@@ -24,21 +24,27 @@ func Path() (string, error) {
 	return filepath.Join(home, ".termtd-hiscores.json"), nil
 }
 
+// Load is the compatibility API. Interactive callers use LoadWithError.
 func Load() Table {
-	t := Table{}
-	p, err := Path()
+	value, _ := LoadWithError()
+	return value
+}
+
+// LoadWithError returns initialized empty progress and an error when an
+// existing save cannot be loaded. Such progress must not be saved over it.
+func LoadWithError() (Table, error) {
+	value := Table{}
+	path, err := Path()
 	if err != nil {
-		return t
+		return Table{}, err
 	}
-	data, err := readSave(p)
-	if err != nil {
-		return t
+	if err := loadSave(path, &value); err != nil {
+		return Table{}, err
 	}
-	// A corrupt table is treated as empty. Writes are atomic (Save), so a
-	// corrupt file can only be a leftover from an old build; the next
-	// Update self-heals it.
-	json.Unmarshal(data, &t)
-	return t
+	if value == nil {
+		value = Table{}
+	}
+	return value, nil
 }
 
 // Save writes the table atomically: temp file in the same directory, then
@@ -47,6 +53,9 @@ func Load() Table {
 func Save(t Table) error {
 	p, err := Path()
 	if err != nil {
+		return err
+	}
+	if err := checkSave(p, &Table{}); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(t, "", "  ")

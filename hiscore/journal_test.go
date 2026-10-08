@@ -39,7 +39,7 @@ func TestJournalHandlesOldMissingOrCorruptSave(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
 	p, _ := JournalPath()
-	for _, data := range []string{"{}", "null", "{broken", "{\"towers\":null}"} {
+	for _, data := range []string{"{}", "{\"towers\":null}"} {
 		if err := os.WriteFile(p, []byte(data), 0644); err != nil {
 			t.Fatal(err)
 		}

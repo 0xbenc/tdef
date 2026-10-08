@@ -59,34 +59,39 @@ func emptyLair() *Lair {
 	return &Lair{Floors: map[string]FloorRec{}, Boss: map[int]bool{}}
 }
 
-// LoadLair reads the lair state; a missing or corrupt file yields an empty
-// lair (the next SaveLair self-heals, mirroring the hiscore table).
+// LoadLair is the compatibility API. Interactive callers use LoadLairWithError.
 func LoadLair() *Lair {
-	l := emptyLair()
-	p, err := LairPath()
+	value, _ := LoadLairWithError()
+	return value
+}
+
+// LoadLairWithError returns initialized empty progress and an error when an
+// existing save cannot be loaded. Such progress must not be saved over it.
+func LoadLairWithError() (*Lair, error) {
+	value := emptyLair()
+	path, err := LairPath()
 	if err != nil {
-		return l
+		return emptyLair(), err
 	}
-	data, err := readSave(p)
-	if err != nil {
-		return l
+	if err := loadSave(path, &value); err != nil {
+		return emptyLair(), err
 	}
-	if err := json.Unmarshal(data, l); err != nil {
-		return emptyLair()
+	if value.Floors == nil {
+		value.Floors = map[string]FloorRec{}
 	}
-	if l.Floors == nil {
-		l.Floors = map[string]FloorRec{}
+	if value.Boss == nil {
+		value.Boss = map[int]bool{}
 	}
-	if l.Boss == nil {
-		l.Boss = map[int]bool{}
-	}
-	return l
+	return value, nil
 }
 
 // SaveLair writes the lair atomically (temp file + rename), like Save.
 func SaveLair(l *Lair) error {
 	p, err := LairPath()
 	if err != nil {
+		return err
+	}
+	if err := checkSave(p, &Lair{}); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(l, "", "  ")
@@ -122,10 +127,17 @@ func (l *Lair) Floor(floor string, diff int) FloorRec {
 	return l.Floors[floorKey(floor, diff)]
 }
 
-// Record folds one finished defense into the lair's memory and persists it.
+// Record is the legacy best-effort persistence API. Interactive callers use
+// RecordResult and save separately so load failures cannot be bypassed.
+func (l *Lair) Record(floor string, diff, wave int, won bool) {
+	l.RecordResult(floor, diff, wave, won)
+	SaveLair(l)
+}
+
+// RecordResult folds one finished defense into memory without writing to disk.
 // wave is the last wave reached (MaxWaves on a win). A held heart sticks:
 // losing it later does not un-hold it.
-func (l *Lair) Record(floor string, diff, wave int, won bool) {
+func (l *Lair) RecordResult(floor string, diff, wave int, won bool) {
 	rec := l.Floors[floorKey(floor, diff)]
 	rec.LastWave = wave
 	rec.LastWon = won
@@ -139,7 +151,6 @@ func (l *Lair) Record(floor string, diff, wave int, won bool) {
 	if floor == HeartFloor && won {
 		l.Boss[diff] = true
 	}
-	SaveLair(l)
 }
 
 // ClearedCount is the number of built-in floors cleared on a difficulty —

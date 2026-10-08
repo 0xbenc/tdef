@@ -24,7 +24,7 @@ func RunJournal() error {
 
 func (a *App) ensureJournal() {
 	if a.journal == nil {
-		a.journal = hiscore.LoadJournal()
+		a.journal, a.loadErrors[saveJournal] = hiscore.LoadJournalWithError()
 	}
 	if a.journalMigrated || a.lair == nil {
 		return

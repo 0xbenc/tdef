@@ -274,7 +274,13 @@
   },
   "save": {
     "failed": "SAVE FAILED. Kept in memory; Ctrl+L retries.",
-    "quit_warning": "NOT SAVED. Ctrl+L retry; q again quits without saving."
+    "quit_warning": "NOT SAVED. Ctrl+L retry; q again quits without saving.",
+    "load_failed": "Progress could not load. Affected saves are blocked.",
+    "load_kept": "Original files kept. Ctrl+L shows recovery details.",
+    "load_repair": "Repair file + restart, or confirm Reset progress.",
+    "load_blocked": "Blocked: {names}",
+    "load_details": "Recovery: Up/Down scroll; Ctrl+L or Esc close.",
+    "load_quit": "Session progress may be lost. Q again: quit."
   },
   "help_guide": {
     "start": "START",

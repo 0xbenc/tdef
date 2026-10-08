@@ -194,3 +194,20 @@ Reset progress removes both sets so legacy data cannot reappear.
 These files record campaign results, roster unlocks, discoveries, relic tokens,
 and scores. They do not resume a defense in progress. Save errors are shown in
 the game, retained in memory, and retried automatically or with Ctrl+L.
+
+Existing saves that cannot be read or decoded now produce a persistent load
+warning. Missing files are normal first runs; invalid JSON (including a top-level
+null or an incompatible field type) is a load failure, with partial decoded data
+discarded. Corrupt files are copied byte-for-byte to a unique sibling
+`.corrupt-*` file, with copy failures reported, and originals stay untouched.
+A failed current save never falls back to a legacy save.
+
+The affected save is blocked for the session, including automatic writes, retries,
+and screen refreshes. Ctrl+L opens scrollable recovery details and pauses a running
+defense. Repair/restore the reported file and restart, or explicitly confirm Reset
+progress. Reset clears the load block but retains recovery copies. Other healthy
+saves can still be written; temporary progress is not merged into restored data.
+
+Before releasing, test a malformed campaign/journal/score file and an unreadable
+save path. Verify the warning and recovery bytes, quit confirmation, repair plus
+restart, and confirmed reset. Repeat with only legacy saves present.

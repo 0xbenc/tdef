@@ -1,7 +1,6 @@
 package hiscore
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"runtime"
@@ -65,29 +64,17 @@ func TestSaveIsAtomicAndReadable(t *testing.T) {
 	}
 }
 
-func TestCorruptFileYieldsEmptyTableAndSelfHeals(t *testing.T) {
+func TestCorruptFileCannotBeOverwrittenByUpdate(t *testing.T) {
 	isolateHome(t)
-	p, err := Path()
-	if err != nil {
+	p, _ := Path()
+	original := "{not json"
+	if err := os.WriteFile(p, []byte(original), 0644); err != nil {
 		t.Fatal(err)
-	}
-	if err := os.WriteFile(p, []byte("{not json"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if t0 := Load(); len(t0) != 0 {
-		t.Fatalf("Load on corrupt file = %v, want empty", t0)
 	}
 	Update("hub", 10)
 	data, err := os.ReadFile(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var m map[string]int
-	if err := json.Unmarshal(data, &m); err != nil {
-		t.Fatalf("Update did not repair the file: %v", err)
-	}
-	if m["hub"] != 10 {
-		t.Fatalf("repaired file hub = %d, want 10", m["hub"])
+	if err != nil || string(data) != original {
+		t.Fatalf("original changed: %q, %v", data, err)
 	}
 }
 

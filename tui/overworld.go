@@ -402,8 +402,8 @@ func (a *App) owRefresh() {
 		st.Diff = diffIndex(a.diff)
 	}
 	d := st.Diff
-	if a.lair == nil || a.saveErrors[saveCampaign] == nil {
-		a.lair = hiscore.LoadLair()
+	if a.lair == nil || (a.saveErrors[saveCampaign] == nil && a.loadErrors[saveCampaign] == nil) {
+		a.reloadCampaign()
 	}
 	st.BonusGold, st.BonusTower, st.BonusLives = a.lair.BonusGold, a.lair.BonusTower, a.lair.BonusLives
 	recs := map[string]render.OWRec{}
@@ -414,8 +414,9 @@ func (a *App) owRefresh() {
 	st.Records = recs
 	st.Scores = map[string]int{}
 	scores := a.scores
-	if a.saveErrors[saveScores] == nil {
-		scores = hiscore.Load()
+	if a.saveErrors[saveScores] == nil && a.loadErrors[saveScores] == nil {
+		a.reloadScores()
+		scores = a.scores
 	}
 	for lvl, id := range map[string]string{
 		"canyon": "rift", "hub": "rotunda", "winding": "halls", "garden": "garden",

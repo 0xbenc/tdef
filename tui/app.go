@@ -52,6 +52,9 @@ type App struct {
 	help               render.HelpState
 	helpReturn         Screen
 	helpWasPaused      bool
+	loadDetailTop      int
+	loadDetails        bool
+	loadErrors         [3]error
 	saveErrors         [3]error
 	saveRetryAt        time.Time
 	saveQuitArmed      bool
@@ -150,14 +153,14 @@ func diffIndex(d game.Difficulty) int {
 
 func newApp(term *Terminal, diff game.Difficulty) *App {
 	a := &App{
-		term:    term,
-		pal:     render.Palette(),
-		diff:    diff,
-		events:  make(chan Event, 256),
-		scores:  hiscore.Load(),
-		lair:    hiscore.LoadLair(),
-		journal: hiscore.LoadJournal(),
+		term:   term,
+		pal:    render.Palette(),
+		diff:   diff,
+		events: make(chan Event, 256),
 	}
+	a.reloadScores()
+	a.reloadCampaign()
+	a.journal, a.loadErrors[saveJournal] = hiscore.LoadJournalWithError()
 	a.ensureJournal()
 	return a
 }
@@ -373,7 +376,7 @@ func (a *App) stepGame(real float64) {
 		best, isNew := 0, false
 		if a.trainingReplay == 0 {
 			if a.scores == nil {
-				a.scores = hiscore.Load()
+				a.reloadScores()
 			}
 			best, isNew = hiscore.RecordScore(hiscore.Table(a.scores), a.level, a.g.Score)
 			if isNew {
@@ -391,7 +394,7 @@ func (a *App) stepGame(real float64) {
 			}
 			a.heartEndingPending = won && floor == hiscore.HeartFloor && !a.lair.BossHeld(d)
 			a.completeTrainingDefense()
-			a.lair.Record(floor, d, a.g.Wave, won)
+			a.lair.RecordResult(floor, d, a.g.Wave, won)
 			if won {
 				a.journal.RecordVictory(floor, d)
 				a.saveJournal()
@@ -585,12 +588,33 @@ func (a *App) drainInput() {
 }
 
 func (a *App) handle(e Event) {
+	if a.hasLoadErrors() && e.Key == KeyCtrlL {
+		a.loadDetails = !a.loadDetails
+		a.loadDetailTop = 0
+		if a.loadDetails && a.screen == ScreenGame {
+			a.ui.Paused = true
+			a.acc = 0
+		}
+		return
+	}
+	if a.hasLoadErrors() && a.loadDetails && e.Key != KeyCtrlC && e.Rune != 'q' && e.Rune != 'Q' {
+		if e.Key == KeyEscape {
+			a.loadDetails = false
+		}
+		if e.Key == KeyUp || e.Rune == 'w' {
+			a.loadDetailTop = max(0, a.loadDetailTop-1)
+		}
+		if e.Key == KeyDown || e.Rune == 's' {
+			a.loadDetailTop++
+		}
+		return
+	}
 	if a.hasSaveErrors() && e.Key == KeyCtrlL {
 		a.retrySaves()
 		a.prev = nil
 		return
 	}
-	if a.hasSaveErrors() && a.saveQuitArmed && (e.Key == KeyCtrlC || (!e.Mouse && (e.Rune == 'q' || e.Rune == 'Q'))) {
+	if (a.hasSaveErrors() || a.hasLoadErrors()) && a.saveQuitArmed && (e.Key == KeyCtrlC || (!e.Mouse && (e.Rune == 'q' || e.Rune == 'Q'))) {
 		a.quit()
 		return
 	}
@@ -959,8 +983,8 @@ func (a *App) toScreen(s Screen) {
 	case ScreenTitle:
 		a.titleBootAt = a.frameNo // replay the boot cinematic
 	case ScreenHiscores:
-		if a.saveErrors[saveScores] == nil {
-			a.scores = hiscore.Load()
+		if a.saveErrors[saveScores] == nil && a.loadErrors[saveScores] == nil {
+			a.reloadScores()
 		}
 		a.hsTop = 0
 	case ScreenLevelSelect:
@@ -1316,7 +1340,7 @@ func (a *App) startWave() {
 
 func (a *App) quit() {
 	a.retrySaves()
-	if a.hasSaveErrors() && !a.saveQuitArmed {
+	if (a.hasSaveErrors() || a.hasLoadErrors()) && !a.saveQuitArmed {
 		a.saveQuitArmed = true
 		a.prev = nil
 		return
@@ -1360,7 +1384,7 @@ func (a *App) restart() {
 // to the level select (or the title, when there is no menu state).
 func (a *App) leaveGame() {
 	if a.trainingReplay != 0 {
-		a.journal = hiscore.LoadJournal()
+		a.journal, a.loadErrors[saveJournal] = hiscore.LoadJournalWithError()
 		a.journalMigrated = false
 	}
 	a.trainingReplay, a.trainingReplayMask = 0, 0
@@ -1389,7 +1413,9 @@ type pen struct {
 type blitWriter interface{ Write(p []byte) }
 
 func (a *App) blit(f *render.Frame) {
-	if a.hasSaveErrors() {
+	if a.hasLoadErrors() {
+		render.DrawLoadFailure(f, a.loadErrorText(), a.loadDetails, a.saveQuitArmed, a.loadDetailTop)
+	} else if a.hasSaveErrors() {
 		render.DrawSaveFailure(f, a.saveErrorText(), a.saveQuitArmed)
 	}
 	a.blitTo(f, a.term)

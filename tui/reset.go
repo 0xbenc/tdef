@@ -55,6 +55,8 @@ func (a *App) activateResetProgress() {
 	a.scores = hiscore.Load()
 	a.lair = hiscore.LoadLair()
 	a.journal = hiscore.LoadJournal()
+	a.loadDetails = false
+	a.loadErrors = [3]error{}
 	a.saveErrors = [3]error{}
 	a.saveRetryAt = time.Time{}
 	a.saveQuitArmed = false
