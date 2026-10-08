@@ -35,11 +35,48 @@ func TestHelpTabsMatchMouseTargets(t *testing.T) {
 		f := RenderHelpPage(w, 24, HelpState{}, Palette())
 		for x := 0; x < w; x++ {
 			c := f.C[4*w+x]
-			if c.R >= '1' && c.R <= '5' {
+			if c.R >= '1' && c.R < rune('1'+HelpPageCount()) {
 				if c.FG != 167 || !c.Bold || HelpTopicAt(w, 24, x, 4) != int(c.R-'1') {
 					t.Fatal("help tab display and click target disagree")
 				}
 			}
 		}
+	}
+}
+
+func TestHelpControlsUseDistinctKeyBadges(t *testing.T) {
+	for _, width := range []int{62, 80, 100, 120} {
+		content := helpContent(width, helpPages()[1])
+		for _, section := range helpPages()[1].sections {
+			for _, control := range section.controls {
+				for _, key := range strings.Split(control[1], "|") {
+					label := []rune(" " + key + " ")
+					found := false
+					for y := 0; y < content.H; y++ {
+						for x := 0; x+len(label) <= content.W; x++ {
+							matches := true
+							for i, r := range label {
+								cell := content.C[y*content.W+x+i]
+								if cell.R != r || cell.BG != 24 || !cell.Bold {
+									matches = false
+									break
+								}
+							}
+							found = found || matches
+						}
+					}
+					if !found {
+						t.Fatalf("width %d hides key badge %q", width, key)
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestStartHelpDoesNotIncludeSaveCard(t *testing.T) {
+	content := helpContent(80, helpPages()[0]).Text()
+	if strings.Contains(content, "WHAT GETS SAVED") || strings.Contains(content, "Ctrl+L") {
+		t.Fatal("removed save card still rendered")
 	}
 }

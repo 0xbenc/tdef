@@ -17,7 +17,7 @@ func TestWaveClearMessageShowsFloorReward(t *testing.T) {
 	g := game.NewState(m)
 	g.Wave, g.WaveActive = 1, true
 	// The last enemy has died and all spawns are complete.
-	a := &App{g: g, ui: render.UI{Speed: 1}, waveStartLives: g.Lives}
+	a := &App{g: g, ui: render.UI{Speed: 1}, defenseStartLives: g.Lives}
 	a.stepGame(1.0 / tickRate)
 	reward := m.ScaleGold(game.WaveBonus(1))
 	if a.ui.Message != fmt.Sprintf("wave 1 cleared +%dg", reward) || g.Gold != m.ScaleGold(game.StartingGold)+reward {

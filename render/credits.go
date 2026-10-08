@@ -9,9 +9,12 @@ func RenderCredits(w, h int, pal Colors) *Frame {
 	centerPut(f, off+2, copytext.Text("branding.render_credits.termtd"), pal.Gold, true)
 	centerPut(f, off+5, copytext.Text("branding.render_credits.a_game_by"), pal.Dim, false)
 	centerPut(f, off+6, copytext.Text("branding.render_credits.kairuku_studios"), pal.Bright, true)
-	centerPut(f, off+9, copytext.Text("branding.render_credits.created_by"), pal.Dim, false)
-	centerPut(f, off+10, copytext.Text("branding.render_credits.0xbenc"), pal.Bright, true)
-	centerPut(f, off+13, copytext.Text("branding.render_credits.published_by"), pal.Dim, false)
-	centerPut(f, off+14, copytext.Text("branding.render_credits.off_court_creations"), pal.Bright, true)
+	centerPut(f, off+8, copytext.Text("branding.render_credits.created_by"), pal.Dim, false)
+	centerPut(f, off+9, copytext.Text("branding.render_credits.0xbenc"), pal.Bright, true)
+	centerPut(f, off+11, copytext.Text("branding.render_credits.with_help_from"), pal.Dim, false)
+	centerPut(f, off+12, copytext.Text("branding.render_credits.basedvik"), pal.Bright, true)
+	centerPut(f, off+13, copytext.Text("branding.render_credits.devon_m"), pal.Bright, true)
+	centerPut(f, off+15, copytext.Text("branding.render_credits.published_by"), pal.Dim, false)
+	centerPut(f, off+16, copytext.Text("branding.render_credits.off_court_creations"), pal.Bright, true)
 	return f
 }

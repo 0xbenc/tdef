@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/0xbenc/termtd/game"
+	"github.com/0xbenc/termtd/internal/copytext"
 )
 
 // titleAt renders the title at attract-battle internal frame fr
@@ -159,7 +160,7 @@ func TestRenderHelpFits(t *testing.T) {
 		f := RenderHelp(size[0], size[1], Palette())
 		text := f.Text()
 		for _, want := range []string{
-			"GRAK'S LEDGER", "Hold all twenty waves.",
+			"GRAK'S LEDGER", strings.SplitN(copytext.Text("ui.help_guide.goal"), ".", 2)[0] + ".",
 			"KEEP MALGRATH ALIVE", "1 START", "esc back",
 		} {
 			if !strings.Contains(text, want) {

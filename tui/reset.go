@@ -72,7 +72,7 @@ func (a *App) activateResetProgress() {
 	a.bonusGold, a.bonusLives, a.bonusTower = 0, 0, false
 	a.g, a.scored, a.fromOW = nil, false, false
 	a.level, a.owFloorID = "", ""
-	a.cleanWaves, a.waveStartLives = 0, 0
+	a.defenseStartLives = 0
 	a.resetErr = ""
 	a.resetDone = true
 }

@@ -95,7 +95,6 @@ func TestQuickPlayOnlySavesScores(t *testing.T) {
 					t.Fatal("journal did not return to Quick Play")
 				}
 				a.g.Status, a.g.Wave, a.g.Score = status, game.MaxWaves, 500
-				a.cleanWaves = 7
 				for i := 0; i < 120; i++ {
 					a.stepGame(1 / frameRate)
 				}
@@ -171,10 +170,9 @@ func TestCampaignStillRecordsProgressAndScores(t *testing.T) {
 	a.place()
 	a.g.SeenEnemies[game.EnemyShield] = true
 	a.g.Status, a.g.Wave, a.g.Score = game.StatusVictory, game.MaxWaves, 500
-	a.cleanWaves = 3
 	a.stepGame(.05)
 	lair, journal := hiscore.LoadLair(), hiscore.LoadJournal()
-	if !lair.Floor("rotunda", 1).Cleared || lair.Tokens != 4 || !journal.Towers["frost"] || !journal.Enemies[render.EnemyJournalID(game.EnemyShield)] || !journal.Places["rotunda"] || !journal.Stories["rotunda:1"] {
+	if !lair.Floor("rotunda", 1).Cleared || lair.Tokens != 2 || !journal.Towers["frost"] || !journal.Enemies[render.EnemyJournalID(game.EnemyShield)] || !journal.Places["rotunda"] || !journal.Stories["rotunda:1"] {
 		t.Fatal("campaign run failed to persist progress, relics, or journal entries")
 	}
 	if hiscore.Load()["hub"] != 500 {

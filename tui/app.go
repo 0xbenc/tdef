@@ -99,8 +99,7 @@ type App struct {
 	lair               *hiscore.Lair
 	fromOW             bool // the run started from the overworld
 	owFloorID          string
-	cleanWaves         int // waves held with no strike on the heart (relics)
-	waveStartLives     int
+	defenseStartLives  int          // includes any HP bonuses granted before the first wave
 	owBootArmed        bool         // the arrival cinematic has been armed this session
 	owBossSeen         map[int]bool // renown -> the heart's unseal has been seen
 
@@ -209,8 +208,7 @@ func (a *App) enterGame(m *game.Map, name string, diff game.Difficulty) {
 			a.saveCampaign()
 		}
 	}
-	a.cleanWaves = 0
-	a.waveStartLives = a.g.Lives
+	a.defenseStartLives = a.g.Lives
 	tw, th := a.termSize()
 	a.layout = render.GameLayout(m.W, m.H, tw, th)
 	a.scored = false
@@ -336,9 +334,6 @@ func (a *App) stepGame(real float64) {
 		if steps == 10 {
 			a.acc = 0
 		}
-		if !prevWaveActive && a.g.WaveActive {
-			a.waveStartLives = a.g.Lives
-		}
 		if a.g.Lives < prevLives {
 			n := prevLives - a.g.Lives
 			a.term.Write([]byte("\a"))
@@ -349,9 +344,6 @@ func (a *App) stepGame(real float64) {
 			}
 		}
 		if prevWaveActive && !a.g.WaveActive && a.g.Wave < game.MaxWaves {
-			if a.g.Lives == a.waveStartLives {
-				a.cleanWaves++ // a clean expedition: the heart was not struck
-			}
 			next := a.g.Wave + 1
 			if tg := game.WaveTelegraphFor(a.g.Map, next); tg != "" {
 				// Hold the telegraph for the whole break so it can be read.
@@ -370,9 +362,6 @@ func (a *App) stepGame(real float64) {
 		a.scored = true
 		a.ui.EndAtFrame = a.frameNo // the end cinematics run off this clock
 		won := a.g.Status == game.StatusVictory
-		if won && a.g.Lives == a.waveStartLives {
-			a.cleanWaves++ // the final expedition held clean
-		}
 		best, isNew := 0, false
 		if a.trainingReplay == 0 {
 			if a.scores == nil {
@@ -399,7 +388,7 @@ func (a *App) stepGame(real float64) {
 				a.journal.RecordVictory(floor, d)
 				a.saveJournal()
 			}
-			a.lair.Tokens += a.cleanWaves
+			a.lair.Tokens += a.earnedRelics()
 			a.saveCampaign()
 			a.owUnsealCheck(d)
 			a.owSetBanner(won, best, isNew)
@@ -455,6 +444,18 @@ func (a *App) owHeartBlastCheck(d int) {
 	a.owBossSeen[d] = a.lair.BossReady(d)
 }
 
+// Relics reward a complete campaign defense with no HP lost. Checking leaks
+// also prevents any future healing mechanic from concealing a breach.
+func (a *App) earnedRelics() int {
+	if !a.fromOW || a.trainingReplay != 0 || a.g == nil || a.g.Status != game.StatusVictory || a.g.Wave != game.MaxWaves {
+		return 0
+	}
+	if a.g.TotalLeaks != 0 || a.g.Lives != a.defenseStartLives {
+		return 0
+	}
+	return diffIndex(a.diff) + 1 // Easy, Normal, Hard: 1, 2, 3.
+}
+
 // owSetBanner writes the result line Grak reads back on the map.
 func (a *App) owSetBanner(won bool, best int, isNew bool) {
 	st := &a.ow
@@ -467,6 +468,9 @@ func (a *App) owSetBanner(won bool, best int, isNew bool) {
 		msg = copytext.Format("overworld.results.held", "floor", name)
 	default:
 		msg = copytext.Format("overworld.results.lost", "floor", name, "wave", strconv.Itoa(a.g.Wave))
+	}
+	if relics := a.earnedRelics(); relics > 0 {
+		msg += copytext.Format("overworld.results.relic_reward", "count", strconv.Itoa(relics))
 	}
 	if isNew {
 		msg += copytext.Format("overworld.results.new_best", "score", strconv.Itoa(best))
@@ -1329,9 +1333,6 @@ func (a *App) startWave() {
 		return
 	}
 	a.g.StartWave()
-	if a.g.WaveActive {
-		a.waveStartLives = a.g.Lives
-	}
 	if a.g.TrainingStage != 0 && a.g.WaveActive {
 		a.ui.Paused = false
 	}
@@ -1359,8 +1360,7 @@ func (a *App) restart() {
 	a.g = game.NewStateDiff(m, a.diff)
 	a.scored = false
 	a.heartEndingPending = false
-	a.cleanWaves = 0
-	a.waveStartLives = a.g.Lives
+	a.defenseStartLives = a.g.Lives
 	// Rebuild the UI, but keep player preferences (speed, help). The
 	// playfield scale follows the live terminal size, so there is nothing
 	// to preserve there.

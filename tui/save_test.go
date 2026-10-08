@@ -28,7 +28,6 @@ func TestFailedSavesRetainLatestProgressAndRetry(t *testing.T) {
 	a.g.Wave = game.MaxWaves
 	a.g.Score = 12345
 	a.owFloorID = "rotunda"
-	a.cleanWaves = 4
 	a.stepGame(0)
 	if !a.hasSaveErrors() || a.saveErrors[saveCampaign] == nil || a.saveErrors[saveJournal] == nil || a.saveErrors[saveScores] == nil {
 		t.Fatal("failed writes were hidden")

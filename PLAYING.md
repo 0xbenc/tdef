@@ -60,6 +60,10 @@ per defense; selling frees its slot.
 | q | Quit. |
 
 In the lair, walk onto a floor and press Enter to defend it. Tab changes renown.
+Win a campaign level without losing any HP to earn relics: 1 on Easy, 2 on
+Normal, or 3 on Hard. Clearing individual waves does not award relics.
+Quick Play and tutorial replays do not award relics.
+
 At the Rotunda, `t` spends relics on the next defense, `i` replays the opening,
 and `e` replays an earned ending. On the Depths, type a seed for a repeatable
 route; Backspace deletes a digit and `c` clears it.

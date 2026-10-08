@@ -75,7 +75,7 @@ func (a *App) handleHelp(e Event) {
 			scroll--
 		case 's', 'S':
 			scroll++
-		case '1', '2', '3', '4', '5':
+		case '1', '2', '3', '4':
 			page = int(e.Rune - '1')
 		}
 	}

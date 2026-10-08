@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"github.com/0xbenc/termtd/internal/copytext"
+	"strings"
 )
 
 type HelpState struct{ Page, Scroll int }
@@ -16,37 +17,55 @@ type helpPage struct {
 }
 
 func helpPages() []helpPage {
-	c := helpControls()
 	return []helpPage{
 		{copytext.Text("ui.help_guide.start"), []helpSection{
 			{copytext.Text("ui.help_guide.goal_title"), copytext.Text("ui.help_guide.goal"), nil},
 			{copytext.Text("ui.help_guide.opening_title"), copytext.Text("ui.help_guide.opening"), nil},
 			{copytext.Text("ui.help_guide.modes_title"), copytext.Text("ui.help_guide.modes"), nil},
-			{copytext.Text("ui.help_guide.saves_title"), copytext.Text("ui.help_guide.saves"), nil},
 		}},
 		{copytext.Text("ui.help_guide.controls"), []helpSection{
-			{copytext.Text("ui.help_guide.placement_title"), copytext.Text("ui.help_guide.placement_tip"), c[:2]},
-			{copytext.Text("ui.help_guide.manage_title"), copytext.Text("ui.help_guide.manage_tip"), c[2:5]},
-			{copytext.Text("ui.help_guide.pace_title"), copytext.Text("ui.help_guide.pace_tip"), [][2]string{c[5], c[6], c[9]}},
-			{copytext.Text("ui.help_guide.other_title"), copytext.Text("ui.help_guide.other_tip"), [][2]string{c[7], c[8], c[10], c[11], c[12], c[13], c[14]}},
+			{copytext.Text("ui.help_guide.placement_title"), copytext.Text("ui.help_guide.placement_tip"), [][2]string{
+				{copytext.Text("ui.help_bindings.move"), "Arrows|WASD"},
+				{copytext.Text("ui.help_bindings.choose"), "1-7"},
+				{copytext.Text("ui.help_bindings.roster"), "[|]"},
+				{copytext.Text("ui.help_bindings.place"), "Enter|Click"},
+			}},
+			{copytext.Text("ui.help_guide.manage_title"), copytext.Text("ui.help_guide.manage_tip"), [][2]string{
+				{copytext.Text("ui.help_bindings.select"), "Tab"},
+				{copytext.Text("ui.help_bindings.upgrade"), "U"},
+				{copytext.Text("ui.help_bindings.sell"), "X"},
+				{copytext.Text("ui.help_bindings.target"), "T"},
+				{copytext.Text("ui.help_bindings.rotate"), "R"},
+			}},
+			{copytext.Text("ui.help_guide.pace_title"), copytext.Text("ui.help_guide.pace_tip"), [][2]string{
+				{copytext.Text("ui.help_bindings.pause"), "P"},
+				{copytext.Text("ui.help_bindings.speed"), "F"},
+				{copytext.Text("ui.help_bindings.wave"), "N"},
+			}},
+			{copytext.Text("ui.help_guide.other_title"), copytext.Text("ui.help_guide.other_tip"), [][2]string{
+				{copytext.Text("ui.help_bindings.help"), "H"},
+				{copytext.Text("ui.help_bindings.journal"), "J"},
+				{copytext.Text("ui.help_bindings.cancel"), "Esc"},
+				{copytext.Text("ui.help_bindings.quit"), "Q"},
+			}},
+			{copytext.Text("ui.help_guide.lair_controls_title"), copytext.Text("ui.help_guide.lair_controls_tip"), [][2]string{
+				{copytext.Text("ui.help_bindings.descend"), "Enter"},
+				{copytext.Text("ui.help_bindings.renown"), "Tab"},
+				{copytext.Text("ui.help_bindings.relic"), "T"},
+				{copytext.Text("ui.help_bindings.films"), "I|E"},
+				{copytext.Text("ui.help_bindings.seed"), "0-9"},
+			}},
 		}},
 		{copytext.Text("ui.help_guide.counters"), []helpSection{
 			{copytext.Text("ui.help_guide.rogue_title"), copytext.Text("ui.help_guide.rogue"), nil},
 			{copytext.Text("ui.help_guide.paladin_title"), copytext.Text("ui.help_guide.paladin"), nil},
 			{copytext.Text("ui.help_guide.centurion_title"), copytext.Text("ui.help_guide.centurion"), nil},
-			{copytext.Text("ui.help_guide.others_title"), copytext.Text("ui.help_guide.others"), nil},
 		}},
 		{copytext.Text("ui.help_guide.specialists"), []helpSection{
 			{copytext.Text("ui.help_guide.forge_title"), copytext.Text("ui.help_guide.forge"), nil},
 			{copytext.Text("ui.help_guide.ogre_title"), copytext.Text("ui.help_guide.ogre"), nil},
 			{copytext.Text("ui.help_guide.sapper_title"), copytext.Text("ui.help_guide.sapper"), nil},
 			{copytext.Text("ui.help_guide.witch_title"), copytext.Text("ui.help_guide.witch"), nil},
-		}},
-		{copytext.Text("ui.help_guide.lair"), []helpSection{
-			{copytext.Text("ui.help_guide.route_title"), copytext.Text("ui.help_guide.route"), nil},
-			{copytext.Text("ui.help_guide.relic_title"), copytext.Text("ui.help_guide.relic"), nil},
-			{copytext.Text("ui.help_guide.seed_title"), copytext.Text("ui.help_guide.seed"), nil},
-			{copytext.Text("ui.help_guide.replay_title"), copytext.Text("ui.help_guide.replay"), nil},
 		}},
 	}
 }
@@ -57,6 +76,7 @@ type helpLine struct {
 	text string
 	fg   int
 	bold bool
+	keys string
 }
 
 func helpContent(w int, page helpPage) *Frame {
@@ -68,20 +88,35 @@ func helpContent(w int, page helpPage) *Frame {
 	cardW := (width - (columns-1)*3) / columns
 	var cards [][]helpLine
 	for _, section := range page.sections {
-		lines := []helpLine{{"", 252, false}, {section.title, 220, true}, {"", 252, false}}
+		lines := []helpLine{{"", 252, false, ""}, {section.title, 220, true, ""}, {"", 252, false, ""}}
+		keyWidth := 0
 		for _, control := range section.controls {
-			lines = append(lines, helpLine{control[0], 245, false})
-			for _, line := range recruitmentLines(control[1], cardW-4) {
-				lines = append(lines, helpLine{line, 167, true})
+			keyWidth = max(keyWidth, helpKeyWidth(control[1]))
+		}
+		for _, control := range section.controls {
+			textWidth := cardW - 4 - keyWidth - 2
+			if textWidth < 12 {
+				lines = append(lines, helpLine{keys: control[1]})
+				for _, line := range recruitmentLines(control[0], cardW-4) {
+					lines = append(lines, helpLine{line, 252, false, ""})
+				}
+			} else {
+				for i, line := range recruitmentLines(control[0], textWidth) {
+					keys := ""
+					if i == 0 {
+						keys = control[1]
+					}
+					lines = append(lines, helpLine{strings.Repeat(" ", keyWidth+2) + line, 252, false, keys})
+				}
 			}
 		}
 		if len(section.controls) > 0 {
-			lines = append(lines, helpLine{"", 252, false})
+			lines = append(lines, helpLine{"", 252, false, ""})
 		}
 		for _, line := range recruitmentLines(section.text, cardW-4) {
-			lines = append(lines, helpLine{line, 252, false})
+			lines = append(lines, helpLine{line, 252, false, ""})
 		}
-		lines = append(lines, helpLine{"", 252, false})
+		lines = append(lines, helpLine{"", 252, false, ""})
 		cards = append(cards, lines)
 	}
 	height := 0
@@ -108,6 +143,22 @@ func helpContent(w int, page helpPage) *Frame {
 			}
 			for line, text := range cards[i+col] {
 				putString(f, x+2, y+line, text.text, text.fg, 235, text.bold)
+				if page.sections[i+col].title == copytext.Text("ui.help_guide.manage_title") {
+					for _, target := range []string{"First", "Strongest", "Closest"} {
+						if start := strings.Index(text.text, target); start >= 0 {
+							targetX := x + 2 + len([]rune(text.text[:start]))
+							putString(f, targetX, y+line, target, text.fg, 235, true)
+						}
+					}
+				}
+				keyX := x + 2
+				if text.keys != "" {
+					for _, key := range strings.Split(text.keys, "|") {
+						label := " " + key + " "
+						putString(f, keyX, y+line, label, 231, 24, true)
+						keyX += len([]rune(label)) + 1
+					}
+				}
 			}
 			for xx := 0; xx < cardW; xx++ {
 				f.Set(x+xx, y, Cell{R: '─', FG: 240, BG: 235})
@@ -194,4 +245,12 @@ func HelpTopicAt(w, h, x, y int) int {
 		left += width + 2
 	}
 	return -1
+}
+
+func helpKeyWidth(keys string) int {
+	width := 0
+	for _, key := range strings.Split(keys, "|") {
+		width += len([]rune(key)) + 3
+	}
+	return max(0, width-1)
 }

@@ -116,6 +116,7 @@
     "the_heart_steadies_1_to_the_next": "+{lives}♥ for the next defense"
   },
   "results": {
+    "relic_reward": " ? relics +{count} (no HP lost)",
     "held": "{floor} held · 20/20 waves cleared",
     "lost": "{floor} fell on wave {wave}; rebuild and try again",
     "new_best": " · new best {score}",
