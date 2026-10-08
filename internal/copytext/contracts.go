@@ -2,6 +2,10 @@ package copytext
 
 // Required keys and placeholders bind editable copy to gameplay.
 var required = map[string][]string{
+	"overworld.orientation.you":         {},
+	"overworld.orientation.move":        {},
+	"overworld.reveal.opening":          {"floor"},
+	"overworld.reveal.opened":           {"floor"},
 	"overworld.results.relic_reward":    {"count"},
 	"ui.help_bindings.move":             {},
 	"ui.help_bindings.choose":           {},

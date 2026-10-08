@@ -47,7 +47,7 @@ func (a *App) handleOverworld(e Event) {
 		a.quit()
 		return
 	}
-	if a.ow.BootTTL > 0 {
+	if a.ow.BootTTL > 0 || a.ow.RevealBusy() {
 		// The lair is waking: Grak cannot walk yet. Only nav keys pass.
 		if e.Key == KeyEscape {
 			a.toScreen(ScreenTitle)
@@ -163,10 +163,14 @@ func (a *App) owWalk(dx, dy int) {
 // owStep is one deterministic step: walk if the destination is walkable, and
 // leave a trail behind the old cell.
 func (a *App) owStep(dx, dy int) {
+	if a.ow.RevealBusy() {
+		return
+	}
 	a.ow.Msg = ""
 	a.ow.MsgKind = render.OWMessageNeutral
 	n := game.Vec{X: a.ow.Cursor.X + dx, Y: a.ow.Cursor.Y + dy}
 	if render.OWCanWalk(n.X, n.Y, a.ow) {
+		a.owLocateGrak()
 		a.ow.PushTrail(a.ow.Cursor)
 		a.ow.Cursor = n
 		a.discoverCurrentPlace()
@@ -178,15 +182,29 @@ func (a *App) owStep(dx, dy int) {
 // owTick advances the overworld's frame-counted transitions and the held
 // walk. Called once per 30fps frame from the app loop.
 func (a *App) owTick() {
+	w, h := a.termSize()
+	if w < render.FrameW || h < 19 {
+		return
+	}
 	a.discoverCurrentPlace()
 	st := &a.ow
 	if !st.CameraSet {
 		st.CameraX, st.CameraSet = float64(st.Cursor.X), true
 	}
-	// Ease the viewport toward Grak without adding extra walking steps.
-	st.CameraX += (float64(st.Cursor.X) - st.CameraX) * 0.25
-	if math.Abs(float64(st.Cursor.X)-st.CameraX) < 0.02 {
-		st.CameraX = float64(st.Cursor.X)
+	// The reveal can inspect a far-off room without moving Grak.
+	target := float64(st.Cursor.X)
+	if st.RevealFloor != "" {
+		id := st.RevealFloor
+		if id == render.HeartFloorID {
+			id = "rotunda"
+		}
+		if floor, ok := render.OWFloorOf(id); ok {
+			target = float64(floor.Center.X)
+		}
+	}
+	st.CameraX += (target - st.CameraX) * 0.25
+	if math.Abs(target-st.CameraX) < 0.02 {
+		st.CameraX = target
 	}
 	if st.BootTTL > 0 {
 		st.BootTTL--
@@ -211,18 +229,7 @@ func (a *App) owTick() {
 			st.TrailAge = append(st.TrailAge[:i], st.TrailAge[i+1:]...)
 		}
 	}
-	for id, ttl := range st.Unsealing {
-		ttl--
-		if ttl <= 0 {
-			delete(st.Unsealing, id)
-			st.Unlocked[id] = true
-			st.ReturnMsg = copytext.Format("overworld.progress.opened", "floor", render.OWFloorName(id))
-			st.ReturnKind = render.OWMessageSuccess
-			st.ReturnTTL = 90
-		} else {
-			st.Unsealing[id] = ttl
-		}
-	}
+	a.owTickReveals()
 	if st.Descending != "" {
 		st.DescendTTL--
 		if st.DescendTTL <= 0 {
@@ -247,7 +254,7 @@ func (a *App) owCursorFloor() string {
 // a short transition: the pad floods in, then owLaunch starts the game.
 func (a *App) owEnter() {
 	st := &a.ow
-	if st.Descending != "" {
+	if st.Descending != "" || st.RevealBusy() {
 		return
 	}
 	fl, ok := render.OWFloorAt(st.Cursor.X, st.Cursor.Y)
@@ -265,6 +272,7 @@ func (a *App) owEnter() {
 		a.owSealedMessage(id)
 		return
 	}
+	a.owLocateGrak()
 	st.RelicMenu = false
 	st.Msg = ""
 	st.MsgKind = render.OWMessageNeutral
@@ -352,6 +360,8 @@ func (a *App) owCycleDiff(dir int) {
 	n := len(render.Difficulties)
 	st.Diff = (st.Diff + dir + n) % n
 	st.Unsealing = map[string]int{} // another renown owns different seals
+	st.RevealQueue, st.RevealFloor, st.RevealTTL = nil, "", 0
+	st.BlastTTL = 0
 	a.diff = render.Difficulties[st.Diff]
 	a.owRefresh()
 }
@@ -440,6 +450,7 @@ func (a *App) owRefresh() {
 	st.BossReady = a.lair.BossReady(d)
 	st.BossDone = a.lair.BossHeld(d)
 	st.Tokens = a.lair.Tokens
+	st.PlayerIntro = !a.lair.GrakLocated && !a.lair.AnyRecord()
 	// Mark this renown's heart state as seen, so an already-unsealed heart
 	// never re-fires the shockwave on entry.
 	if a.owBossSeen == nil {
@@ -471,6 +482,9 @@ func (a *App) owRefresh() {
 // click visits an open floor or a sealed floor's doorstep; a second click
 // on an occupied open pad descends.
 func (a *App) handleOWMouse(e Event) {
+	if a.ow.BootTTL > 0 || a.ow.RevealBusy() {
+		return
+	}
 	if !e.Press {
 		return
 	}
@@ -548,6 +562,9 @@ func (a *App) owVisitFloor(id string) {
 		}
 		target = approach
 		a.owSealedMessage(id)
+	}
+	if target != st.Cursor {
+		a.owLocateGrak()
 	}
 	st.Cursor = target
 	st.CameraX, st.CameraSet = float64(target.X), true

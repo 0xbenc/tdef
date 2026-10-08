@@ -1,4 +1,12 @@
 {
+  "reveal": {
+    "opening": "NEW AREA: {floor}",
+    "opened": "{floor} is open. Enter it to defend."
+  },
+  "orientation": {
+    "you": "YOU — GRAK",
+    "move": "Arrows / WASD to move"
+  },
   "malgrath": {
     "tier_0": {
       "line_1": "Malgrath: Keep them upstairs, Grak. I cannot fight again.",
@@ -116,7 +124,7 @@
     "the_heart_steadies_1_to_the_next": "+{lives}♥ for the next defense"
   },
   "results": {
-    "relic_reward": " ? relics +{count} (no HP lost)",
+    "relic_reward": " · relics +{count} (no HP lost)",
     "held": "{floor} held · 20/20 waves cleared",
     "lost": "{floor} fell on wave {wave}; rebuild and try again",
     "new_best": " · new best {score}",

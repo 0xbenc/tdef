@@ -3,7 +3,7 @@ package render
 import "testing"
 
 // Enlarging the map must never enlarge Grak's character footprint. Animation
-// may change the single glyph, but must leave surrounding glyphs intact.
+// changes only its light, and must leave surrounding glyphs intact.
 func TestOWPlayerSingleCharacterAtEveryScale(t *testing.T) {
 	for scale := 1; scale <= 4; scale++ {
 		st := NewOWState()
@@ -25,8 +25,8 @@ func TestOWPlayerSingleCharacterAtEveryScale(t *testing.T) {
 				}
 			}
 		}
-		if len(seen) < 2 {
-			t.Fatalf("scale %d: walking glyph did not animate", scale)
+		if len(seen) != 1 || !seen['@'] {
+			t.Fatalf("scale %d: walking glyph changed identity", scale)
 		}
 	}
 }

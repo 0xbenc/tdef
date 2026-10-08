@@ -3,6 +3,7 @@ package render
 import (
 	"github.com/0xbenc/termtd/internal/copytext"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -350,11 +351,15 @@ func (kind OWMessageKind) color() int {
 }
 
 type OWState struct {
-	Cursor    game.Vec
-	Unlocked  map[string]bool
-	Msg       string // transient line (e.g. "sealed")
-	MsgKind   OWMessageKind
-	RevealAll bool // look-dev: every floor at full brightness
+	PlayerIntro bool     // first-time pointer; dismissed by movement or entering a floor
+	RevealQueue []string // newly opened destinations, in progression order
+	RevealFloor string   // destination currently owning the camera
+	RevealTTL   int
+	Cursor      game.Vec
+	Unlocked    map[string]bool
+	Msg         string // transient line (e.g. "sealed")
+	MsgKind     OWMessageKind
+	RevealAll   bool // look-dev: every floor at full brightness
 
 	CameraX   float64 // horizontal focus in world cells, eased by the TUI
 	CameraSet bool    // false lets static/headless callers focus directly on Cursor
@@ -537,12 +542,12 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 			fogLift: fogLift,
 			cursor:  st.Cursor,
 		}
-		if ttl, ok := st.Unsealing[n.ID]; ok {
+		if ttl, ok := st.Unsealing[n.ID]; ok && !st.RevealPending(n.ID) {
 			v.status = OWOpen
 			v.unseal = 1 - float64(ttl)/float64(OWUnsealFrames)
 		}
 		if n.ID == "rotunda" {
-			v.boss = st.BossReady
+			v.boss = st.BossReady && !st.RevealPending(HeartFloorID)
 			v.done = st.BossDone
 		}
 		if n.ID == st.ReturnFX.Floor && returnFlash > 0 {
@@ -551,16 +556,17 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 		}
 		drawOWPad(f, l, n, v, frame)
 	}
+	drawOWReveal(f, l, st)
 	// Labels follow every building so a neighbouring room's glow cannot
 	// punctuate a name. Grak is drawn later and stays visible on crossing roads.
 	for i := range owNodes {
 		n := &owNodes[i]
 		v := owPadView{status: owNodeStatus(st, n.ID), rec: st.Records[n.ID], cursor: st.Cursor}
-		if ttl := st.Unsealing[n.ID]; ttl > 0 {
+		if ttl := st.Unsealing[n.ID]; ttl > 0 && !st.RevealPending(n.ID) {
 			v.unseal = 1 - float64(ttl)/OWUnsealFrames
 		}
 		if n.ID == "rotunda" {
-			v.boss, v.done = st.BossReady, st.BossDone
+			v.boss, v.done = st.BossReady && !st.RevealPending(HeartFloorID), st.BossDone
 		}
 		drawOWLabel(f, l, n, v)
 	}
@@ -573,9 +579,6 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 	//     answers back on the map.
 	drawOWReturnRing(f, l, st)
 
-	// 5. Grak, at the cursor, with a fading trail behind his last step.
-	drawOWPlayer(f, l, st, frame)
-
 	// 6. The descent: the floor Grak is entering floods in from its centre.
 	drawOWDescent(f, l, st)
 
@@ -586,6 +589,8 @@ func RenderOverworld(w, h int, st OWState, frame int, pal Colors) *Frame {
 	// 7. The arrival: while the lair wakes, the unlit dark masks the map
 	//    until the light from the heart sweeps out across it.
 	drawOWBoot(f, l, st)
+	drawOWPlayer(f, l, st, frame)
+	drawOWPlayerIntro(f, l, st)
 
 	// 8. The lair's voice line (row under the top border; the waking
 	//    narrates itself while the boot plays).
@@ -666,6 +671,9 @@ const (
 )
 
 func owNodeStatus(st OWState, id string) OWStatus {
+	if st.RevealPending(id) {
+		return OWSealed
+	}
 	if st.Unsealing[id] > 0 {
 		return OWOpen
 	}
@@ -1182,18 +1190,12 @@ func drawOWPlayer(f *Frame, l Layout, st OWState, frame int) {
 		}
 	}
 	cx, cy := l.center(st.Cursor.X, st.Cursor.Y)
-	pulse := frame%30 < 18
-	fg, bg := 255, 236
-	if !pulse {
-		bg = 235
+	fg, bg := 231, 24
+	if frame%60 >= 30 {
+		bg = 30
 	}
-	// Grak occupies one terminal character at every scale. A recent step
-	// alternates the glyph briefly, then settles back to the idle marker.
-	glyph := '@'
-	if len(st.TrailAge) > 0 && st.TrailAge[0] > 0 && (frame/4)%2 == 1 {
-		glyph = '&'
-	}
-	f.Set(cx, cy, Cell{R: glyph, FG: fg, BG: bg, Bold: true})
+	// His identity stays constant; only the light changes, never the glyph.
+	f.Set(cx, cy, Cell{R: '@', FG: fg, BG: bg, Bold: true})
 }
 
 // drawOWProcession marches the Long Halls' ghosts down their corridor when the
@@ -1386,6 +1388,13 @@ func drawOWVoice(f *Frame, w int, st OWState, frame int) {
 		default:
 			s, fg = copytext.Text("overworld.draw_owvoice.malgrath_grak_the_guild_still_hunts"), 214
 		}
+	case st.RevealFloor != "":
+		if st.RevealTTL <= OWRevealHoldFrames {
+			s = copytext.Format("overworld.reveal.opened", "floor", OWFloorName(st.RevealFloor))
+		} else {
+			s = copytext.Format("overworld.reveal.opening", "floor", OWFloorName(st.RevealFloor))
+		}
+		fg = 220
 	case st.BlastTTL > 0:
 		s, fg = copytext.Text("overworld.draw_owvoice.the_heart_has_unsealed_the_final_expedition"), 220
 	case st.ReturnTTL > 0 && st.ReturnMsg != "":
@@ -1672,3 +1681,10 @@ func OWRects(w, h int, st OWState) []Rect {
 	}
 	return out
 }
+
+// RevealPending keeps queued rooms dark until their own introduction begins.
+func (st OWState) RevealPending(id string) bool {
+	return slices.Contains(st.RevealQueue, id) || (st.RevealFloor == id && st.RevealTTL > OWRevealFrames-OWRevealPanFrames)
+}
+
+func (st OWState) RevealBusy() bool { return st.RevealFloor != "" || len(st.RevealQueue) > 0 }

@@ -424,7 +424,7 @@ func (a *App) owUnsealCheck(d int) {
 	st := &a.ow
 	opened := func(id string, cond bool) {
 		if cond && !st.Unlocked[id] && st.Unsealing[id] == 0 {
-			st.Unsealing[id] = render.OWUnsealFrames
+			a.owQueueReveal(id)
 		}
 	}
 	opened("rift", a.lair.Floor("rotunda", d).Cleared)
@@ -439,7 +439,7 @@ func (a *App) owUnsealCheck(d int) {
 // each renown seen as the lair is entered.
 func (a *App) owHeartBlastCheck(d int) {
 	if a.lair.BossReady(d) && !a.owBossSeen[d] {
-		a.ow.BlastTTL = render.OWBlastFrames
+		a.owQueueReveal(render.HeartFloorID)
 	}
 	a.owBossSeen[d] = a.lair.BossReady(d)
 }

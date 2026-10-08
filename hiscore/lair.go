@@ -20,6 +20,7 @@ type FloorRec struct {
 // file so the hiscore table stays a plain map[string]int (old builds keep
 // reading it).
 type Lair struct {
+	GrakLocated  bool                `json:"grak_located,omitempty"`
 	MenuRevealed bool                `json:"menu_revealed,omitempty"`
 	BonusGold    int                 `json:"bonus_gold,omitempty"`
 	BonusTower   bool                `json:"bonus_tower,omitempty"`

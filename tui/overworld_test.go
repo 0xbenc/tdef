@@ -101,7 +101,8 @@ func TestOWHubWinUnsealsRift(t *testing.T) {
 	if a.ow.Unsealing["rift"] != render.OWUnsealFrames || a.ow.Unlocked["rift"] {
 		t.Fatal("holding the hub should start the rift's unseal transition")
 	}
-	for i := 0; i < render.OWUnsealFrames-1; i++ {
+	a.owTick() // start the destination reveal
+	for i := 0; i < render.OWRevealPanFrames+render.OWUnsealFrames-2; i++ {
 		a.owTick()
 	}
 	if a.ow.Unlocked["rift"] {
@@ -110,6 +111,9 @@ func TestOWHubWinUnsealsRift(t *testing.T) {
 	a.owTick()
 	if !a.ow.Unlocked["rift"] || a.ow.Unlocked["halls"] {
 		t.Fatal("the rift alone should open after the hub win")
+	}
+	for a.ow.RevealBusy() {
+		a.owTick()
 	}
 	a.owVisitFloor("rift")
 	a.owEnter()
@@ -265,13 +269,21 @@ func TestOWHeartBlastCheck(t *testing.T) {
 	}
 	a.lair.Record("garden", 1, 20, true) // the fourth: the heart unseals
 	a.owHeartBlastCheck(1)
-	if a.ow.BlastTTL != render.OWBlastFrames {
-		t.Fatalf("blast not armed on the unseal: %d, want %d", a.ow.BlastTTL, render.OWBlastFrames)
+	if a.ow.BlastTTL != 0 || len(a.ow.RevealQueue) != 1 || a.ow.RevealQueue[0] != render.HeartFloorID {
+		t.Fatal("heart did not queue its own reveal")
 	}
-	a.owHeartBlastCheck(1) // a later check must not re-arm it
-	if a.ow.BlastTTL != render.OWBlastFrames {
-		t.Fatalf("blast re-armed: %d", a.ow.BlastTTL)
+	a.owHeartBlastCheck(1)
+	if len(a.ow.RevealQueue) != 1 {
+		t.Fatal("heart reveal queued twice")
 	}
+	a.owTick() // begin camera lead-in
+	for i := 0; i < render.OWRevealPanFrames; i++ {
+		a.owTick()
+	}
+	if a.ow.BlastTTL != render.OWBlastFrames {
+		t.Fatal("heart blast did not wait for its own reveal")
+	}
+
 	// A renown whose heart was already unsealed at entry never fires it.
 	a2 := owTestApp(t)
 	a2.ow.Diff = 2

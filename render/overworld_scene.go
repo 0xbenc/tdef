@@ -19,18 +19,29 @@ func OverworldLayout(w, h int, st OWState) Layout {
 	focus := float64(st.Cursor.X)
 	if st.CameraSet {
 		focus = st.CameraX
+	} else if st.RevealFloor != "" {
+		id := st.RevealFloor
+		if id == HeartFloorID {
+			id = "rotunda"
+		}
+		if n := owNodeByID(id); n != nil {
+			focus = float64(n.X)
+		}
 	}
 	offset := int(math.Round((focus+0.5)*float64(l.Scale))) - available/2
-	// Even after a browser jump or a resize, never leave Grak outside the
-	// viewport while the camera is catching up.
-	player := st.Cursor.X*l.Scale + l.Scale/2
-	margin := 3 * l.Scale
-	if player-offset < margin {
-		offset = player - margin
+	// During a reveal the camera is allowed to leave Grak behind. Normal
+	// walking and browser jumps keep him safely inside the viewport.
+	if st.RevealFloor == "" {
+		player := st.Cursor.X*l.Scale + l.Scale/2
+		margin := 3 * l.Scale
+		if player-offset < margin {
+			offset = player - margin
+		}
+		if player-offset > available-margin-1 {
+			offset = player - (available - margin - 1)
+		}
 	}
-	if player-offset > available-margin-1 {
-		offset = player - (available - margin - 1)
-	}
+
 	if offset < 0 {
 		offset = 0
 	}
