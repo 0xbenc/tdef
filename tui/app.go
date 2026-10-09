@@ -138,6 +138,7 @@ func RunMenu(diff game.Difficulty) error {
 	a.ls.Levels = game.LevelNames()
 	a.ls.Diff = diffIndex(diff)
 	a.ow = render.NewOWState()
+	a.ow.Diff = diffIndex(diff)
 	return a.run()
 }
 

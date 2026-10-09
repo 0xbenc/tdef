@@ -115,8 +115,13 @@ func (s *State) SpecialistPlaced(k TowerKind) bool {
 	return false
 }
 
+// CanBuildSite checks placement rules independently of the player's gold.
+func (s *State) CanBuildSite(v Vec, k TowerKind) bool {
+	return s.TowerAvailable(k) && !s.SpecialistPlaced(k) && s.Map.InBounds(v) && s.Map.At(v) == CellGrass && s.TowerAt(v) == nil
+}
+
 func (s *State) CanBuild(v Vec, k TowerKind) bool {
-	return s.TowerAvailable(k) && !s.SpecialistPlaced(k) && s.Map.InBounds(v) && s.Map.At(v) == CellGrass && s.TowerAt(v) == nil && s.Gold >= TowerSpecs[k].Cost[0]
+	return s.CanBuildSite(v, k) && s.Gold >= TowerSpecs[k].Cost[0]
 }
 
 func (s *State) Build(v Vec, k TowerKind) *Tower {

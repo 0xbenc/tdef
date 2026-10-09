@@ -255,7 +255,7 @@
     "after_wave": "Joins after wave {wave}. Once recruited, stays available on retries."
   },
   "keyboard": {
-    "place": "Enter place | Esc cancel | green dots = build spots",
+    "place": "Enter build | Esc cancel | green: OK, amber: gold",
     "rotate": " | r aim",
     "upgrade": " upgrade {gold}g | ",
     "need": " need {gold}g | ",
@@ -325,7 +325,7 @@
     "manage_title": "SELECT & UPGRADE",
     "pace_title": "FAST FORWARDING",
     "other_title": "HELP & MENUS",
-    "placement_tip": "Green dots show where you can build. Walls block building there, but do NOT block projectiles.",
+    "placement_tip": "Green dots show where you can build now. Amber dots show valid spots where you need more gold. Walls block building there, but do NOT block projectiles.",
     "manage_tip": "Move onto a defender or click it to select it. First aims furthest down the road; Strongest picks the most HP; Closest picks the nearest enemy.",
     "pace_tip": "Waves start automatically. Pause to plan your next move, or send the next wave early for extra gold.",
     "other_tip": "Good luck!",

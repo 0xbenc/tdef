@@ -39,8 +39,9 @@ go build -o termtd.exe .
 ## Play
 
 Use the arrows or WASD to move. Pick a tower with `1`–`7`, then press Enter
-or click to place it. Green dots mark legal sites. Each build exits placement;
-pick a tower again to build another. Escape cancels placement.
+or click to place it. Green dots mark sites you can afford; amber dots mark sites
+that need more gold. Each build exits placement; pick a tower again to build
+another. Escape cancels placement.
 
 - `[` / `]` — switch between the original defenders and four specialists
 - `r` — rotate a Runeforge while placing it or after selecting it

@@ -22,13 +22,17 @@ func drawPlacementSites(f *Frame, g *game.State, ui *UI, l Layout) {
 	if !ui.PlacingOn || !ui.Placing.Valid() {
 		return
 	}
+	mark := Cell{R: '·', FG: 46, BG: 22, Bold: true}
+	if g.Gold < game.TowerSpecs[ui.Placing].Cost[0] {
+		mark.FG, mark.BG = 214, 58
+	}
 	for y := 0; y < g.Map.H; y++ {
 		for x := 0; x < g.Map.W; x++ {
-			if !g.CanBuild(game.Vec{X: x, Y: y}, ui.Placing) {
+			if !g.CanBuildSite(game.Vec{X: x, Y: y}, ui.Placing) {
 				continue
 			}
 			cx, cy := l.center(x, y)
-			f.Set(cx, cy, Cell{R: '·', FG: 46, BG: 22, Bold: true})
+			f.Set(cx, cy, mark)
 		}
 	}
 }
@@ -44,6 +48,9 @@ func drawKeyboardCursor(f *Frame, g *game.State, ui *UI, l Layout, frame int) {
 	}
 	if ui.PlacingOn && !g.CanBuild(ui.Cursor, ui.Placing) {
 		bg = 88
+		if g.CanBuildSite(ui.Cursor, ui.Placing) {
+			bg = 58
+		}
 	}
 	for y := l.Y(ui.Cursor.Y); y < l.Y(ui.Cursor.Y)+l.Scale; y++ {
 		for x := l.X(ui.Cursor.X); x < l.X(ui.Cursor.X)+l.Scale; x++ {
@@ -135,7 +142,7 @@ func drawDefenderActions(f *Frame, g *game.State, ui *UI) {
 			for _, token := range []struct {
 				text  string
 				color int
-			}{{"Enter", 46}, {"Esc", 174}, {"green dots", 46}, {"r aim", 159}} {
+			}{{"Enter", 46}, {"Esc", 174}, {"green", 46}, {"amber", 214}, {"r aim", 159}} {
 				if strings.HasPrefix(hint, token.text) {
 					putString(f, x, y, token.text, token.color, 0, true)
 					x += len([]rune(token.text))

@@ -2,6 +2,39 @@ package game
 
 import "testing"
 
+func TestRiftRuneforgeLanes(t *testing.T) {
+	m, err := LoadLevel("canyon")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, spot := range []struct {
+		name   string
+		cell   Vec
+		facing Facing
+	}{
+		{"entry", Vec{11, 2}, FacingWest},
+		{"lower-right", Vec{27, 10}, FacingEast},
+	} {
+		t.Run(spot.name, func(t *testing.T) {
+			s := NewState(m)
+			forge := s.Build(spot.cell, TowerRuneforge)
+			if forge == nil {
+				t.Fatalf("cannot build Runeforge at %v", spot.cell)
+			}
+			s.Aim(forge, spot.facing)
+			// Both alcoves must expose a continuous road for the full
+			// seven-tile reach of a newly placed forge.
+			d := spot.facing.Vector()
+			for step := 1; step <= 7; step++ {
+				cell := Vec{spot.cell.X + d.X*step, spot.cell.Y + d.Y*step}
+				if !m.IsPath(cell) || !ForgeContains(forge.Pos(), forge.BeamEnd, cell.Center()) {
+					t.Fatalf("beam misses routed lane at %v", cell)
+				}
+			}
+		})
+	}
+}
+
 // A touching hairpin can silently become a shortcut in computePath's BFS.
 // Every painted road cell must belong to one unbranched spawn-to-exit route.
 func TestBuiltInRoutesAndBuildSpace(t *testing.T) {

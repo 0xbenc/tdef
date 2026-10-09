@@ -104,9 +104,9 @@ are checked before a stable GitHub release is published.
 
 ## Prepare a release
 
-The current release line is 1.3.0. Use the intended version consistently in the
+The current release line is 1.4.1. Use the intended version consistently in the
 release tag, itch user version, release notes, and post-release checks. Examples
-below use `VERSION=1.3.0`; change that value for another release. Prerelease tags
+below use `VERSION=1.4.1`; change that value for another release. Prerelease tags
 publish GitHub assets without updating the stable itch or Homebrew channels.
 
 Player archives contain LICENSE, README.md, LORE.md, and PLAYING.md. The lore
@@ -154,7 +154,7 @@ the console settings and startup errors remain visible through Play.cmd.
 To preview the stable channel commands using staged stable-version packages:
 
 ```sh
-VERSION=1.3.0
+VERSION=1.4.1
 python3 packaging/itch/publish.py --target kairuku-studios/termtd --version "$VERSION" --dry-run
 ```
 
@@ -163,7 +163,7 @@ Remove `--dry-run` only when intentionally publishing those staged packages.
 When ready to publish the committed revision:
 
 ```sh
-VERSION=1.3.0
+VERSION=1.4.1
 git tag -a "v$VERSION" -m "TERMTD $VERSION"
 git push origin main
 git push origin "v$VERSION"

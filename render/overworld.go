@@ -399,7 +399,7 @@ func NewOWState() OWState {
 		Unsealing: map[string]int{},
 		Records:   map[string]OWRec{},
 		Scores:    map[string]int{},
-		Diff:      1, // normal
+		Diff:      0, // easy
 	}
 }
 

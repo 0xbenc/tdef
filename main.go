@@ -230,7 +230,7 @@ func diffFrom(fs *flag.FlagSet) game.Difficulty {
 
 func play(args []string) {
 	fs := flag.NewFlagSet("play", flag.ExitOnError)
-	parseDiff(fs)
+	fs.String("diff", "easy", "difficulty: easy|normal|hard")
 	m, name, _ := parseLevelArgs(fs, args)
 	diff := diffFrom(fs)
 	explicit := false

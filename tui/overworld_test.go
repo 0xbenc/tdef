@@ -14,11 +14,13 @@ func owTestApp(t *testing.T) *App {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	ow := render.NewOWState()
+	ow.Diff = diffIndex(game.Normal)
 	return &App{
 		screen: ScreenOverworld,
 		diff:   game.Normal,
 		lair:   hiscore.LoadLair(),
-		ow:     render.NewOWState(),
+		ow:     ow,
 	}
 }
 
