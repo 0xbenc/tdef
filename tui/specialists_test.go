@@ -40,6 +40,9 @@ func TestRosterSelectionRotationAndMouse(t *testing.T) {
 	if tower == nil || tower.Facing != game.FacingSouth {
 		t.Fatal("placement discarded preview facing")
 	}
+	if a.ui.RosterPage != 0 {
+		t.Fatal("specialist placement did not return to regular defenders")
+	}
 	a.ui.PlacingOn = false
 	a.ui.Selected = tower.ID
 	a.rotateForge()
@@ -48,8 +51,34 @@ func TestRosterSelectionRotationAndMouse(t *testing.T) {
 	}
 	a.layout = render.GameLayout(a.g.Map.W, a.g.Map.H, 80, 24)
 	pager := render.RosterPager(80, 24)
+	a.changeRoster(1)
 	a.handleMenuClick(Event{X: pager.X + pager.W - 1, Y: pager.Y})
 	if a.ui.RosterPage != 0 || a.ui.Selected != tower.ID {
 		t.Fatal("mouse pager lost selected tower")
+	}
+}
+
+func TestSpecialistPlacementReturnsToRegularRoster(t *testing.T) {
+	for kind := game.TowerRuneforge; kind < game.TowerCount; kind++ {
+		t.Run(game.TowerSpecs[kind].Name, func(t *testing.T) {
+			a := journalGameApp(t)
+			sites := keyboardSites(t, a)
+			a.ui.RosterPage = 1
+			a.ui.Cursor, a.ui.Placing, a.ui.PlacingOn = sites[0], kind, true
+			a.g.Gold = 0
+			a.handle(Event{Key: KeyEnter})
+			if a.ui.RosterPage != 1 || !a.ui.PlacingOn {
+				t.Fatal("failed placement changed the roster or canceled placement")
+			}
+			a.g.Gold = 10000
+			a.handle(Event{Key: KeyEnter})
+			if a.g.TowerAt(sites[0]) == nil || a.ui.RosterPage != 0 || a.ui.PlacingOn {
+				t.Fatal("successful specialist placement did not return to regular roster")
+			}
+			a.handle(Event{Rune: '1'})
+			if a.ui.Placing != game.TowerGunner || !a.ui.PlacingOn {
+				t.Fatal("number key did not select a regular defender after placement")
+			}
+		})
 	}
 }

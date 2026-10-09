@@ -1262,6 +1262,9 @@ func (a *App) place() {
 		a.discoverTower(a.ui.Placing)
 		a.ui.PlacingOn = false
 		a.ui.Selected = -1
+		if tower.Kind >= game.TowerRuneforge {
+			a.ui.RosterPage = 0
+		}
 		if a.recruitPlanning {
 			a.recruitPlanning = false
 			a.ui.Paused = false
